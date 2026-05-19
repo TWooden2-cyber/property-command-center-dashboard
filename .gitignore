@@ -1,0 +1,12 @@
+.next/
+node_modules/
+out/
+build/
+.env
+.env*.local
+*.pem
+credentials*
+token*
+*.log
+coverage/
+tsconfig.tsbuildinfo

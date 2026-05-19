@@ -1,0 +1,19 @@
+import type { Metadata } from "next";
+import type { ReactNode } from "react";
+import "@/styles/globals.css";
+import { Providers } from "@/components/Providers";
+
+export const metadata: Metadata = {
+  title: "Property Management Owner Command Center",
+  description: "Private owner command center powered by a Google Sheets Master Tracker."
+};
+
+export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
+  return (
+    <html lang="en">
+      <body>
+        <Providers>{children}</Providers>
+      </body>
+    </html>
+  );
+}
