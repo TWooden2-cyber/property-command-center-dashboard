@@ -36,6 +36,7 @@ export function CalendarFollowUpsView() {
   return (
     <div className="followup-groups">
       <SheetsRefreshStatus system={system} />
+      <p className="muted-line">Source: Dashboard!A51:G56</p>
       <DashboardBlockTable block={data.dashboardBlock} />
       {data.dashboardBlock?.rows.length ? null : groupOrder.map((group) => (
         <section key={group} className="section-block">
