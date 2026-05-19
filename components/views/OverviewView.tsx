@@ -91,7 +91,7 @@ export function OverviewView() {
       <section className="command-brief executive-command-hero">
         <div className="command-brief-copy">
           <p className="eyebrow">Source: Google Sheets Dashboard</p>
-          <h2>Today&apos;s Command Brief</h2>
+          <h2>Owner Command Center — Live Dashboard</h2>
           <p>
             Dashboard ranges are the operating source of truth. Review owner-gated decisions first, then urgent signals,
             maintenance proof, and scheduled follow-ups.
