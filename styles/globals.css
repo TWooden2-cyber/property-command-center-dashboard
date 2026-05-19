@@ -223,6 +223,19 @@ button {
   gap: 14px;
 }
 
+.executive-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.executive-summary-grid .kpi-card {
+  min-height: 124px;
+  background:
+    linear-gradient(180deg, rgba(247, 240, 228, 0.12), rgba(247, 240, 228, 0.052)),
+    rgba(8, 7, 6, 0.72);
+}
+
 .utilities-kpis {
   grid-template-columns: repeat(4, minmax(170px, 1fr));
 }
@@ -270,6 +283,69 @@ button {
 
 .tone-stable {
   border-color: rgba(122, 166, 106, 0.34);
+}
+
+.command-brief {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(360px, 0.9fr);
+  gap: 18px;
+  align-items: stretch;
+  border: 1px solid rgba(201, 164, 81, 0.26);
+  border-radius: 8px;
+  padding: 24px;
+  background:
+    linear-gradient(120deg, rgba(201, 164, 81, 0.16), rgba(124, 165, 170, 0.075)),
+    rgba(8, 7, 6, 0.64);
+  box-shadow: var(--shadow);
+}
+
+.command-brief h2 {
+  margin: 0;
+  font-size: clamp(1.55rem, 2vw, 2.35rem);
+  line-height: 1.05;
+}
+
+.command-brief p {
+  max-width: 760px;
+  margin: 12px 0 0;
+  color: var(--cream-muted);
+  line-height: 1.55;
+}
+
+.brief-actions {
+  display: grid;
+  gap: 10px;
+}
+
+.brief-actions article {
+  min-height: 92px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+  background: rgba(8, 7, 6, 0.34);
+}
+
+.brief-actions span,
+.source-line {
+  display: block;
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.brief-actions strong {
+  display: block;
+  margin-top: 8px;
+  color: var(--gold-soft);
+  font-size: 1rem;
+}
+
+.brief-actions small {
+  display: block;
+  margin-top: 6px;
+  color: var(--cream-muted);
+  line-height: 1.35;
 }
 
 .decision-panel,
@@ -394,10 +470,28 @@ button {
   background: rgba(215, 173, 82, 0.12);
 }
 
+.status-watch {
+  color: #ffd7b5;
+  border-color: rgba(221, 135, 69, 0.48);
+  background: rgba(221, 135, 69, 0.13);
+}
+
+.status-info {
+  color: #d7f4f8;
+  border-color: rgba(124, 165, 170, 0.52);
+  background: rgba(124, 165, 170, 0.13);
+}
+
 .status-stable {
   color: #d5f0cb;
   border-color: rgba(122, 166, 106, 0.46);
   background: rgba(122, 166, 106, 0.12);
+}
+
+.status-archived {
+  color: #d6d1c8;
+  border-color: rgba(226, 215, 199, 0.24);
+  background: rgba(226, 215, 199, 0.075);
 }
 
 .status-neutral {
@@ -444,6 +538,10 @@ td {
 
 tbody tr:hover {
   background: rgba(247, 240, 228, 0.045);
+}
+
+.dashboard-block .table-frame {
+  margin-top: 12px;
 }
 
 .numeric {
@@ -774,6 +872,14 @@ tbody tr:hover {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .executive-summary-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .command-brief {
+    grid-template-columns: 1fr;
+  }
+
   .risk-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -801,6 +907,7 @@ tbody tr:hover {
   }
 
   .kpi-grid,
+  .executive-summary-grid,
   .risk-grid,
   .checklist-grid,
   .settings-grid,

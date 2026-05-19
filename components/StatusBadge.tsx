@@ -1,32 +1,29 @@
 import type { RiskLevel } from "@/types/sheets";
 
-const criticalLabels = [
-  "Critical",
-  "Emergency",
-  "Unpaid",
-  "Needs Follow-Up",
-  "Prepare Filing Packet",
-  "Deadline Expired",
-  "Usage Spike"
-];
-const highLabels = ["High", "Partial", "Proof Missing", "Deadline Approaching", "Owner Review Required", "Needs Review", "Missing Bill"];
-const stableLabels = ["Paid", "AutoPay", "Complete", "Stable", "Resolved", "Notice Served / Countdown Active"];
-const watchLabels = ["Waiting", "Owner Review", "Payment Arrangement Active", "Watch", "Needs Entry", "Disputed"];
-
 function toneFor(label: string | RiskLevel): string {
-  if (criticalLabels.includes(label)) {
+  const value = String(label || "").toLowerCase();
+
+  if (["critical", "emergency", "overdue", "unpaid", "deadline expired", "usage spike"].some((term) => value.includes(term))) {
     return "critical";
   }
 
-  if (highLabels.includes(label)) {
-    return "high";
-  }
-
-  if (watchLabels.includes(label)) {
+  if (["proof missing", "missing proof", "waiting", "pending tenant", "pending owner", "needs entry"].some((term) => value.includes(term))) {
     return "watch";
   }
 
-  if (stableLabels.includes(label)) {
+  if (["owner decision", "owner review", "needs review", "approval required", "high", "deadline approaching"].some((term) => value.includes(term))) {
+    return "high";
+  }
+
+  if (["scheduled", "follow-up", "follow up", "calendar"].some((term) => value.includes(term))) {
+    return "info";
+  }
+
+  if (["closed", "archived"].some((term) => value.includes(term))) {
+    return "archived";
+  }
+
+  if (["complete", "completed", "verified", "paid", "autopay", "stable", "resolved"].some((term) => value.includes(term))) {
     return "stable";
   }
 

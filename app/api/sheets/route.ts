@@ -22,8 +22,10 @@ function selectView(data: ReturnType<typeof parseWorkbook>, view: SheetsView) {
           liveTrackers: data.dashboardBlocks.liveTrackers,
           ownerDecisions: data.dashboardBlocks.ownerDecisions,
           urgentActions: data.dashboardBlocks.urgentActions,
+          maintenance: data.dashboardBlocks.maintenance,
           googleDriveIntake: data.dashboardBlocks.googleDriveIntake,
-          gmailIntake: data.dashboardBlocks.gmailIntake
+          gmailIntake: data.dashboardBlocks.gmailIntake,
+          calendarFollowUps: data.dashboardBlocks.calendarFollowUps
         }
       };
     case "rent-collection":
