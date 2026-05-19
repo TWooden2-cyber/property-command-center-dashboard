@@ -88,14 +88,19 @@ export function OverviewView() {
   return (
     <div className="view-stack">
       <SheetsRefreshStatus system={system} />
-      <section className="command-brief">
-        <div>
+      <section className="command-brief executive-command-hero">
+        <div className="command-brief-copy">
           <p className="eyebrow">Source: Google Sheets Dashboard</p>
           <h2>Today&apos;s Command Brief</h2>
           <p>
             Dashboard ranges are the operating source of truth. Review owner-gated decisions first, then urgent signals,
             maintenance proof, and scheduled follow-ups.
           </p>
+          <div className="hero-source-strip" aria-label="Dashboard data source">
+            <span>Live from Google Sheets</span>
+            <span>Read-only</span>
+            <span>No write actions</span>
+          </div>
         </div>
         <div className="brief-actions">
           <article>

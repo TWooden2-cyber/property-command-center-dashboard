@@ -13,7 +13,10 @@ export function KpiCard({
 }) {
   return (
     <article className={`kpi-card tone-${tone.toLowerCase()}`}>
-      <span>{label}</span>
+      <div className="kpi-card-topline">
+        <span>{label}</span>
+        <i aria-hidden />
+      </div>
       <strong>{value}</strong>
       {helper ? <small>{helper}</small> : null}
     </article>

@@ -12,12 +12,13 @@ type DashboardBlockTableProps = {
 export function DashboardBlockTable({ block, emptyMessage = "No Dashboard range data is available yet." }: DashboardBlockTableProps) {
   if (!block || !block.rows.length) {
     return (
-      <section className="section-block">
+      <section className="section-block dashboard-block dashboard-block-empty">
         <div className="section-heading">
           <div>
             <p className="eyebrow">Dashboard range</p>
             <h2>{block?.title ?? "Dashboard"}</h2>
           </div>
+          <span className="empty-state-chip">No rows</span>
         </div>
         <p className="muted-line">{block?.warning || block?.error || emptyMessage}</p>
       </section>
@@ -41,6 +42,7 @@ export function DashboardBlockTable({ block, emptyMessage = "No Dashboard range 
           <p className="eyebrow">{block.range}</p>
           <h2>{block.title}</h2>
         </div>
+        <span className="row-count-chip">{block.rows.length} rows</span>
       </div>
       <p className="source-line">Source: Google Sheets Dashboard / {block.range}</p>
       <DataTable rows={block.rows} columns={columns} />
