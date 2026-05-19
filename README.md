@@ -168,3 +168,4 @@ npm run typecheck
 
 The Settings page will show connection status, detected tabs, missing tabs, auth status, and whether required environment variables are configured without revealing secret values.
 Deployment trigger.
+Deployment trigger 2.
