@@ -88,7 +88,7 @@ export function LuxuryShell({
       <main className="main-panel">
         <header className="page-header">
           <div>
-            <p className="eyebrow">Property Management</p>
+            <p className="eyebrow">Live Owner Operations</p>
             <h1>{title}</h1>
             <p>{subtitle}</p>
           </div>

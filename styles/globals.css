@@ -970,7 +970,7 @@ tbody tr:hover {
   animation: spin 1s linear infinite;
 }
 
-@media (max-width: 1180px) {
+@media (max-width: 900px) {
   .app-shell {
     grid-template-columns: 1fr;
   }
