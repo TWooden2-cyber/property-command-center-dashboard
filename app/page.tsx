@@ -1,3 +1,4 @@
+// Owner-authored deployment sync
 import { requireOwnerSession } from "@/lib/auth";
 import { LuxuryShell } from "@/components/LuxuryShell";
 import { OverviewView } from "@/components/views/OverviewView";
