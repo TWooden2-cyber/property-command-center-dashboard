@@ -13,12 +13,13 @@ export function SheetsRefreshStatus({ system }: SheetsRefreshStatusProps) {
     <section className="section-block sheets-refresh-status">
       <div className="section-heading">
         <div>
-          <p className="eyebrow">Live from Google Sheets</p>
-          <h2>Last updated from Google Sheets</h2>
+          <p className="eyebrow">Local sample data</p>
+          <h2>Last updated from local sample workbook</h2>
         </div>
         <div className="source-badges">
           <span>Read-only</span>
-          <span>{system?.connectionOk ? "Connected" : "Needs config"}</span>
+          <span>{system?.connectionOk ? "Local sample active" : "Local sample unavailable"}</span>
+          <span>No live Google data or live actions</span>
         </div>
       </div>
       <p className="muted-line">{refreshLabel}</p>

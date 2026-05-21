@@ -82,7 +82,7 @@ export function OverviewView() {
   }
 
   if (!data) {
-    return <EmptyState title="No overview data" message="Connect the Google Sheet to populate the owner command center." />;
+    return <EmptyState title="No overview data" message="Local sample workbook data is unavailable." />;
   }
 
   return (
@@ -90,16 +90,16 @@ export function OverviewView() {
       <SheetsRefreshStatus system={system} />
       <section className="command-brief executive-command-hero">
         <div className="command-brief-copy">
-          <p className="eyebrow">Source: Google Sheets Dashboard</p>
-          <h2>Owner Command Center — Live Dashboard</h2>
+          <p className="eyebrow">Source: Local Sample Workbook</p>
+          <h2>Owner Command Center - Local Sample Dashboard</h2>
           <p>
-            Dashboard ranges are the operating source of truth. Review owner-gated decisions first, then urgent signals,
+            Local sample records are powering this reset view. Review owner-gated decisions first, then urgent signals,
             maintenance proof, and scheduled follow-ups.
           </p>
           <div className="hero-source-strip" aria-label="Dashboard data source">
-            <span>Live from Google Sheets</span>
+            <span>Local sample data</span>
             <span>Read-only</span>
-            <span>No write actions</span>
+            <span>No live Google data or live actions</span>
           </div>
         </div>
         <div className="brief-actions">

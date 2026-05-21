@@ -82,7 +82,7 @@ export function SettingsView() {
             <StatusBadge label="Disabled" />
           </div>
           <div className="mode-status-list">
-            <span>Google Sheets: <strong>Disabled</strong></span>
+            <span>Live sheet backend: <strong>Disabled</strong></span>
             <StatusBadge label="Disabled" />
           </div>
           <div className="mode-status-list">
