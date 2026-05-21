@@ -1,3 +1,4 @@
+Deployment trigger: Local Sample Mode reset verified.
 # Property Management Owner Command Center
 
 Private owner dashboard for the Property Command Center reset.
