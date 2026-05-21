@@ -7,7 +7,7 @@ export default async function OverviewPage() {
   await requireOwnerSession();
 
   return (
-    <LuxuryShell title="Owner Command Center — Live Dashboard" subtitle="Live read-only platform synced from Google Sheets.">
+    <LuxuryShell title="Owner Command Center - Local Dashboard" subtitle="Local read-only sample mode. Live Google services are disabled.">
       <OverviewView />
     </LuxuryShell>
   );

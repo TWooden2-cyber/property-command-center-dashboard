@@ -215,6 +215,30 @@ button {
   font-size: 0.84rem;
 }
 
+.local-mode-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: -8px 0 26px;
+  border: 1px solid rgba(201, 164, 81, 0.35);
+  border-radius: 8px;
+  padding: 12px 14px;
+  color: var(--cream);
+  background:
+    linear-gradient(90deg, rgba(201, 164, 81, 0.16), rgba(124, 165, 170, 0.08)),
+    rgba(8, 7, 6, 0.38);
+  box-shadow: var(--shadow);
+}
+
+.local-mode-banner strong {
+  color: var(--gold-soft);
+}
+
+.local-mode-banner span {
+  color: var(--cream-muted);
+}
+
 .view-stack {
   display: grid;
   gap: 26px;
@@ -862,6 +886,26 @@ tbody tr:hover {
 .tag-cloud {
   display: grid;
   gap: 10px;
+}
+
+.mode-status-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background: rgba(8, 7, 6, 0.22);
+}
+
+.mode-status-list span {
+  color: var(--muted);
+}
+
+.mode-status-list strong {
+  color: var(--cream);
 }
 
 .config-grid {

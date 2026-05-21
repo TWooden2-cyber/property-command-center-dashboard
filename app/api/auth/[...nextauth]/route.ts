@@ -1,6 +1,9 @@
-import NextAuth from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { NextResponse } from "next/server";
 
-const handler = NextAuth(authOptions);
+export function GET() {
+  return NextResponse.json({ ok: false, error: "Google OAuth is disabled in local owner mode." }, { status: 404 });
+}
 
-export { handler as GET, handler as POST };
+export function POST() {
+  return NextResponse.json({ ok: false, error: "Google OAuth is disabled in local owner mode." }, { status: 404 });
+}

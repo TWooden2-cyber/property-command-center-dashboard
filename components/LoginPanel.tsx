@@ -1,6 +1,4 @@
-"use client";
-
-import { signIn } from "next-auth/react";
+import Link from "next/link";
 import { Building2, LockKeyhole, ShieldCheck } from "lucide-react";
 
 export function LoginPanel() {
@@ -10,24 +8,24 @@ export function LoginPanel() {
         <div className="brand-mark">
           <Building2 size={24} aria-hidden />
         </div>
-        <p className="eyebrow">Private owner access</p>
+        <p className="eyebrow">Local owner mode</p>
         <h1>Property Management Owner Command Center</h1>
         <p className="login-copy">
-          Secure read-only access to the private Master Tracker. Google login is restricted to the approved owner email.
+          Google OAuth is temporarily disabled. This local reset uses sample data only and does not connect to live Google services.
         </p>
         <div className="login-assurance">
           <span>
             <LockKeyhole size={16} aria-hidden />
-            Login required
+            Local access
           </span>
           <span>
             <ShieldCheck size={16} aria-hidden />
-            Read-only
+            Read-only sample data
           </span>
         </div>
-        <button className="button-primary login-button" onClick={() => signIn("google", { callbackUrl: "/" })}>
-          Continue with Google
-        </button>
+        <Link className="button-primary login-button" href="/">
+          Continue in local owner mode
+        </Link>
       </section>
     </main>
   );

@@ -4,13 +4,11 @@ import type { ReactNode } from "react";
 import type { Route } from "next";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { signOut, useSession } from "next-auth/react";
 import {
   ClipboardList,
   Gauge,
   Hammer,
   Landmark,
-  LogOut,
   MailWarning,
   ReceiptText,
   Settings,
@@ -49,7 +47,6 @@ export function LuxuryShell({
   children: ReactNode;
 }) {
   const pathname = usePathname();
-  const { data: session } = useSession();
 
   return (
     <div className="app-shell">
@@ -77,23 +74,26 @@ export function LuxuryShell({
         </nav>
 
         <div className="sidebar-footer">
-          <span className="session-email">{session?.user?.email ?? "Owner session"}</span>
-          <button className="icon-text-button" onClick={() => signOut({ callbackUrl: "/login" })}>
-            <LogOut size={16} aria-hidden />
-            Sign out
-          </button>
+          <span className="session-email">Local owner mode</span>
+          <Link className="icon-text-button" href="/login">
+            Sample data only
+          </Link>
         </div>
       </aside>
 
       <main className="main-panel">
         <header className="page-header">
           <div>
-            <p className="eyebrow">Live Owner Operations</p>
+            <p className="eyebrow">Local Owner Operations</p>
             <h1>{title}</h1>
             <p>{subtitle}</p>
           </div>
-          <div className="security-chip">Private read-only system</div>
+          <div className="security-chip">Local read-only sample mode</div>
         </header>
+        <section className="local-mode-banner" aria-label="Local sample mode notice">
+          <strong>Local Sample Mode</strong>
+          <span>No live Google data or live actions.</span>
+        </section>
         {children}
       </main>
     </div>

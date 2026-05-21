@@ -1,171 +1,145 @@
 # Property Management Owner Command Center
 
-Private, read-only owner dashboard for the `Property Management Master Tracker` Google Sheet.
+Private owner dashboard for the Property Command Center reset.
 
-The Google Sheet remains the backend and source of truth. This app turns the tracker into a secure owner-facing command center with KPI cards, risk panels, notice tracking, maintenance status, mortgage/allotment monitoring, utilities analysis, admin tasks, and follow-up deadlines.
+## Current Mode: Local Sample Mode
 
-## What Version 1 Does
+This reset build runs without live Google services. The dashboard uses a local sample workbook in `lib/sampleWorkbook.ts`, and the server route `app/api/sheets/route.ts` reads that sample workbook only.
 
-- Requires Google login.
-- Restricts access to one approved owner email.
-- Reads the private Google Sheet through server-side code only.
-- Shows data from the tracker in luxury command-center pages.
-- Calculates display-only status, risk, and next-action fields.
-- Keeps all tenant data out of public static files.
-- Does not write back to Google Sheets.
-- Does not send emails, notices, tenant messages, or legal filings.
+Current behavior:
 
-## Source Of Truth
+- Google OAuth: Disabled
+- No Google OAuth required
+- Google Sheets: Disabled
+- Live Google APIs: Disabled
+- Vercel environment variables: Not required for the current reset build
+- No Vercel environment variables required
+- Local sample workbook data: Active
+- Dashboard write-back actions: Disabled
+- Tenant emails, notices, filings, Drive actions, Calendar actions, Tasks actions, and Sheets writes: Disabled
 
-The spreadsheet is still the operating system. The app reads from these tabs:
+Do not add OAuth or Google variables until the dashboard is stable on Vercel in Local Sample Mode.
 
-- Dashboard
-- Rent Collection
-- Maintenance
-- Notices & Evictions
-- Mortgage & Allotments
-- Admin Task Log
-- Calendar & Follow-Ups
-- Cash Flow Summary
-- Payment Arrangements
-- Arrears Payoff Tracker
-- Property Manager Reports
-- Expense Import Summary
-- Section 8 HAP Payments
-- Utilities
+## What The Dashboard Shows
 
-## Local Setup
-
-1. Install dependencies:
-
-```bash
-npm install
-```
-
-2. Copy `.env.example` to `.env.local`.
-
-3. Fill in the environment variables:
-
-```bash
-GOOGLE_SERVICE_ACCOUNT_EMAIL=
-GOOGLE_PRIVATE_KEY=
-GOOGLE_SHEET_ID=14nzzWCKIi0h-zHkCzW0JXmN-NQNcAWZahLpDy3CXK0c
-GOOGLE_CLIENT_ID=
-GOOGLE_CLIENT_SECRET=
-NEXTAUTH_SECRET=
-NEXTAUTH_URL=http://localhost:3000
-APPROVED_OWNER_EMAIL=
-NEXT_PUBLIC_APP_NAME=Property Management Owner Command Center
-```
-
-4. Run locally:
-
-```bash
-npm run dev
-```
-
-5. Open `http://localhost:3000`.
-
-## Google Sheets API Setup
-
-1. Go to Google Cloud Console.
-2. Create or select a project.
-3. Enable the Google Sheets API.
-4. Create a service account.
-5. Create a JSON key for the service account.
-6. Copy the service account email into `GOOGLE_SERVICE_ACCOUNT_EMAIL`.
-7. Copy the private key into `GOOGLE_PRIVATE_KEY`.
-
-The private key should keep escaped newlines:
-
-```bash
-GOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
-```
-
-## Share The Private Sheet
-
-Open the Google Sheet and share it with the service account email. Viewer access is enough because this app is read-only.
-
-Do not make the Sheet public.
-
-## Google Login Setup
-
-1. In Google Cloud Console, create OAuth client credentials for a web application.
-2. Add this local redirect URI:
-
-```text
-http://localhost:3000/api/auth/callback/google
-```
-
-3. For production, add:
-
-```text
-https://your-domain.com/api/auth/callback/google
-```
-
-4. Put the OAuth client ID and secret into:
-
-```bash
-GOOGLE_CLIENT_ID=
-GOOGLE_CLIENT_SECRET=
-```
-
-5. Set `APPROVED_OWNER_EMAIL` to the only email allowed to access the app.
-
-## Secure Deployment
-
-- Deploy to a private production environment such as Vercel.
-- Set all secrets in the hosting provider environment variable settings.
-- Never put service account values in `NEXT_PUBLIC_` variables.
-- Keep `GOOGLE_PRIVATE_KEY`, `GOOGLE_CLIENT_SECRET`, and `NEXTAUTH_SECRET` server-only.
-- Set `NEXTAUTH_URL` to the final production URL.
-- Add the production Google OAuth callback URL before launch.
-- Keep the Google Sheet private and shared only with the service account.
-- Confirm `APPROVED_OWNER_EMAIL` is your owner login email.
-
-## Why Version 1 Is Read-Only
-
-This app handles sensitive property, tenant, rent, maintenance, and notice information. Version 1 is intentionally read-only so the dashboard can be verified safely before any controlled write-back features are added.
-
-Future write-back actions may include marking tasks complete, adding owner notes, uploading proof links, marking notice served, or marking a payment arrangement active. Those features are intentionally not included yet.
-
-## Pages
+The app presents a luxury owner command-center interface with:
 
 - Overview
 - Rent Collection
 - Notices & Evictions
 - Maintenance
-- Mortgage & Arrears
 - Utilities
+- Expenses / NOI
+- Mortgage & Arrears
 - Admin Tasks
 - Calendar & Follow-Ups
 - Settings / System Status
 
-## Utilities Page
+The current reset build is designed to prove the app shell, navigation, styling, routing, and dashboard views without depending on Google credentials.
 
-The Utilities page reads from the `Utilities` tab in the Google Sheet. It shows utility cost and usage trends without writing back to the tracker.
+## Source Of Data During Reset
 
-The page includes:
+The current source is local sample data only:
 
-- Total utility cost YTD, current month cost, portfolio-size cost KPIs, average monthly utility cost, usage spikes, unpaid bills, and missing bill/review counts.
-- Filters for property, utility type, year, payment status, and review status.
-- Charts for monthly utility cost trend, usage by utility type, cost by property, cost by utility type, year-over-year usage when multiple years exist, and usage spike alerts.
-- A read-only utility records table with bill/receipt links displayed safely as links.
+```text
+lib/sampleWorkbook.ts
+```
 
-## Safety Boundaries
+The API route remains the same for the frontend:
 
-The Notices & Evictions page is only for tracking, reminders, and owner review. It does not file cases, send notices, threaten tenants, contact tenants, or generate eviction documents automatically.
+```text
+app/api/sheets/route.ts
+```
+
+That route currently returns parsed local sample data. It does not connect to Google Sheets.
+
+## Local Setup
+
+Use Windows PowerShell from the project folder:
+
+```powershell
+cd "C:\Users\TRS_F\OneDrive\Documents\New project\property-owner-command-center"
+npm.cmd install
+npm.cmd run dev
+```
+
+Open:
+
+```text
+http://localhost:3000
+```
+
+No `.env.local` file is required for the current reset build.
+
+## Vercel Reset Deployment
+
+For the current reset build, Vercel does not need project environment variables.
+
+Confirmed reset expectation:
+
+- Project: `property-command-center-dashboard`
+- GitHub repo: `TWooden2-cyber/property-command-center-dashboard`
+- Production branch: `main`
+- Project environment variables: none required
+- Shared environment variables: none required
+
+Deploy Local Sample Mode first. After the app is stable on Vercel, live Google integrations can be re-enabled in a separate controlled batch.
 
 ## Verification
 
-After environment variables are configured and dependencies are installed, run:
+Run:
 
-```bash
-npm run typecheck
-npm run build
-npm run typecheck
+```powershell
+npm.cmd run lint
+npm.cmd run build
 ```
 
-The Settings page will show connection status, detected tabs, missing tabs, auth status, and whether required environment variables are configured without revealing secret values.
-Deployment trigger.
-Deployment trigger 2.
+Known current lint note:
+
+- `components/views/UtilitiesView.tsx` has a non-blocking React hook dependency warning.
+
+The build should pass without `.env.local` and without Vercel environment variables.
+
+## Safety Boundaries
+
+The reset build is read-only and local-sample-only.
+
+It does not:
+
+- Sign in with Google
+- Read Google Sheets
+- Write Google Sheets
+- Read Gmail
+- Send email
+- Read or write Google Calendar
+- Read or write Google Drive
+- Read or write Google Tasks
+- Contact tenants
+- Send notices
+- File eviction cases
+- Perform mortgage, legal, financial, or tenant live actions
+
+## Future Re-Enable: Google OAuth and Google Sheets Read-Only
+
+These variables are not required right now. Add them only in a future re-enable batch after the dashboard is stable on Vercel in Local Sample Mode.
+
+Placeholder variables for the future OAuth step:
+
+```env
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+NEXTAUTH_URL=
+NEXTAUTH_SECRET=
+```
+
+Future Google Sheets read-only re-enable work must be handled separately and deliberately. Do not add real client IDs, client secrets, service account keys, private keys, or owner credentials to this repository.
+
+## Git And Deployment Guardrails
+
+Before committing, pushing, or deploying:
+
+1. Confirm the app builds locally.
+2. Confirm no real secrets are present in tracked files.
+3. Confirm the dashboard still opens in Local Sample Mode.
+4. Confirm `/api/sheets?view=overview` returns local sample data.
+5. Get explicit approval for commit, push, or deployment.

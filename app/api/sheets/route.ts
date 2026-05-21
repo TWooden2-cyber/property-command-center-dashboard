@@ -1,6 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { getServerAuthSession, isApprovedEmail } from "@/lib/auth";
-import { getWorkbookSnapshot } from "@/lib/googleSheets";
+import { sampleWorkbookSnapshot } from "@/lib/sampleWorkbook";
 import { parseWorkbook } from "@/lib/sheetParsers";
 import type { SheetsView, SystemStatus } from "@/types/sheets";
 
@@ -50,22 +49,16 @@ function selectView(data: ReturnType<typeof parseWorkbook>, view: SheetsView) {
 }
 
 export async function GET(request: NextRequest) {
-  const session = await getServerAuthSession();
-
-  if (!session?.user?.email || !isApprovedEmail(session.user.email)) {
-    return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401, headers: cacheHeaders });
-  }
-
   try {
     const view = (request.nextUrl.searchParams.get("view") || "overview") as SheetsView;
-    const snapshot = await getWorkbookSnapshot();
+    const snapshot = sampleWorkbookSnapshot;
     const parsed = parseWorkbook(snapshot);
     const system: SystemStatus = {
       ...parsed.system,
       auth: {
         authenticated: true,
         approved: true,
-        email: session.user.email
+        email: "local-owner@example.local"
       }
     };
 
@@ -83,7 +76,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       {
         ok: false,
-        error: error instanceof Error ? error.message : "Unable to load Google Sheets data."
+        error: error instanceof Error ? error.message : "Unable to load local sample dashboard data."
       },
       { status: 500, headers: cacheHeaders }
     );

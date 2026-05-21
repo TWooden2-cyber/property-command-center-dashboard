@@ -299,7 +299,7 @@ export function UtilitiesView() {
   const { data, system, error, loading } = useSheetsView<UtilitiesPayload>("utilities");
   const [filters, setFilters] = useState<FilterState>(emptyFilters);
 
-  const rows = data?.rows ?? [];
+  const rows = useMemo(() => data?.rows ?? [], [data?.rows]);
   const utilitiesMissing = system?.missingTabs.includes("Utilities") ?? false;
 
   const filteredRows = useMemo(() => {

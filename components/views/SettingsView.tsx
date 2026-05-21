@@ -17,7 +17,7 @@ function ConfigRow({ label, configured }: { label: string; configured: boolean }
     <div className="config-row">
       <Icon size={17} aria-hidden />
       <span>{label}</span>
-      <StatusBadge label={configured ? "Stable" : "Critical"} />
+      <StatusBadge label={configured ? "Available" : "Disabled"} />
     </div>
   );
 }
@@ -34,7 +34,7 @@ export function SettingsView() {
   }
 
   if (!data?.system) {
-    return <EmptyState title="No system status" message="System status is unavailable until authentication and Sheets access are configured." />;
+    return <EmptyState title="No system status" message="Local sample system status is unavailable." />;
   }
 
   const { system } = data;
@@ -53,30 +53,46 @@ export function SettingsView() {
       <section className="section-block">
         <div className="section-heading">
           <div>
-            <p className="eyebrow">Google Sheets</p>
-            <h2>Connection status</h2>
+            <p className="eyebrow">System Mode</p>
+            <h2>Local Sample Mode</h2>
           </div>
           <Database size={20} aria-hidden />
         </div>
         <div className="settings-lines">
           <p>{system.connectionMessage}</p>
-          <p>Last successful refresh: {system.lastSuccessfulRefresh ? new Date(system.lastSuccessfulRefresh).toLocaleString() : "Not yet connected"}</p>
-          <StatusBadge label={system.connectionOk ? "Stable" : "Critical"} />
+          <p>This dashboard is using local sample records only. Missing Google environment variables are expected in this mode.</p>
+          <div className="mode-status-list">
+            <span>Mode: <strong>Local Sample Mode</strong></span>
+            <StatusBadge label="Stable" />
+          </div>
         </div>
       </section>
 
       <section className="section-block">
         <div className="section-heading">
           <div>
-            <p className="eyebrow">Authentication</p>
-            <h2>Owner access</h2>
+            <p className="eyebrow">Safety Gates</p>
+            <h2>Live services</h2>
           </div>
           <ShieldCheck size={20} aria-hidden />
         </div>
         <div className="settings-lines">
-          <p>Signed in: {system.auth.authenticated ? "Yes" : "No"}</p>
-          <p>Approved owner: {system.auth.approved ? "Yes" : "No"}</p>
-          <p>Email: {system.auth.email ?? "Not available"}</p>
+          <div className="mode-status-list">
+            <span>Google OAuth: <strong>Disabled</strong></span>
+            <StatusBadge label="Disabled" />
+          </div>
+          <div className="mode-status-list">
+            <span>Google Sheets: <strong>Disabled</strong></span>
+            <StatusBadge label="Disabled" />
+          </div>
+          <div className="mode-status-list">
+            <span>Live Google APIs: <strong>Disabled</strong></span>
+            <StatusBadge label="Disabled" />
+          </div>
+          <div className="mode-status-list">
+            <span>Approval Gate: <strong>Active</strong></span>
+            <StatusBadge label="Stable" />
+          </div>
         </div>
       </section>
 
@@ -84,9 +100,12 @@ export function SettingsView() {
         <div className="section-heading">
           <div>
             <p className="eyebrow">Environment</p>
-            <h2>Secret configuration</h2>
+            <h2>Local-only configuration</h2>
           </div>
         </div>
+        <p className="muted-line">
+          These live-service variables are intentionally disabled for this reset. They are shown for readiness tracking only, not as production failures.
+        </p>
         <div className="config-grid">
           {envEntries.map(([label, configured]) => (
             <ConfigRow key={label} label={label} configured={configured} />
