@@ -1,13 +1,28 @@
 "use client";
 
 import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
-import { AlertTriangle, Bell, CalendarClock, CheckCircle2, FileText, ShieldCheck, TrendingUp } from "lucide-react";
+import {
+  AlertTriangle,
+  Bell,
+  CalendarClock,
+  CheckCircle2,
+  ClipboardList,
+  FileText,
+  FolderArchive,
+  MailCheck,
+  ShieldCheck,
+  TrendingUp
+} from "lucide-react";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { EmptyState } from "@/components/DataState";
 import { StatusBadge } from "@/components/StatusBadge";
 import {
   adminTaskRows,
+  blockedUntilVerifiedQueue,
+  calendarSuspenseQueue,
   commandCenterPeriod,
+  commandActionCards,
+  communicationFollowUpQueue,
   computeDashboardHealth,
   dashboardNotifications,
   documentDraftStatuses,
@@ -18,13 +33,19 @@ import {
   monthOptions,
   monthlyRentTrend,
   mortgageRows,
+  nextSevenDaysQueue,
   noticeRows,
+  ownerApprovalQueue,
   percent,
+  proofNeededQueue,
   rentRows,
   rentTotals,
+  tasksNeedingCompletionQueue,
   toneForStatus,
+  todayCommandBrief,
   yearOptions,
   type AdminTaskCommandRow,
+  type CommandQueueItem,
   type DocumentDraftStatus,
   type FollowUpCommandRow,
   type HealthStatus,
@@ -383,6 +404,130 @@ function MortgageTrackerCards() {
   );
 }
 
+function CommandActionCards() {
+  return (
+    <div className="command-action-grid">
+      {commandActionCards.map((action) => (
+        <article key={action.id} className={`command-action-card command-kpi-${action.tone}`}>
+          <div className="command-action-topline">
+            <span>{action.actionType}</span>
+            <StatusBadge label={action.status} />
+          </div>
+          <div className="safety-label-row">
+            {action.safetyLabels.map((label) => (
+              <span key={label}>{label}</span>
+            ))}
+          </div>
+          <dl className="action-safety-grid">
+            <div>
+              <dt>Safety gate</dt>
+              <dd>Local sample mode only</dd>
+            </div>
+            <div>
+              <dt>Live write disabled</dt>
+              <dd>{action.liveWriteDisabled ? "Yes" : "No"}</dd>
+            </div>
+            <div>
+              <dt>Owner approval required</dt>
+              <dd>{action.ownerApprovalRequired ? "Yes" : "No"}</dd>
+            </div>
+          </dl>
+          <div>
+            <span className="mini-heading">Will prepare</span>
+            <ul className="action-prepare-list">
+              {action.willPrepare.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </div>
+          <p className="action-disclaimer">{action.disclaimer}</p>
+          <button type="button" className="command-disabled-button" disabled>
+            Draft preview only
+          </button>
+        </article>
+      ))}
+    </div>
+  );
+}
+
+function CommandQueue({ title, items }: { title: string; items: CommandQueueItem[] }) {
+  return (
+    <article className="command-queue-card">
+      <div className="command-queue-heading">
+        <span>{title}</span>
+        <strong>{items.length}</strong>
+      </div>
+      <div className="command-queue-list">
+        {items.map((item) => (
+          <div key={item.id} className={`command-queue-item queue-${item.tone}`}>
+            <span>{item.meta}</span>
+            <strong>{item.title}</strong>
+            <p>{item.detail}</p>
+          </div>
+        ))}
+      </div>
+    </article>
+  );
+}
+
+function CommandAutomationTracker() {
+  return (
+    <Section eyebrow="Local Automation Readiness" title="Command Actions & Automation Tracker" icon={<ClipboardList size={20} aria-hidden />}>
+      <p className="section-note">
+        These controls prepare local review packages only. Google Drive, Gmail, Calendar, and Google Tasks writes are disabled until owner approval
+        and a future live integration batch.
+      </p>
+      <CommandActionCards />
+    </Section>
+  );
+}
+
+function DailyCommandQueues() {
+  const queues = [
+    { title: "Today's Command Brief", items: todayCommandBrief },
+    { title: "Next 7 Days", items: nextSevenDaysQueue },
+    { title: "Tasks Needing Completion", items: tasksNeedingCompletionQueue },
+    { title: "Proof Needed", items: proofNeededQueue },
+    { title: "Blocked Until Verified", items: blockedUntilVerifiedQueue },
+    { title: "Owner Approval Queue", items: ownerApprovalQueue },
+    { title: "Communication Follow-Up Queue", items: communicationFollowUpQueue },
+    { title: "Calendar/Suspense Queue", items: calendarSuspenseQueue }
+  ];
+
+  return (
+    <Section eyebrow="Daily Use" title="Owner command queues" icon={<Bell size={20} aria-hidden />}>
+      <div className="queue-grid">
+        {queues.map((queue) => (
+          <CommandQueue key={queue.title} title={queue.title} items={queue.items} />
+        ))}
+      </div>
+    </Section>
+  );
+}
+
+function IntegrationSafetySummary() {
+  const items = [
+    { label: "Google Drive", value: "No files created, moved, renamed, deleted, or updated", icon: <FolderArchive size={17} aria-hidden /> },
+    { label: "Gmail", value: "No messages read, drafted, sent, archived, labeled, or deleted", icon: <MailCheck size={17} aria-hidden /> },
+    { label: "Calendar", value: "No events created, updated, or deleted", icon: <CalendarClock size={17} aria-hidden /> },
+    { label: "Google Tasks", value: "No tasks created, updated, completed, or deleted", icon: <ClipboardList size={17} aria-hidden /> }
+  ];
+
+  return (
+    <div className="integration-safety-strip">
+      {items.map((item) => (
+        <article key={item.label}>
+          {item.icon}
+          <div>
+            <span>{item.label}</span>
+            <strong>{item.value}</strong>
+          </div>
+        </article>
+      ))}
+    </div>
+  );
+}
+
 export function OverviewView() {
   const [selectedMonth, setSelectedMonth] = useState(commandCenterPeriod.monthName);
   const [selectedYear, setSelectedYear] = useState(commandCenterPeriod.year);
@@ -442,6 +587,10 @@ export function OverviewView() {
               ))}
             </div>
           </Section>
+
+          <IntegrationSafetySummary />
+          <CommandAutomationTracker />
+          <DailyCommandQueues />
 
           <div className="chart-grid">
             <ComparisonChart title="Month Paid vs Projected" projected={rentTotals.projected} collected={rentTotals.collected} />

@@ -117,6 +117,26 @@ export type AdminTaskCommandRow = {
   status: string;
 };
 
+export type CommandActionCard = {
+  id: string;
+  actionType: string;
+  status: string;
+  tone: SignalTone;
+  safetyLabels: string[];
+  liveWriteDisabled: boolean;
+  ownerApprovalRequired: boolean;
+  willPrepare: string[];
+  disclaimer: string;
+};
+
+export type CommandQueueItem = {
+  id: string;
+  title: string;
+  detail: string;
+  tone: SignalTone;
+  meta: string;
+};
+
 export type MonthlyRentTrend = {
   month: string;
   projected: number;
@@ -624,6 +644,301 @@ export const adminTaskRows: AdminTaskCommandRow[] = [
   { id: "task-20", task: "Review all electric and sewer/sewage utility entries found in Drive", priority: "High", due: "2026-05-13", status: "Complete" },
   { id: "task-21", task: "Confirm MBFS payments posted after payment request accepted emails", priority: "Critical", due: "2026-05-13", status: "Open" }
 ];
+
+export const commandActionCards: CommandActionCard[] = [
+  {
+    id: "action-drive",
+    actionType: "Prepare Google Drive Update",
+    status: "Ready to prepare local package",
+    tone: "green",
+    safetyLabels: ["Draft Only", "Read Only", "Approval Required", "Live Write Disabled", "Owner Review Required"],
+    liveWriteDisabled: true,
+    ownerApprovalRequired: true,
+    willPrepare: [
+      "Dashboard summary",
+      "Rent collection snapshot",
+      "Maintenance status",
+      "Mortgage/arrears status",
+      "Follow-up task list",
+      "Proof-needed list",
+      "Owner decision list"
+    ],
+    disclaimer: "No Google Drive files were created, moved, renamed, deleted, or updated."
+  },
+  {
+    id: "action-gmail",
+    actionType: "Track Gmail Follow-Ups",
+    status: "Review needed before any communication",
+    tone: "yellow",
+    safetyLabels: ["Draft Only", "Read Only", "Approval Required", "Live Write Disabled", "Owner Review Required"],
+    liveWriteDisabled: true,
+    ownerApprovalRequired: true,
+    willPrepare: [
+      "Emails needing reply",
+      "Drafts needed",
+      "Tenant/vendor follow-ups",
+      "Proof emails that need to be saved",
+      "Gmail body read disabled",
+      "Live send disabled"
+    ],
+    disclaimer: "No Gmail messages were read, drafted, sent, archived, labeled, or deleted."
+  },
+  {
+    id: "action-calendar",
+    actionType: "Prepare Calendar Updates",
+    status: "Calendar plan ready for owner review",
+    tone: "green",
+    safetyLabels: ["Draft Only", "Read Only", "Approval Required", "Live Write Disabled", "Owner Review Required"],
+    liveWriteDisabled: true,
+    ownerApprovalRequired: true,
+    willPrepare: [
+      "Rent due check every 1st",
+      "Late rent review every 5th",
+      "Weekly property admin review every Friday",
+      "Mortgage confirmation follow-up",
+      "Maintenance safety follow-up"
+    ],
+    disclaimer: "No calendar events were created, updated, or deleted."
+  },
+  {
+    id: "action-tasks",
+    actionType: "Review Open Tasks",
+    status: "Critical and high-priority queue active",
+    tone: "red",
+    safetyLabels: ["Draft Only", "Read Only", "Approval Required", "Live Write Disabled", "Owner Review Required"],
+    liveWriteDisabled: true,
+    ownerApprovalRequired: true,
+    willPrepare: [
+      "Critical open tasks",
+      "High priority open tasks",
+      "Completed tasks",
+      "Overdue or due-soon tasks",
+      "Proof missing tasks",
+      "Owner decision required tasks"
+    ],
+    disclaimer: "No Google Tasks were created, updated, completed, or deleted."
+  },
+  {
+    id: "action-weekly",
+    actionType: "Generate Weekly Command Review",
+    status: "Draft review available from local sample data",
+    tone: "yellow",
+    safetyLabels: ["Draft Only", "Read Only", "Approval Required", "Live Write Disabled", "Owner Review Required"],
+    liveWriteDisabled: true,
+    ownerApprovalRequired: true,
+    willPrepare: [
+      "Health summary",
+      "Top risk changes",
+      "Rent and arrears movement",
+      "Maintenance and legal watch items",
+      "Next owner decisions"
+    ],
+    disclaimer: "No reports were exported, emailed, uploaded, or shared."
+  },
+  {
+    id: "action-owner-report",
+    actionType: "Prepare Owner Decision Report",
+    status: "Owner decisions require verification",
+    tone: "yellow",
+    safetyLabels: ["Draft Only", "Read Only", "Approval Required", "Live Write Disabled", "Owner Review Required"],
+    liveWriteDisabled: true,
+    ownerApprovalRequired: true,
+    willPrepare: [
+      "Mortgage posting decision",
+      "Notice/ledger verification decisions",
+      "Maintenance safety follow-up decision",
+      "Payment arrangement checkpoints"
+    ],
+    disclaimer: "No owner decisions were executed or sent."
+  },
+  {
+    id: "action-proof",
+    actionType: "Prepare Proof Checklist",
+    status: "Proof gaps identified",
+    tone: "red",
+    safetyLabels: ["Draft Only", "Read Only", "Approval Required", "Live Write Disabled", "Owner Review Required"],
+    liveWriteDisabled: true,
+    ownerApprovalRequired: true,
+    willPrepare: [
+      "MBFS posting proof",
+      "Ledger conflict proof",
+      "Notice proof review",
+      "Maintenance communication proof",
+      "Payment arrangement proof"
+    ],
+    disclaimer: "No proof files were created, saved, uploaded, moved, or renamed."
+  },
+  {
+    id: "action-maintenance-package",
+    actionType: "Prepare Maintenance Follow-Up Package",
+    status: "Critical package needs owner review",
+    tone: "red",
+    safetyLabels: ["Draft Only", "Read Only", "Approval Required", "Live Write Disabled", "Owner Review Required"],
+    liveWriteDisabled: true,
+    ownerApprovalRequired: true,
+    willPrepare: [
+      "Unit 6 heat/breathing issue summary",
+      "Vendor/owner verification checklist",
+      "Tenant update reminder",
+      "Photos/receipts reference list",
+      "Documentation notes"
+    ],
+    disclaimer: "No tenant, vendor, or maintenance messages were sent."
+  }
+];
+
+export const todayCommandBrief: CommandQueueItem[] = [
+  {
+    id: "brief-1",
+    title: "Confirm MBFS payment posting",
+    detail: "Get exact updated reinstatement/current balance and confirmation that foreclosure/legal action is paused.",
+    tone: "red",
+    meta: "Mortgage / owner decision"
+  },
+  {
+    id: "brief-2",
+    title: "Resolve Unit 6 heat and breathing complaint",
+    detail: "Verify heat controls, document findings, and prepare owner-approved response path.",
+    tone: "red",
+    meta: "Maintenance safety"
+  },
+  {
+    id: "brief-3",
+    title: "Review rent verification conflicts",
+    detail: "Unit 1 arrangement, Unit 2 ledger conflict, Unit 4 unpaid review, Unit A HAP check, and Unit 7 UPMC issue remain visible.",
+    tone: "yellow",
+    meta: "Rent collection"
+  }
+];
+
+export const nextSevenDaysQueue: CommandQueueItem[] = [
+  {
+    id: "next-1",
+    title: "Greg Mckinney arrangement payment",
+    detail: "Confirm May 20 expected $900 payment and ledger posting.",
+    tone: "yellow",
+    meta: "2026-05-20"
+  },
+  {
+    id: "next-2",
+    title: "Weekly property admin review",
+    detail: "Review rent, notices, maintenance, mortgage posting, and proof gaps.",
+    tone: "green",
+    meta: "Every Friday"
+  },
+  {
+    id: "next-3",
+    title: "Utility tracker follow-up",
+    detail: "Keep Duquesne Light account/paperless setup visible in Utilities tracker.",
+    tone: "green",
+    meta: "Utilities"
+  }
+];
+
+export const tasksNeedingCompletionQueue: CommandQueueItem[] = adminTaskRows
+  .filter((task) => task.status.toLowerCase() !== "complete" && ["Critical", "High"].includes(task.priority))
+  .slice(0, 8)
+  .map((task) => ({
+    id: `completion-${task.id}`,
+    title: task.task,
+    detail: `Status: ${task.status}`,
+    tone: task.priority === "Critical" ? "red" : "yellow",
+    meta: `${task.priority} / due ${task.due}`
+  }));
+
+export const proofNeededQueue: CommandQueueItem[] = [
+  {
+    id: "proof-1",
+    title: "MBFS payment posting proof",
+    detail: "Save confirmation only after lender portal or lender response proves payments posted.",
+    tone: "red",
+    meta: "Mortgage proof"
+  },
+  {
+    id: "proof-2",
+    title: "Marc Gosselin ledger conflict proof",
+    detail: "Verify RentRedi/overdue summary conflict before any notice/legal decision.",
+    tone: "yellow",
+    meta: "Ledger proof"
+  },
+  {
+    id: "proof-3",
+    title: "Unit 6 maintenance communication proof",
+    detail: "Keep the RentRedi Gmail alert reference visible until owner verifies the follow-up trail.",
+    tone: "red",
+    meta: "Maintenance proof"
+  }
+];
+
+export const blockedUntilVerifiedQueue: CommandQueueItem[] = [
+  {
+    id: "blocked-1",
+    title: "Eviction packet action",
+    detail: "Blocked until ledger, proof of service, payment arrangement, and owner legal review are verified.",
+    tone: "red",
+    meta: "Legal safety"
+  },
+  {
+    id: "blocked-2",
+    title: "Mortgage arrears status",
+    detail: "Blocked until MBFS posts both payment requests and provides updated balance.",
+    tone: "red",
+    meta: "Mortgage"
+  },
+  {
+    id: "blocked-3",
+    title: "UPMC May rent status",
+    detail: "Blocked until owner verifies whether Alexandrea McCurdy May rent was received outside RentRedi.",
+    tone: "yellow",
+    meta: "Rent verification"
+  }
+];
+
+export const ownerApprovalQueue: CommandQueueItem[] = [
+  {
+    id: "approval-1",
+    title: "Approve mortgage follow-up package",
+    detail: "Owner review required before any external lender communication or filing.",
+    tone: "red",
+    meta: "Approval required"
+  },
+  {
+    id: "approval-2",
+    title: "Approve maintenance follow-up path",
+    detail: "Owner review required before any tenant/vendor response is sent outside the dashboard.",
+    tone: "red",
+    meta: "Safety-sensitive"
+  },
+  {
+    id: "approval-3",
+    title: "Approve weekly command review",
+    detail: "Local draft can be reviewed before any future export or Drive save.",
+    tone: "yellow",
+    meta: "Draft only"
+  }
+];
+
+export const communicationFollowUpQueue: CommandQueueItem[] = followUpRows
+  .filter((row) => row.emailNeeded !== "No Email")
+  .slice(0, 6)
+  .map((row) => ({
+    id: `communication-${row.id}`,
+    title: row.item,
+    detail: row.detail,
+    tone: row.category === "Maintenance" ? "red" : "yellow",
+    meta: `${row.property} ${row.unit}`
+  }));
+
+export const calendarSuspenseQueue: CommandQueueItem[] = followUpRows
+  .filter((row) => row.calendarNeeded === "Calendar Needed")
+  .slice(0, 8)
+  .map((row) => ({
+    id: `calendar-${row.id}`,
+    title: row.item,
+    detail: row.detail,
+    tone: row.category === "Maintenance" || row.category === "Mortgage" ? "red" : "yellow",
+    meta: `${row.date} ${row.time}`
+  }));
 
 export const monthOptions = [
   "January",
