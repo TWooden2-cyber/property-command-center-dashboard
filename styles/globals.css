@@ -1420,6 +1420,157 @@ tbody tr:hover {
   gap: 16px;
 }
 
+.codex-command-generator {
+  display: grid;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.command-button-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.codex-command-card {
+  display: grid;
+  align-content: space-between;
+  min-height: 230px;
+  border: 1px solid rgba(201, 164, 81, 0.22);
+  border-radius: 8px;
+  padding: 15px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.055), transparent 46%),
+    rgba(18, 17, 15, 0.94);
+}
+
+.codex-command-card span {
+  color: var(--gold-soft);
+  font-size: 0.74rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.codex-command-card strong {
+  display: block;
+  margin-top: 10px;
+  color: var(--cream);
+  line-height: 1.28;
+}
+
+.codex-command-card p {
+  margin: 10px 0 14px;
+  color: var(--cream-muted);
+  line-height: 1.4;
+}
+
+.codex-command-card button,
+.command-preview-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid rgba(201, 164, 81, 0.42);
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: #171208;
+  background: linear-gradient(180deg, var(--gold-soft), var(--gold));
+  font-weight: 950;
+  cursor: pointer;
+}
+
+.codex-command-card button:hover,
+.command-preview-actions button:hover {
+  filter: brightness(1.04);
+}
+
+.command-preview-panel {
+  border: 1px solid rgba(201, 164, 81, 0.32);
+  border-radius: 8px;
+  padding: 18px;
+  background:
+    radial-gradient(circle at top right, rgba(201, 164, 81, 0.13), transparent 38%),
+    rgba(11, 10, 9, 0.96);
+  box-shadow: 0 26px 70px rgba(0, 0, 0, 0.34);
+}
+
+.command-preview-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.command-preview-header h3 {
+  margin: 4px 0 0;
+  color: var(--cream);
+  font-size: 1.35rem;
+}
+
+.ghost-button {
+  border: 1px solid rgba(201, 164, 81, 0.25);
+  border-radius: 8px;
+  padding: 9px 12px;
+  color: var(--cream);
+  background: rgba(255, 255, 255, 0.035);
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.command-preview-labels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.command-preview-labels span {
+  border: 1px solid rgba(201, 164, 81, 0.25);
+  border-radius: 999px;
+  padding: 6px 9px;
+  color: var(--gold-soft);
+  background: rgba(201, 164, 81, 0.08);
+  font-size: 0.74rem;
+  font-weight: 850;
+}
+
+.command-preview-warning {
+  border-left: 4px solid var(--warning);
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  color: var(--cream);
+  background: rgba(255, 197, 87, 0.08);
+  line-height: 1.4;
+}
+
+.command-preview-panel pre {
+  max-height: 520px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin: 0;
+  padding: 16px;
+  color: var(--cream);
+  background: rgba(0, 0, 0, 0.34);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 0.86rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+.command-preview-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.command-preview-actions span {
+  color: var(--success);
+  font-weight: 850;
+}
+
 .command-action-card {
   display: grid;
   gap: 16px;
@@ -1677,6 +1828,7 @@ tbody tr:hover {
   .document-status-grid,
   .amortization-grid,
   .integration-safety-strip,
+  .command-button-grid,
   .command-action-grid,
   .queue-grid {
     grid-template-columns: 1fr;
@@ -1734,6 +1886,12 @@ tbody tr:hover {
   .action-safety-grid,
   .action-prepare-list {
     grid-template-columns: 1fr;
+  }
+
+  .command-preview-header,
+  .command-preview-actions {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .bar-row strong {

@@ -137,6 +137,16 @@ export type CommandQueueItem = {
   meta: string;
 };
 
+export type CodexCommandTemplate = {
+  id: string;
+  title: string;
+  actionName: string;
+  controls: string;
+  safetyStatus: string;
+  tone: SignalTone;
+  prompt: string;
+};
+
 export type MonthlyRentTrend = {
   month: string;
   projected: number;
@@ -784,6 +794,138 @@ export const commandActionCards: CommandActionCard[] = [
       "Documentation notes"
     ],
     disclaimer: "No tenant, vendor, or maintenance messages were sent."
+  }
+];
+
+export const codexCommandTemplates: CodexCommandTemplate[] = [
+  {
+    id: "drive-update",
+    title: "Codex Command - Google Drive Update Package",
+    actionName: "Generate Codex Command: Google Drive Update",
+    controls: "Drive package preview, proof checklist, owner decision list, and follow-up bundle.",
+    safetyStatus: "Draft command only. Dashboard live write disabled.",
+    tone: "green",
+    prompt: `Run a Google Drive update package for the Property Command Center.
+
+Rules:
+- Do not upload, move, rename, delete, or update Drive files without owner approval.
+- First generate a Drive update preview only.
+- Use current dashboard data and tracker context.
+- Prepare these sections:
+  1. Dashboard summary
+  2. Operation health
+  3. Rent collection snapshot
+  4. Utility status
+  5. Maintenance status
+  6. Mortgage/arrears status
+  7. Proof-needed checklist
+  8. Owner decision list
+  9. Follow-up/suspense list
+  10. Admin task status
+- Report exactly what files or folders would be updated.
+- Stop and ask for owner approval before any live Google Drive write.`
+  },
+  {
+    id: "gmail-tracking",
+    title: "Codex Command - Gmail Tracking Update",
+    actionName: "Generate Codex Command: Gmail Tracking Update",
+    controls: "Gmail metadata review, reply queue, proof email tracking, and owner approval checkpoints.",
+    safetyStatus: "Metadata/search first. Dashboard live send disabled.",
+    tone: "yellow",
+    prompt: `Run a Gmail tracking review for the Property Command Center.
+
+Rules:
+- Metadata/search first.
+- Do not read Gmail message bodies unless owner approves.
+- Do not send, draft, archive, label, delete, or forward emails without owner approval.
+- Identify:
+  1. RentRedi follow-ups
+  2. Tenant/vendor replies needed
+  3. Mortgage proof emails
+  4. Maintenance proof emails
+  5. Section 8/HAP payment verification emails
+  6. Utility emails or bills needing tracking
+  7. Emails that should be saved to Drive
+  8. Emails tied to open dashboard tasks
+- Produce a Gmail tracking preview only.
+- Stop and ask for owner approval before any Gmail body read or live action.`
+  },
+  {
+    id: "calendar-prep",
+    title: "Codex Command - Calendar Update Prep",
+    actionName: "Generate Codex Command: Calendar Update Prep",
+    controls: "Calendar preview for rent, mortgage, maintenance, utilities, and owner review follow-ups.",
+    safetyStatus: "Preview only. Dashboard event creation disabled.",
+    tone: "green",
+    prompt: `Prepare Google Calendar updates for the Property Command Center.
+
+Rules:
+- Do not create, update, or delete calendar events without owner approval.
+- Generate a calendar update preview only.
+- Use current dashboard follow-up and suspense items.
+- Prepare calendar events for:
+  1. Rent due check every 1st
+  2. Late rent review every 5th
+  3. Weekly property admin review every Friday
+  4. Mortgage payment confirmation follow-up
+  5. Maintenance safety follow-up
+  6. Utility bill review follow-ups
+  7. Payment arrangement follow-ups
+  8. Owner decision review items
+- Show proposed event title, date/time, description, and trigger prompt.
+- Stop and ask for owner approval before creating or changing any calendar event.`
+  },
+  {
+    id: "tasks-review",
+    title: "Codex Command - Google Tasks Review",
+    actionName: "Generate Codex Command: Task Completion Review",
+    controls: "Task completion preview, blocked-task review, proof-needed items, and owner decisions.",
+    safetyStatus: "Review only. Dashboard task writes disabled.",
+    tone: "red",
+    prompt: `Prepare a Google Tasks completion review for the Property Command Center.
+
+Rules:
+- Do not create, update, complete, or delete Google Tasks without owner approval.
+- Generate a task review preview only.
+- Review dashboard task data and identify:
+  1. Critical open tasks
+  2. High priority open tasks
+  3. Due-soon tasks
+  4. Overdue tasks
+  5. Utility tracking tasks
+  6. Completed tasks that need proof
+  7. Tasks blocked by missing verification
+  8. Owner decision required tasks
+- Recommend which tasks should be created, updated, completed, or left open.
+- Stop and ask for owner approval before any live Google Tasks action.`
+  },
+  {
+    id: "daily-sync",
+    title: "Codex Command - Full Daily Command Sync",
+    actionName: "Generate Codex Command: Full Daily Command Sync",
+    controls: "Full local command review across health, rent, utilities, maintenance, legal holds, mortgage, Gmail, Drive, Calendar, and Tasks.",
+    safetyStatus: "Read-only/local review first. Stop before all live writes.",
+    tone: "yellow",
+    prompt: `Run the Property Command Center Daily Sync.
+
+Rules:
+- Read-only/local review first.
+- Do not perform live Google Drive, Gmail, Calendar, Google Tasks, Google Sheets, tenant, legal, payment, mortgage, or notice actions without owner approval.
+- Prepare a daily command report covering:
+  1. Operation health
+  2. Rent collection status
+  3. Utility status by electric, gas, water, sewer, trash, and other
+  4. Maintenance status
+  5. Notices/legal hold status
+  6. Mortgage/arrears status
+  7. Gmail tracking needs
+  8. Google Drive update needs
+  9. Calendar update needs
+  10. Google Tasks completion needs
+  11. Owner approvals required
+  12. Blocked-until-verified items
+- End with a clear approval list.
+- Stop before all live writes.`
   }
 ];
 

@@ -7,6 +7,7 @@ import {
   CalendarClock,
   CheckCircle2,
   ClipboardList,
+  Copy,
   FileText,
   FolderArchive,
   MailCheck,
@@ -22,6 +23,7 @@ import {
   calendarSuspenseQueue,
   commandCenterPeriod,
   commandActionCards,
+  codexCommandTemplates,
   communicationFollowUpQueue,
   computeDashboardHealth,
   dashboardNotifications,
@@ -45,6 +47,7 @@ import {
   todayCommandBrief,
   yearOptions,
   type AdminTaskCommandRow,
+  type CodexCommandTemplate,
   type CommandQueueItem,
   type DocumentDraftStatus,
   type FollowUpCommandRow,
@@ -450,6 +453,73 @@ function CommandActionCards() {
   );
 }
 
+function CodexCommandGenerator() {
+  const [activeCommand, setActiveCommand] = useState<CodexCommandTemplate | null>(null);
+  const [copiedCommandId, setCopiedCommandId] = useState<string | null>(null);
+
+  async function copyCommand(command: CodexCommandTemplate) {
+    const commandText = `${command.title}\n\n${command.prompt}`;
+
+    try {
+      await navigator.clipboard.writeText(commandText);
+      setCopiedCommandId(command.id);
+    } catch {
+      setCopiedCommandId(null);
+    }
+  }
+
+  return (
+    <div className="codex-command-generator">
+      <div className="command-button-grid">
+        {codexCommandTemplates.map((command) => (
+          <article key={command.id} className={`codex-command-card command-kpi-${command.tone}`}>
+            <span>{command.actionName}</span>
+            <strong>{command.controls}</strong>
+            <p>{command.safetyStatus}</p>
+            <button type="button" onClick={() => {
+              setActiveCommand(command);
+              setCopiedCommandId(null);
+            }}>
+              Generate command
+            </button>
+          </article>
+        ))}
+      </div>
+
+      {activeCommand ? (
+        <aside className="command-preview-panel" aria-live="polite">
+          <div className="command-preview-header">
+            <div>
+              <p className="eyebrow">Command Preview</p>
+              <h3>{activeCommand.title}</h3>
+            </div>
+            <button type="button" className="ghost-button" onClick={() => setActiveCommand(null)}>
+              Close
+            </button>
+          </div>
+          <div className="command-preview-labels">
+            <span>Draft command only</span>
+            <span>Owner approval required</span>
+            <span>Live write disabled from dashboard</span>
+            <span>Paste into Codex to execute</span>
+          </div>
+          <p className="command-preview-warning">
+            This dashboard does not perform live Google actions. It only prepares the Codex command.
+          </p>
+          <pre>{activeCommand.prompt}</pre>
+          <div className="command-preview-actions">
+            <button type="button" onClick={() => copyCommand(activeCommand)}>
+              <Copy size={16} aria-hidden />
+              Copy Command
+            </button>
+            {copiedCommandId === activeCommand.id ? <span>Copied command to clipboard.</span> : null}
+          </div>
+        </aside>
+      ) : null}
+    </div>
+  );
+}
+
 function CommandQueue({ title, items }: { title: string; items: CommandQueueItem[] }) {
   return (
     <article className="command-queue-card">
@@ -477,6 +547,7 @@ function CommandAutomationTracker() {
         These controls prepare local review packages only. Google Drive, Gmail, Calendar, and Google Tasks writes are disabled until owner approval
         and a future live integration batch.
       </p>
+      <CodexCommandGenerator />
       <CommandActionCards />
     </Section>
   );
