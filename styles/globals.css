@@ -2150,6 +2150,327 @@ tbody tr:hover {
   line-height: 1.45;
 }
 
+.rent-command-page {
+  gap: 22px;
+}
+
+.rent-command-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 20px;
+  border: 1px solid rgba(201, 164, 81, 0.34);
+  border-radius: 8px;
+  padding: 28px;
+  background:
+    linear-gradient(135deg, rgba(201, 164, 81, 0.18), rgba(124, 165, 170, 0.08)),
+    rgba(8, 7, 6, 0.68);
+  box-shadow: var(--shadow-strong);
+}
+
+.rent-command-header h2 {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 4.2rem);
+  line-height: 0.98;
+}
+
+.rent-command-header p {
+  max-width: 820px;
+  color: var(--cream-muted);
+  line-height: 1.55;
+}
+
+.rent-period-filter {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 16px;
+  background: rgba(8, 7, 6, 0.34);
+}
+
+.rent-period-filter label,
+.rent-filter-grid label {
+  display: grid;
+  gap: 7px;
+}
+
+.rent-period-filter span,
+.rent-filter-grid span {
+  color: var(--gold-soft);
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.rent-period-filter select,
+.rent-filter-grid select,
+.rent-filter-grid input {
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: var(--cream);
+  background: rgba(8, 7, 6, 0.42);
+}
+
+.rent-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(130px, 1fr));
+  gap: 12px;
+}
+
+.rent-kpi-card {
+  min-height: 170px;
+  display: grid;
+  align-content: space-between;
+  gap: 12px;
+  border: 1px solid rgba(201, 164, 81, 0.18);
+  border-left: 4px solid var(--gold);
+  border-radius: 8px;
+  padding: 16px;
+  background:
+    linear-gradient(180deg, rgba(247, 240, 228, 0.09), rgba(247, 240, 228, 0.035)),
+    rgba(8, 7, 6, 0.54);
+  box-shadow: var(--shadow);
+}
+
+.rent-kpi-card.queue-green {
+  border-left-color: var(--success);
+}
+
+.rent-kpi-card.queue-yellow {
+  border-left-color: var(--warning);
+}
+
+.rent-kpi-card.queue-red {
+  border-left-color: var(--danger);
+}
+
+.rent-kpi-card span,
+.rent-action-card span {
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.rent-kpi-card strong {
+  color: var(--cream);
+  font-size: 1.58rem;
+  line-height: 1;
+}
+
+.rent-kpi-card p,
+.rent-health-panel p,
+.rent-action-card p {
+  margin: 0;
+  color: var(--cream-muted);
+  line-height: 1.42;
+}
+
+.rent-health-panel {
+  border-color: rgba(215, 173, 82, 0.34);
+}
+
+.rent-cause-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.rent-cause-grid article {
+  display: flex;
+  gap: 9px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background: rgba(8, 7, 6, 0.26);
+}
+
+.rent-cause-grid svg,
+.rent-warning-list svg {
+  color: var(--gold-soft);
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
+.rent-cause-grid span {
+  color: var(--cream);
+  line-height: 1.35;
+}
+
+.rent-owner-actions {
+  margin-top: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+  background: rgba(247, 240, 228, 0.055);
+}
+
+.rent-owner-actions > span {
+  color: var(--gold-soft);
+  font-size: 0.74rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.rent-owner-actions ul {
+  margin: 10px 0 0;
+  padding-left: 20px;
+  color: var(--cream-muted);
+  line-height: 1.5;
+}
+
+.rent-chart-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.rent-chart-card {
+  min-height: 280px;
+}
+
+.rent-chart-bars {
+  display: grid;
+  gap: 13px;
+}
+
+.rent-chart-row {
+  display: grid;
+  grid-template-columns: minmax(130px, 190px) minmax(150px, 1fr) 112px;
+  gap: 12px;
+  align-items: center;
+}
+
+.rent-chart-row span {
+  color: var(--cream-muted);
+}
+
+.rent-chart-row strong {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.bar-fill.rent-projected {
+  background: linear-gradient(90deg, var(--teal), #b6d4d8);
+}
+
+.bar-fill.rent-collected {
+  background: linear-gradient(90deg, var(--gold), var(--gold-soft));
+}
+
+.bar-fill.rent-balance {
+  background: linear-gradient(90deg, var(--danger), var(--warning));
+}
+
+.rent-rate-gauge {
+  display: grid;
+  gap: 16px;
+}
+
+.rent-rate-gauge strong {
+  color: var(--gold-soft);
+  font-size: 3rem;
+  line-height: 1;
+}
+
+.rent-rate-gauge p {
+  margin: 0;
+  color: var(--cream-muted);
+  line-height: 1.45;
+}
+
+.rent-filter-panel {
+  border-color: rgba(201, 164, 81, 0.25);
+}
+
+.rent-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.search-control {
+  grid-column: span 1;
+}
+
+.rent-toggle-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.rent-toggle-row label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(201, 164, 81, 0.22);
+  border-radius: 999px;
+  padding: 8px 11px;
+  color: var(--cream-muted);
+  background: rgba(8, 7, 6, 0.28);
+  font-weight: 800;
+}
+
+.rent-action-grid,
+.rent-command-button-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.rent-action-card {
+  min-height: 150px;
+  display: grid;
+  align-content: space-between;
+  gap: 10px;
+  border: 1px solid rgba(201, 164, 81, 0.18);
+  border-left: 4px solid var(--gold);
+  border-radius: 8px;
+  padding: 14px;
+  background: rgba(18, 17, 15, 0.86);
+}
+
+.rent-action-card.queue-green {
+  border-left-color: var(--success);
+}
+
+.rent-action-card.queue-yellow {
+  border-left-color: var(--warning);
+}
+
+.rent-action-card.queue-red {
+  border-left-color: var(--danger);
+}
+
+.rent-blocked-panel {
+  border-color: rgba(213, 106, 85, 0.38);
+}
+
+.rent-warning-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.rent-warning-list article {
+  display: flex;
+  gap: 10px;
+  border: 1px solid rgba(213, 106, 85, 0.28);
+  border-radius: 8px;
+  padding: 13px;
+  color: #ffd5ca;
+  background: rgba(213, 106, 85, 0.08);
+}
+
+.rent-command-preview {
+  margin-top: 16px;
+}
+
 @media (max-width: 900px) {
   .app-shell {
     grid-template-columns: 1fr;
@@ -2214,7 +2535,15 @@ tbody tr:hover {
   .task-summary-grid,
   .overview-summary-grid,
   .verification-highlight-grid,
-  .cashflow-detail-grid {
+  .cashflow-detail-grid,
+  .rent-command-header,
+  .rent-kpi-grid,
+  .rent-cause-grid,
+  .rent-chart-grid,
+  .rent-filter-grid,
+  .rent-action-grid,
+  .rent-command-button-grid,
+  .rent-warning-list {
     grid-template-columns: 1fr;
   }
 }
@@ -2276,6 +2605,14 @@ tbody tr:hover {
   .cashflow-line {
     inset-inline: 10px;
     width: calc(100% - 20px);
+  }
+
+  .rent-chart-row {
+    grid-template-columns: 1fr;
+  }
+
+  .rent-chart-row strong {
+    text-align: left;
   }
 
   .action-safety-grid,

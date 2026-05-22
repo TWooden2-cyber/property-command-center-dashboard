@@ -6,7 +6,7 @@ export default async function RentCollectionPage() {
   await requireOwnerSession();
 
   return (
-    <LuxuryShell title="Rent Collection" subtitle="Payment status and owner follow-up priorities">
+    <LuxuryShell title="Rent Collection Command" subtitle="Monthly rent ledger, payment status, balances, reminders, and verification issues.">
       <RentCollectionView />
     </LuxuryShell>
   );
