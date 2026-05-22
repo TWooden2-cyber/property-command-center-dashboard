@@ -115,6 +115,10 @@ export type AdminTaskCommandRow = {
   priority: "Critical" | "High" | "Medium" | "Low";
   due: string;
   status: string;
+  category?: string;
+  taskBadge?: "Verification Required" | "Owner Approval Required" | "Proof Needed" | "Blocked Until Verified" | "Ready for Review";
+  blockedAction?: string;
+  futureSyncStatus?: string;
 };
 
 export type CommandActionCard = {
@@ -652,7 +656,73 @@ export const adminTaskRows: AdminTaskCommandRow[] = [
   { id: "task-18", task: "Respond to Jennifer Badger heat/breathing complaint and verify heat controls", priority: "Critical", due: "2026-05-13", status: "Open" },
   { id: "task-19", task: "Add Duquesne Light account/paperless setup to utility tracker", priority: "Medium", due: "2026-05-13", status: "Complete" },
   { id: "task-20", task: "Review all electric and sewer/sewage utility entries found in Drive", priority: "High", due: "2026-05-13", status: "Complete" },
-  { id: "task-21", task: "Confirm MBFS payments posted after payment request accepted emails", priority: "Critical", due: "2026-05-13", status: "Open" }
+  { id: "task-21", task: "Confirm MBFS payments posted after payment request accepted emails", priority: "Critical", due: "2026-05-13", status: "Open" },
+  {
+    id: "verify-1",
+    task: "Confirm 7-Unit mortgage payments posted",
+    category: "Mortgage Posting Confirmation",
+    priority: "Critical",
+    status: "Verification Required",
+    taskBadge: "Verification Required",
+    due: "ASAP",
+    blockedAction: "Do not close mortgage tracker until lender proof is saved.",
+    futureSyncStatus: "Ready for future sync"
+  },
+  {
+    id: "verify-2",
+    task: "Verify Unit 6 Jennifer Badger heat issue resolution",
+    category: "Maintenance Completion Proof",
+    priority: "Critical",
+    status: "Proof Needed",
+    taskBadge: "Proof Needed",
+    due: "ASAP",
+    blockedAction: "Do not close maintenance item until tenant/vendor confirmation is saved.",
+    futureSyncStatus: "Ready for future sync"
+  },
+  {
+    id: "verify-3",
+    task: "Verify Unit 4 Kevin Royster Section 8 / balance status",
+    category: "Section 8 / HAP Verification",
+    priority: "Critical",
+    status: "Owner Approval Required",
+    taskBadge: "Owner Approval Required",
+    due: "ASAP",
+    blockedAction: "Do not serve/escalate notice until ledger and Section 8 status are verified.",
+    futureSyncStatus: "Ready for future sync"
+  },
+  {
+    id: "verify-4",
+    task: "Verify 4-Unit Unit A Lacourtney Martin HAP payment",
+    category: "Section 8 / HAP Verification",
+    priority: "High",
+    status: "Verification Required",
+    taskBadge: "Verification Required",
+    due: "ASAP",
+    blockedAction: "Do not treat balance as tenant delinquency until HAP payment is verified.",
+    futureSyncStatus: "Ready for future sync"
+  },
+  {
+    id: "verify-5",
+    task: "Confirm Greg Mckinney payment arrangement payment",
+    category: "Rent Ledger Verification",
+    priority: "High",
+    status: "Verification Required",
+    taskBadge: "Verification Required",
+    due: "May 20 / May 30",
+    blockedAction: "Do not escalate while arrangement is active.",
+    futureSyncStatus: "Ready for future sync"
+  },
+  {
+    id: "verify-6",
+    task: "Review Codex drafted notice packet",
+    category: "Notice Draft Review",
+    priority: "High",
+    status: "Ready for Owner Review",
+    taskBadge: "Ready for Review",
+    due: "ASAP",
+    blockedAction: "Do not send, serve, file, or upload notice packet without owner approval.",
+    futureSyncStatus: "Ready for future sync"
+  }
 ];
 
 export const commandActionCards: CommandActionCard[] = [
@@ -896,8 +966,28 @@ Rules:
   6. Completed tasks that need proof
   7. Tasks blocked by missing verification
   8. Owner decision required tasks
+  9. Verification tasks
+  10. Approval tasks
+  11. Proof-needed tasks
+  12. Tasks ready for future Google Tasks sync
 - Recommend which tasks should be created, updated, completed, or left open.
 - Stop and ask for owner approval before any live Google Tasks action.`
+  },
+  {
+    id: "verification-tasks",
+    title: "Codex Command - Verification Tasks Update",
+    actionName: "Generate Codex Command: Verification Tasks Update",
+    controls: "Verification-required, owner-approval, proof-needed, blocked, and ready-for-review task preview.",
+    safetyStatus: "Preview only. Live Google Tasks creation disabled.",
+    tone: "yellow",
+    prompt: `Update the Property Command Center verification and approval tasks.
+
+Rules:
+- Do not create, update, complete, or delete live Google Tasks without owner approval.
+- Prepare a task update preview only.
+- Review verification-required tasks, owner-approval tasks, proof-needed tasks, blocked tasks, and ready-for-review tasks.
+- Recommend which tasks should stay open, be marked complete, or be prepared for future Google Tasks sync.
+- Stop before any live Google Tasks action.`
   },
   {
     id: "daily-sync",

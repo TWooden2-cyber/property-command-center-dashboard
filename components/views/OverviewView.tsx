@@ -68,6 +68,61 @@ type CommandKpi = {
   footer: string;
 };
 
+type TaskFilter = "All Tasks" | "Verification Required" | "Approval Required" | "Proof Needed" | "Blocked" | "Complete";
+
+const taskFilters: TaskFilter[] = ["All Tasks", "Verification Required", "Approval Required", "Proof Needed", "Blocked", "Complete"];
+
+function getTaskBadge(row: AdminTaskCommandRow) {
+  const status = row.status.toLowerCase();
+  const blocked = row.blockedAction?.toLowerCase() ?? "";
+
+  if (row.taskBadge) {
+    return row.taskBadge;
+  }
+  if (status.includes("verification")) {
+    return "Verification Required";
+  }
+  if (status.includes("approval") || status.includes("owner review")) {
+    return "Owner Approval Required";
+  }
+  if (status.includes("proof") || status.includes("confirmation")) {
+    return "Proof Needed";
+  }
+  if (blocked.includes("do not") || status.includes("blocked")) {
+    return "Blocked Until Verified";
+  }
+  return row.status.toLowerCase() === "complete" ? "Complete" : "Ready for Review";
+}
+
+function taskMatchesFilter(row: AdminTaskCommandRow, filter: TaskFilter) {
+  const badge = getTaskBadge(row);
+  const status = row.status.toLowerCase();
+
+  if (filter === "All Tasks") {
+    return true;
+  }
+  if (filter === "Approval Required") {
+    return badge === "Owner Approval Required";
+  }
+  if (filter === "Blocked") {
+    return badge === "Blocked Until Verified" || Boolean(row.blockedAction);
+  }
+  if (filter === "Complete") {
+    return status === "complete";
+  }
+  return badge === filter;
+}
+
+function buildTaskSummary(rows: AdminTaskCommandRow[]) {
+  return [
+    { label: "Critical open tasks", value: rows.filter((row) => row.priority === "Critical" && row.status.toLowerCase() !== "complete").length, tone: "red" },
+    { label: "Verification tasks", value: rows.filter((row) => getTaskBadge(row) === "Verification Required").length, tone: "yellow" },
+    { label: "Approval tasks", value: rows.filter((row) => getTaskBadge(row) === "Owner Approval Required").length, tone: "yellow" },
+    { label: "Proof-needed tasks", value: rows.filter((row) => getTaskBadge(row) === "Proof Needed").length, tone: "red" },
+    { label: "Completed tasks", value: rows.filter((row) => row.status.toLowerCase() === "complete").length, tone: "green" }
+  ] as const;
+}
+
 function commandKpis(): CommandKpi[] {
   const health = computeDashboardHealth();
   const rentRate = health.rentCollectionRate;
@@ -356,9 +411,23 @@ const followUpColumns: DataTableColumn<FollowUpCommandRow>[] = [
 
 const adminColumns: DataTableColumn<AdminTaskCommandRow>[] = [
   { key: "task", header: "Task", render: (row) => row.task },
+  { key: "category", header: "Category", render: (row) => row.category ?? "Admin / Operations" },
   { key: "priority", header: "Priority", render: (row) => <StatusBadge label={row.priority} /> },
   { key: "due", header: "Due", render: (row) => row.due },
-  { key: "status", header: "Status", render: (row) => <StatusBadge label={row.status} /> }
+  { key: "status", header: "Status", render: (row) => <StatusBadge label={row.status} /> },
+  { key: "badge", header: "Task Badge", render: (row) => <StatusBadge label={getTaskBadge(row)} /> },
+  { key: "blockedAction", header: "Blocked Action", render: (row) => row.blockedAction ?? "No hard block listed" },
+  {
+    key: "futureSync",
+    header: "Convert to Google Task Later",
+    render: () => (
+      <div className="future-sync-badges">
+        <span>Live Google Tasks disabled</span>
+        <span>Ready for future sync</span>
+        <span>Owner approval required before creation</span>
+      </div>
+    )
+  }
 ];
 
 function DocumentStatusCards({ rows }: { rows: DocumentDraftStatus[] }) {
@@ -602,8 +671,11 @@ function IntegrationSafetySummary() {
 export function OverviewView() {
   const [selectedMonth, setSelectedMonth] = useState(commandCenterPeriod.monthName);
   const [selectedYear, setSelectedYear] = useState(commandCenterPeriod.year);
+  const [taskFilter, setTaskFilter] = useState<TaskFilter>("All Tasks");
   const health = useMemo(() => computeDashboardHealth(), []);
   const kpis = useMemo(() => commandKpis(), []);
+  const filteredTasks = useMemo(() => adminTaskRows.filter((row) => taskMatchesFilter(row, taskFilter)), [taskFilter]);
+  const taskSummary = useMemo(() => buildTaskSummary(adminTaskRows), []);
   const hasPeriodData = selectedMonth === commandCenterPeriod.monthName && selectedYear === commandCenterPeriod.year;
 
   return (
@@ -710,7 +782,27 @@ export function OverviewView() {
           </Section>
 
           <Section eyebrow="Admin Tasks" title="Owner command task queue" icon={<Bell size={20} aria-hidden />}>
-            <DataTable rows={adminTaskRows} columns={adminColumns} />
+            <div className="task-summary-grid">
+              {taskSummary.map((item) => (
+                <article key={item.label} className={`task-summary-card queue-${item.tone}`}>
+                  <span>{item.label}</span>
+                  <strong>{item.value}</strong>
+                </article>
+              ))}
+            </div>
+            <div className="task-filter-bar" aria-label="Task filters">
+              {taskFilters.map((filter) => (
+                <button
+                  key={filter}
+                  type="button"
+                  className={taskFilter === filter ? "active" : ""}
+                  onClick={() => setTaskFilter(filter)}
+                >
+                  {filter}
+                </button>
+              ))}
+            </div>
+            <DataTable rows={filteredTasks} columns={adminColumns} />
           </Section>
         </>
       )}
