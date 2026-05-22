@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import type { Route } from "next";
 import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import {
   AlertTriangle,
@@ -8,13 +10,11 @@ import {
   CheckCircle2,
   ClipboardList,
   Copy,
-  FileText,
   FolderArchive,
   MailCheck,
   ShieldCheck,
   TrendingUp
 } from "lucide-react";
-import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { EmptyState } from "@/components/DataState";
 import { StatusBadge } from "@/components/StatusBadge";
 import {
@@ -33,6 +33,7 @@ import {
   maintenanceRows,
   money,
   monthOptions,
+  monthlyCashflowTrend,
   monthlyRentTrend,
   mortgageRows,
   nextSevenDaysQueue,
@@ -40,7 +41,6 @@ import {
   ownerApprovalQueue,
   percent,
   proofNeededQueue,
-  rentRows,
   rentTotals,
   tasksNeedingCompletionQueue,
   toneForStatus,
@@ -49,14 +49,7 @@ import {
   type AdminTaskCommandRow,
   type CodexCommandTemplate,
   type CommandQueueItem,
-  type DocumentDraftStatus,
-  type FollowUpCommandRow,
   type HealthStatus,
-  type LeaseViolationRow,
-  type MaintenanceCommandRow,
-  type MortgageCommandRow,
-  type NoticeCommandRow,
-  type RentCollectionRow,
   type SignalTone
 } from "@/lib/propertyCommandCenterData";
 
@@ -68,9 +61,14 @@ type CommandKpi = {
   footer: string;
 };
 
-type TaskFilter = "All Tasks" | "Verification Required" | "Approval Required" | "Proof Needed" | "Blocked" | "Complete";
-
-const taskFilters: TaskFilter[] = ["All Tasks", "Verification Required", "Approval Required", "Proof Needed", "Blocked", "Complete"];
+type ExecutiveSummaryCard = {
+  title: string;
+  value: string;
+  detail: string;
+  href?: Route;
+  action: string;
+  tone: SignalTone;
+};
 
 function getTaskBadge(row: AdminTaskCommandRow) {
   const status = row.status.toLowerCase();
@@ -92,25 +90,6 @@ function getTaskBadge(row: AdminTaskCommandRow) {
     return "Blocked Until Verified";
   }
   return row.status.toLowerCase() === "complete" ? "Complete" : "Ready for Review";
-}
-
-function taskMatchesFilter(row: AdminTaskCommandRow, filter: TaskFilter) {
-  const badge = getTaskBadge(row);
-  const status = row.status.toLowerCase();
-
-  if (filter === "All Tasks") {
-    return true;
-  }
-  if (filter === "Approval Required") {
-    return badge === "Owner Approval Required";
-  }
-  if (filter === "Blocked") {
-    return badge === "Blocked Until Verified" || Boolean(row.blockedAction);
-  }
-  if (filter === "Complete") {
-    return status === "complete";
-  }
-  return badge === filter;
 }
 
 function buildTaskSummary(rows: AdminTaskCommandRow[]) {
@@ -325,154 +304,99 @@ function YearTrendChart() {
   return <ComparisonChart title="Year Paid vs Projected" projected={projected} collected={collected} />;
 }
 
-const rentColumns: DataTableColumn<RentCollectionRow>[] = [
-  { key: "month", header: "Month", render: (row) => row.month },
-  { key: "property", header: "Property", render: (row) => row.property },
-  { key: "unit", header: "Unit", render: (row) => row.unit },
-  { key: "tenant", header: "Tenant", render: (row) => row.tenant },
-  { key: "due", header: "Rent Due", render: (row) => money(row.rentDue), className: "numeric" },
-  { key: "paid", header: "Paid", render: (row) => money(row.paid), className: "numeric" },
-  { key: "balance", header: "Balance", render: (row) => money(row.balance), className: "numeric" },
-  { key: "date", header: "Due / Paid", render: (row) => row.datePaid || row.dueDate || "Not set" },
-  { key: "method", header: "Method", render: (row) => row.method || "Not set" },
-  { key: "late", header: "Late Fee", render: (row) => money(row.lateFee), className: "numeric" },
-  { key: "status", header: "Status", render: (row) => <StatusBadge label={row.status} /> },
-  { key: "reminder", header: "Reminder", render: (row) => <StatusBadge label={row.reminder === "Yes" ? "Follow-Up" : "Stable"} /> }
-];
+function ExecutiveSummaryCards() {
+  const openMaintenance = maintenanceRows.filter((row) => row.status.toLowerCase() !== "complete").length;
+  const openFollowUps = followUpRows.filter((row) => row.status.toLowerCase() !== "complete").length;
+  const criticalTasks = adminTaskRows.filter((row) => row.priority === "Critical" && row.status.toLowerCase() !== "complete").length;
+  const mortgageArrears = mortgageRows.reduce((total, row) => total + row.currentArrears, 0);
+  const noticeWatch = noticeRows.filter((row) => row.status.toLowerCase().includes("verification") || row.status.toLowerCase().includes("review")).length;
+  const draftBlocks = documentDraftStatuses.filter((row) => row.tone !== "green").length;
+  const cards: ExecutiveSummaryCard[] = [
+    {
+      title: "Rent Collection Summary",
+      value: `${percent(rentTotals.collected / rentTotals.projected)} collected`,
+      detail: `${money(rentTotals.balance)} balance remains in local sample data.`,
+      href: "/rent-collection",
+      action: "Open Rent Collection tab",
+      tone: "yellow"
+    },
+    {
+      title: "Maintenance Summary",
+      value: `${openMaintenance} open`,
+      detail: "Critical Unit 6 heat/breathing follow-up remains visible.",
+      href: "/maintenance",
+      action: "Open Maintenance tab",
+      tone: "red"
+    },
+    {
+      title: "Lease Violations Summary",
+      value: `${leaseViolations.length} active`,
+      detail: leaseViolations.length ? "Lease violation records need review." : "No active lease violations in sample data.",
+      action: "Open Lease Violations tab",
+      tone: "green"
+    },
+    {
+      title: "Notice / Legal Summary",
+      value: `${noticeWatch} review items`,
+      detail: "Display only. No notices are sent, filed, served, or created.",
+      href: "/notices-evictions",
+      action: "Open Notices tab",
+      tone: "yellow"
+    },
+    {
+      title: "Codex Draft Summary",
+      value: `${draftBlocks} blocked/review`,
+      detail: "Draft status remains owner-review only; no legal documents are created here.",
+      action: "Open Draft Status tab",
+      tone: "red"
+    },
+    {
+      title: "Mortgage / Allotment Summary",
+      value: money(mortgageArrears),
+      detail: "MBFS posting confirmation and allotment setup remain priority checks.",
+      href: "/mortgage-arrears",
+      action: "Open Mortgage tab",
+      tone: "red"
+    },
+    {
+      title: "Follow-Up Summary",
+      value: `${openFollowUps} open`,
+      detail: "Calendar/suspense items are tracked locally for owner review.",
+      href: "/calendar-follow-ups",
+      action: "Open Follow-Up Calendar tab",
+      tone: "yellow"
+    },
+    {
+      title: "Admin Tasks Summary",
+      value: `${criticalTasks} critical`,
+      detail: "Verification, proof, and approval tasks are ready for daily review.",
+      href: "/admin-tasks",
+      action: "Open Admin Tasks tab",
+      tone: "red"
+    }
+  ];
 
-const maintenanceColumns: DataTableColumn<MaintenanceCommandRow>[] = [
-  { key: "date", header: "Date Reported", render: (row) => row.dateReported },
-  { key: "property", header: "Property", render: (row) => row.property },
-  { key: "unit", header: "Unit", render: (row) => row.unit },
-  { key: "tenant", header: "Tenant", render: (row) => row.tenant },
-  { key: "issue", header: "Issue", render: (row) => row.issue },
-  { key: "priority", header: "Priority", render: (row) => <StatusBadge label={row.priority} /> },
-  { key: "vendor", header: "Assigned Vendor", render: (row) => row.assignedVendor },
-  { key: "estimated", header: "Estimated Cost", render: (row) => money(row.estimatedCost), className: "numeric" },
-  { key: "actual", header: "Actual Cost", render: (row) => (row.actualCost === undefined ? "Unknown" : money(row.actualCost)), className: "numeric" },
-  { key: "status", header: "Status", render: (row) => <StatusBadge label={row.status} /> },
-  { key: "completed", header: "Date Completed", render: (row) => row.dateCompleted || "Open" },
-  { key: "update", header: "Tenant Update Sent", render: (row) => row.tenantUpdateSent },
-  { key: "link", header: "Photos/Receipts Link", render: (row) => row.photosReceiptsLink },
-  { key: "notes", header: "Notes", render: (row) => row.notes }
-];
-
-const leaseColumns: DataTableColumn<LeaseViolationRow>[] = [
-  { key: "date", header: "Date", render: (row) => row.date },
-  { key: "property", header: "Property", render: (row) => row.property },
-  { key: "unit", header: "Unit", render: (row) => row.unit },
-  { key: "tenant", header: "Tenant", render: (row) => row.tenant },
-  { key: "type", header: "Violation Type", render: (row) => row.violationType },
-  { key: "description", header: "Description", render: (row) => row.description },
-  { key: "proof", header: "Photo/Proof Link", render: (row) => row.proofLink },
-  { key: "message", header: "Message Sent", render: (row) => row.messageSent },
-  { key: "notice", header: "Notice Required", render: (row) => row.noticeRequired },
-  { key: "follow", header: "Follow-Up Date", render: (row) => row.followUpDate },
-  { key: "status", header: "Status", render: (row) => <StatusBadge label={row.status} /> },
-  { key: "notes", header: "Notes", render: (row) => row.notes }
-];
-
-const noticeColumns: DataTableColumn<NoticeCommandRow>[] = [
-  { key: "dateStarted", header: "Date Started", render: (row) => row.dateStarted },
-  { key: "property", header: "Property", render: (row) => row.property },
-  { key: "unit", header: "Unit", render: (row) => row.unit },
-  { key: "tenant", header: "Tenant", render: (row) => row.tenant },
-  { key: "noticeType", header: "Notice Type", render: (row) => row.noticeType },
-  { key: "amount", header: "Amount Owed", render: (row) => row.amountOwed },
-  { key: "noticeDate", header: "Notice Date", render: (row) => row.noticeDate },
-  { key: "status", header: "Status", render: (row) => <StatusBadge label={row.status} /> }
-];
-
-const mortgageColumns: DataTableColumn<MortgageCommandRow>[] = [
-  { key: "property", header: "Property", render: (row) => row.property },
-  { key: "due", header: "Mortgage Due Monthly", render: (row) => money(row.mortgageDueMonthly), className: "numeric" },
-  { key: "source", header: "Payment Source", render: (row) => row.paymentSource },
-  { key: "allotment", header: "Allotment Status", render: (row) => <StatusBadge label={row.allotmentStatus} /> },
-  { key: "arrears", header: "Current Arrears", render: (row) => money(row.currentArrears), className: "numeric" },
-  { key: "plan", header: "Payoff Plan", render: (row) => row.payoffPlan },
-  { key: "dueDate", header: "Due Date", render: (row) => row.dueDate },
-  { key: "lastPaid", header: "Last Paid Date", render: (row) => row.lastPaidDate || "Not set" },
-  { key: "confirmation", header: "Confirmation Saved", render: (row) => row.confirmationSaved },
-  { key: "notes", header: "Notes", render: (row) => row.notes }
-];
-
-const followUpColumns: DataTableColumn<FollowUpCommandRow>[] = [
-  { key: "date", header: "Date", render: (row) => row.date },
-  { key: "time", header: "Time", render: (row) => row.time },
-  { key: "property", header: "Property", render: (row) => row.property },
-  { key: "unit", header: "Unit", render: (row) => row.unit },
-  { key: "item", header: "Follow-Up", render: (row) => row.item },
-  { key: "detail", header: "Details", render: (row) => row.detail },
-  { key: "category", header: "Category", render: (row) => row.category },
-  { key: "calendar", header: "Calendar", render: (row) => row.calendarNeeded },
-  { key: "email", header: "Email", render: (row) => row.emailNeeded },
-  { key: "status", header: "Status", render: (row) => <StatusBadge label={row.status} /> }
-];
-
-const adminColumns: DataTableColumn<AdminTaskCommandRow>[] = [
-  { key: "task", header: "Task", render: (row) => row.task },
-  { key: "category", header: "Category", render: (row) => row.category ?? "Admin / Operations" },
-  { key: "priority", header: "Priority", render: (row) => <StatusBadge label={row.priority} /> },
-  { key: "due", header: "Due", render: (row) => row.due },
-  { key: "status", header: "Status", render: (row) => <StatusBadge label={row.status} /> },
-  { key: "badge", header: "Task Badge", render: (row) => <StatusBadge label={getTaskBadge(row)} /> },
-  { key: "blockedAction", header: "Blocked Action", render: (row) => row.blockedAction ?? "No hard block listed" },
-  {
-    key: "futureSync",
-    header: "Convert to Google Task Later",
-    render: () => (
-      <div className="future-sync-badges">
-        <span>Live Google Tasks disabled</span>
-        <span>Ready for future sync</span>
-        <span>Owner approval required before creation</span>
+  return (
+    <Section eyebrow="Executive Summaries" title="Operational tabs at a glance" icon={<ShieldCheck size={20} aria-hidden />}>
+      <div className="overview-summary-grid">
+        {cards.map((card) => (
+          <article key={card.title} className={`overview-summary-card queue-${card.tone}`}>
+            <span>{card.title}</span>
+            <strong>{card.value}</strong>
+            <p>{card.detail}</p>
+            {card.href ? (
+              <Link href={card.href} className="summary-link-button">
+                {card.action}
+              </Link>
+            ) : (
+              <button type="button" className="summary-link-button pending" disabled>
+                {card.action} · Tab buildout pending
+              </button>
+            )}
+          </article>
+        ))}
       </div>
-    )
-  }
-];
-
-function DocumentStatusCards({ rows }: { rows: DocumentDraftStatus[] }) {
-  return (
-    <div className="document-status-grid">
-      {rows.map((row) => (
-        <article key={row.id} className={`document-status-card command-kpi-${row.tone}`}>
-          <FileText size={18} aria-hidden />
-          <span>{row.document}</span>
-          <strong>{row.status}</strong>
-          <p>{row.notes}</p>
-        </article>
-      ))}
-    </div>
-  );
-}
-
-function MortgageTrackerCards() {
-  return (
-    <div className="amortization-grid">
-      {mortgageRows.map((row) => (
-        <article key={row.id} className={row.currentArrears > 0 ? "amortization-card danger" : "amortization-card"}>
-          <span>{row.property}</span>
-          <strong>{money(row.currentArrears)}</strong>
-          <dl>
-            <div>
-              <dt>Monthly mortgage due</dt>
-              <dd>{money(row.mortgageDueMonthly)}</dd>
-            </div>
-            <div>
-              <dt>Paid this month</dt>
-              <dd>{money(row.paidThisMonth)}</dd>
-            </div>
-            <div>
-              <dt>Confirmation status</dt>
-              <dd>{row.confirmationSaved}</dd>
-            </div>
-            <div>
-              <dt>Next owner action</dt>
-              <dd>{row.nextOwnerAction}</dd>
-            </div>
-          </dl>
-        </article>
-      ))}
-    </div>
+    </Section>
   );
 }
 
@@ -645,6 +569,43 @@ function DailyCommandQueues() {
   );
 }
 
+function VerificationHighlights() {
+  const taskSummary = buildTaskSummary(adminTaskRows);
+  const highlightedTasks = adminTaskRows
+    .filter((row) => ["Verification Required", "Owner Approval Required", "Proof Needed", "Blocked Until Verified", "Ready for Review"].includes(getTaskBadge(row)))
+    .slice(0, 6);
+
+  return (
+    <Section eyebrow="Verification / Approval Highlights" title="Tasks that still need owner attention" icon={<Bell size={20} aria-hidden />}>
+      <div className="task-summary-grid">
+        {taskSummary.map((item) => (
+          <article key={item.label} className={`task-summary-card queue-${item.tone}`}>
+            <span>{item.label}</span>
+            <strong>{item.value}</strong>
+          </article>
+        ))}
+      </div>
+      <div className="verification-highlight-grid">
+        {highlightedTasks.map((task) => (
+          <article key={task.id} className={`verification-highlight-card queue-${task.priority === "Critical" ? "red" : "yellow"}`}>
+            <div>
+              <span>{task.category ?? "Admin / Operations"}</span>
+              <StatusBadge label={getTaskBadge(task)} />
+            </div>
+            <strong>{task.task}</strong>
+            <p>{task.blockedAction ?? `Due ${task.due}. Live Google Tasks disabled until owner approval.`}</p>
+            <footer>
+              <span>Live Google Tasks disabled</span>
+              <span>Ready for future sync</span>
+              <span>Owner approval required before creation</span>
+            </footer>
+          </article>
+        ))}
+      </div>
+    </Section>
+  );
+}
+
 function IntegrationSafetySummary() {
   const items = [
     { label: "Google Drive", value: "No files created, moved, renamed, deleted, or updated", icon: <FolderArchive size={17} aria-hidden /> },
@@ -668,14 +629,70 @@ function IntegrationSafetySummary() {
   );
 }
 
+function MonthlyCashflowTrendChart() {
+  const maxMagnitude = Math.max(...monthlyCashflowTrend.flatMap((row) => [Math.abs(row.cashflow), Math.abs(row.noi)]), 1);
+  const points = monthlyCashflowTrend.map((row, index) => {
+    const x = monthlyCashflowTrend.length === 1 ? 50 : (index / (monthlyCashflowTrend.length - 1)) * 100;
+    const y = 100 - ((row.noi + maxMagnitude) / (maxMagnitude * 2)) * 100;
+    return `${x},${y}`;
+  });
+
+  return (
+    <Section eyebrow="Cashflow Charts" title="Monthly Cashflow Trend" icon={<TrendingUp size={20} aria-hidden />}>
+      <div className="cashflow-trend-card">
+        <div className="cashflow-chart-area" aria-label="Monthly cashflow bar chart with NOI line trend">
+          <svg className="cashflow-line" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden>
+            <polyline points={points.join(" ")} />
+          </svg>
+          {monthlyCashflowTrend.map((row) => {
+            const positive = row.cashflow >= 0;
+            const barHeight = Math.max((Math.abs(row.cashflow) / maxMagnitude) * 48, 4);
+            return (
+              <div key={row.month} className="cashflow-month">
+                <div className="cashflow-bar-stage">
+                  <span
+                    className={positive ? "cashflow-bar positive" : "cashflow-bar negative"}
+                    style={{ "--bar-height": `${barHeight}%` } as CSSProperties}
+                  />
+                </div>
+                <strong>{row.month.replace(" 2026", "")}</strong>
+              </div>
+            );
+          })}
+        </div>
+        <div className="cashflow-trend-legend">
+          <span><i className="legend-bar" /> Monthly cashflow bar</span>
+          <span><i className="legend-line" /> NOI line</span>
+        </div>
+        <div className="cashflow-detail-grid">
+          {monthlyCashflowTrend.map((row) => (
+            <article key={row.month} className={row.cashflow >= 0 ? "cashflow-detail positive" : "cashflow-detail negative"}>
+              <span>{row.month}</span>
+              <strong>{money(row.cashflow)}</strong>
+              <dl>
+                <div><dt>Projected</dt><dd>{money(row.projectedRent)}</dd></div>
+                <div><dt>Collected</dt><dd>{money(row.rentCollected)}</dd></div>
+                <div><dt>Utilities</dt><dd>{money(row.utilities)}</dd></div>
+                <div><dt>Maintenance</dt><dd>{money(row.maintenance)}</dd></div>
+                <div><dt>Mortgage Paid</dt><dd>{money(row.mortgagePaid)}</dd></div>
+                <div><dt>NOI</dt><dd>{money(row.noi)}</dd></div>
+              </dl>
+            </article>
+          ))}
+        </div>
+        <p className="cashflow-chart-note">
+          Cashflow is based on local sample dashboard data. Live bank, lender, Google Sheets, and RentRedi data are not connected.
+        </p>
+      </div>
+    </Section>
+  );
+}
+
 export function OverviewView() {
   const [selectedMonth, setSelectedMonth] = useState(commandCenterPeriod.monthName);
   const [selectedYear, setSelectedYear] = useState(commandCenterPeriod.year);
-  const [taskFilter, setTaskFilter] = useState<TaskFilter>("All Tasks");
   const health = useMemo(() => computeDashboardHealth(), []);
   const kpis = useMemo(() => commandKpis(), []);
-  const filteredTasks = useMemo(() => adminTaskRows.filter((row) => taskMatchesFilter(row, taskFilter)), [taskFilter]);
-  const taskSummary = useMemo(() => buildTaskSummary(adminTaskRows), []);
   const hasPeriodData = selectedMonth === commandCenterPeriod.monthName && selectedYear === commandCenterPeriod.year;
 
   return (
@@ -734,76 +751,15 @@ export function OverviewView() {
           <IntegrationSafetySummary />
           <CommandAutomationTracker />
           <DailyCommandQueues />
+          <ExecutiveSummaryCards />
+          <VerificationHighlights />
 
           <div className="chart-grid">
             <ComparisonChart title="Month Paid vs Projected" projected={rentTotals.projected} collected={rentTotals.collected} />
             <YearTrendChart />
           </div>
 
-          <Section eyebrow="Rent Collection" title="May 2026 rent ledger view" icon={<TrendingUp size={20} aria-hidden />}>
-            <div className="rent-summary-strip">
-              <span>Projected: <strong>{money(rentTotals.projected)}</strong></span>
-              <span>Collected: <strong>{money(rentTotals.collected)}</strong></span>
-              <span>Balance: <strong>{money(rentTotals.balance)}</strong></span>
-              <span>Late fees: <strong>{money(rentTotals.lateFees)}</strong></span>
-            </div>
-            <DataTable rows={rentRows} columns={rentColumns} />
-          </Section>
-
-          <Section eyebrow="Maintenance" title="Maintenance health and open work" icon={<AlertTriangle size={20} aria-hidden />}>
-            <div className="section-note critical-note">Critical maintenance follow-up is open for Unit 6 / Building Heat.</div>
-            <DataTable rows={maintenanceRows} columns={maintenanceColumns} />
-          </Section>
-
-          <Section eyebrow="Lease Violations" title="Lease violations watchlist" icon={<ShieldCheck size={20} aria-hidden />}>
-            {leaseViolations.length ? (
-              <DataTable rows={leaseViolations} columns={leaseColumns} />
-            ) : (
-              <EmptyState title="No active lease violations in sample data" message="This section is ready for future local or approved live data." />
-            )}
-          </Section>
-
-          <Section eyebrow="Notice / Legal Status" title="Notice status tracking" icon={<FileText size={20} aria-hidden />}>
-            <p className="section-note">Display only. No notices are sent, filed, served, or created from this dashboard.</p>
-            <DataTable rows={noticeRows} columns={noticeColumns} />
-          </Section>
-
-          <Section eyebrow="Codex Draft Status" title="Documents drafted by Codex" icon={<FileText size={20} aria-hidden />}>
-            <DocumentStatusCards rows={documentDraftStatuses} />
-          </Section>
-
-          <Section eyebrow="Mortgage / Allotment" title="Mortgage and arrears command tracking" icon={<ShieldCheck size={20} aria-hidden />}>
-            <MortgageTrackerCards />
-            <DataTable rows={mortgageRows} columns={mortgageColumns} />
-          </Section>
-
-          <Section eyebrow="Follow-Up Calendar" title="Suspense and owner follow-ups" icon={<CalendarClock size={20} aria-hidden />}>
-            <DataTable rows={followUpRows} columns={followUpColumns} />
-          </Section>
-
-          <Section eyebrow="Admin Tasks" title="Owner command task queue" icon={<Bell size={20} aria-hidden />}>
-            <div className="task-summary-grid">
-              {taskSummary.map((item) => (
-                <article key={item.label} className={`task-summary-card queue-${item.tone}`}>
-                  <span>{item.label}</span>
-                  <strong>{item.value}</strong>
-                </article>
-              ))}
-            </div>
-            <div className="task-filter-bar" aria-label="Task filters">
-              {taskFilters.map((filter) => (
-                <button
-                  key={filter}
-                  type="button"
-                  className={taskFilter === filter ? "active" : ""}
-                  onClick={() => setTaskFilter(filter)}
-                >
-                  {filter}
-                </button>
-              ))}
-            </div>
-            <DataTable rows={filteredTasks} columns={adminColumns} />
-          </Section>
+          <MonthlyCashflowTrendChart />
         </>
       )}
     </div>

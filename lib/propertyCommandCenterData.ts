@@ -157,6 +157,17 @@ export type MonthlyRentTrend = {
   collected: number;
 };
 
+export type MonthlyCashflowTrend = {
+  month: string;
+  projectedRent: number;
+  rentCollected: number;
+  utilities: number;
+  maintenance: number;
+  mortgagePaid: number;
+  noi: number;
+  cashflow: number;
+};
+
 export const commandCenterPeriod: Period = {
   month: 5,
   monthName: "May",
@@ -354,6 +365,59 @@ export const monthlyRentTrend: MonthlyRentTrend[] = [
   { month: "Mar", projected: 12195.85, collected: 10950 },
   { month: "Apr", projected: 12195.85, collected: 11240 },
   { month: "May", projected: 12195.85, collected: 9653.4 }
+];
+
+export const monthlyCashflowTrend: MonthlyCashflowTrend[] = [
+  {
+    month: "Jan 2026",
+    projectedRent: 12195.85,
+    rentCollected: 11600,
+    utilities: 488,
+    maintenance: 260,
+    mortgagePaid: 4500,
+    noi: 6352,
+    cashflow: 6352
+  },
+  {
+    month: "Feb 2026",
+    projectedRent: 12195.85,
+    rentCollected: 11825,
+    utilities: 522,
+    maintenance: 410,
+    mortgagePaid: 4500,
+    noi: 6393,
+    cashflow: 6393
+  },
+  {
+    month: "Mar 2026",
+    projectedRent: 12195.85,
+    rentCollected: 10950,
+    utilities: 570,
+    maintenance: 725,
+    mortgagePaid: 4500,
+    noi: 5155,
+    cashflow: 5155
+  },
+  {
+    month: "Apr 2026",
+    projectedRent: 12195.85,
+    rentCollected: 11240,
+    utilities: 545,
+    maintenance: 315,
+    mortgagePaid: 4500,
+    noi: 5880,
+    cashflow: 5880
+  },
+  {
+    month: "May 2026",
+    projectedRent: 12195.85,
+    rentCollected: 9653.4,
+    utilities: 403,
+    maintenance: 0,
+    mortgagePaid: 15254.1,
+    noi: 4750.4,
+    cashflow: -6003.7
+  }
 ];
 
 export const maintenanceRows: MaintenanceCommandRow[] = [

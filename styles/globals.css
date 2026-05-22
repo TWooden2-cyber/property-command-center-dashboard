@@ -1853,6 +1853,303 @@ tbody tr:hover {
   font-weight: 850;
 }
 
+.overview-summary-grid,
+.verification-highlight-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.overview-summary-card,
+.verification-highlight-card {
+  display: grid;
+  align-content: space-between;
+  gap: 12px;
+  min-height: 210px;
+  border: 1px solid rgba(201, 164, 81, 0.18);
+  border-left: 4px solid var(--gold);
+  border-radius: 8px;
+  padding: 16px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.055), transparent 46%),
+    rgba(18, 17, 15, 0.9);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.22);
+}
+
+.overview-summary-card.queue-green,
+.verification-highlight-card.queue-green {
+  border-left-color: var(--success);
+}
+
+.overview-summary-card.queue-yellow,
+.verification-highlight-card.queue-yellow {
+  border-left-color: var(--warning);
+}
+
+.overview-summary-card.queue-red,
+.verification-highlight-card.queue-red {
+  border-left-color: var(--danger);
+}
+
+.overview-summary-card > span,
+.verification-highlight-card span {
+  color: var(--gold-soft);
+  font-size: 0.74rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.overview-summary-card strong,
+.verification-highlight-card strong {
+  color: var(--cream);
+  font-size: 1.24rem;
+  line-height: 1.18;
+}
+
+.overview-summary-card p,
+.verification-highlight-card p {
+  margin: 0;
+  color: var(--cream-muted);
+  line-height: 1.45;
+}
+
+.summary-link-button {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  border: 1px solid rgba(201, 164, 81, 0.42);
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: #171208;
+  background: linear-gradient(180deg, var(--gold-soft), var(--gold));
+  font-weight: 950;
+}
+
+.summary-link-button.pending {
+  color: var(--cream-muted);
+  background: rgba(255, 255, 255, 0.045);
+  cursor: not-allowed;
+}
+
+.verification-highlight-card > div {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.verification-highlight-card footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.verification-highlight-card footer span {
+  border: 1px solid rgba(201, 164, 81, 0.22);
+  border-radius: 999px;
+  padding: 5px 8px;
+  color: var(--gold-soft);
+  background: rgba(201, 164, 81, 0.08);
+  font-size: 0.68rem;
+}
+
+.cashflow-trend-card {
+  display: grid;
+  gap: 18px;
+}
+
+.cashflow-chart-area {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+  min-height: 340px;
+  border: 1px solid rgba(201, 164, 81, 0.2);
+  border-radius: 8px;
+  padding: 22px 18px 18px;
+  background:
+    linear-gradient(180deg, rgba(247, 240, 228, 0.07), rgba(247, 240, 228, 0.025)),
+    rgba(8, 7, 6, 0.36);
+  overflow: hidden;
+}
+
+.cashflow-chart-area::before {
+  content: "";
+  position: absolute;
+  inset: 50% 18px auto;
+  height: 1px;
+  background: rgba(247, 240, 228, 0.18);
+}
+
+.cashflow-line {
+  position: absolute;
+  inset: 22px 18px 54px;
+  width: calc(100% - 36px);
+  height: calc(100% - 76px);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.cashflow-line polyline {
+  fill: none;
+  stroke: var(--gold-soft);
+  stroke-width: 2.8;
+  vector-effect: non-scaling-stroke;
+  filter: drop-shadow(0 8px 14px rgba(201, 164, 81, 0.32));
+}
+
+.cashflow-month {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-rows: 1fr auto;
+  gap: 10px;
+  align-items: end;
+  min-width: 0;
+}
+
+.cashflow-bar-stage {
+  position: relative;
+  min-height: 250px;
+  display: grid;
+  align-items: center;
+}
+
+.cashflow-bar-stage::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: rgba(247, 240, 228, 0.08);
+}
+
+.cashflow-bar {
+  position: absolute;
+  left: 50%;
+  width: min(54px, 58%);
+  height: var(--bar-height);
+  transform: translateX(-50%);
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 8px 8px 0 0;
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.24);
+}
+
+.cashflow-bar.positive {
+  bottom: 50%;
+  background: linear-gradient(180deg, #b8d7a5, var(--success));
+}
+
+.cashflow-bar.negative {
+  top: 50%;
+  border-radius: 0 0 8px 8px;
+  background: linear-gradient(180deg, var(--danger), #9e3f31);
+}
+
+.cashflow-month strong {
+  color: var(--cream);
+  text-align: center;
+  font-size: 0.86rem;
+}
+
+.cashflow-trend-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.cashflow-trend-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--cream-muted);
+  font-weight: 850;
+}
+
+.legend-bar,
+.legend-line {
+  display: inline-block;
+  width: 28px;
+  height: 10px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--success), var(--danger));
+}
+
+.legend-line {
+  height: 3px;
+  background: var(--gold-soft);
+}
+
+.cashflow-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.cashflow-detail {
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--success);
+  border-radius: 8px;
+  padding: 13px;
+  background: rgba(18, 17, 15, 0.82);
+}
+
+.cashflow-detail.negative {
+  border-left-color: var(--danger);
+}
+
+.cashflow-detail span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.cashflow-detail strong {
+  display: block;
+  margin-top: 6px;
+  color: var(--cream);
+  font-size: 1.24rem;
+}
+
+.cashflow-detail dl {
+  display: grid;
+  gap: 6px;
+  margin: 12px 0 0;
+}
+
+.cashflow-detail div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  border-top: 1px solid rgba(247, 240, 228, 0.08);
+  padding-top: 6px;
+}
+
+.cashflow-detail dt,
+.cashflow-detail dd {
+  margin: 0;
+  color: var(--cream-muted);
+  font-size: 0.78rem;
+}
+
+.cashflow-detail dd {
+  color: var(--cream);
+  font-variant-numeric: tabular-nums;
+}
+
+.cashflow-chart-note {
+  margin: 0;
+  border-left: 4px solid var(--gold);
+  padding: 10px 12px;
+  color: var(--cream-muted);
+  background: rgba(201, 164, 81, 0.08);
+  line-height: 1.45;
+}
+
 @media (max-width: 900px) {
   .app-shell {
     grid-template-columns: 1fr;
@@ -1914,7 +2211,10 @@ tbody tr:hover {
   .command-button-grid,
   .command-action-grid,
   .queue-grid,
-  .task-summary-grid {
+  .task-summary-grid,
+  .overview-summary-grid,
+  .verification-highlight-grid,
+  .cashflow-detail-grid {
     grid-template-columns: 1fr;
   }
 }
@@ -1965,6 +2265,17 @@ tbody tr:hover {
 
   .command-chart-row {
     grid-template-columns: 1fr;
+  }
+
+  .cashflow-chart-area {
+    min-height: 280px;
+    gap: 8px;
+    padding-inline: 10px;
+  }
+
+  .cashflow-line {
+    inset-inline: 10px;
+    width: calc(100% - 20px);
   }
 
   .action-safety-grid,
