@@ -6,7 +6,7 @@ export default async function MaintenancePage() {
   await requireOwnerSession();
 
   return (
-    <LuxuryShell title="Maintenance" subtitle="Open work, vendor status, costs, and request links">
+    <LuxuryShell title="Maintenance Command" subtitle="Open work orders, health/safety issues, vendor status, proof tracking, tenant updates, and completion verification.">
       <MaintenanceView />
     </LuxuryShell>
   );

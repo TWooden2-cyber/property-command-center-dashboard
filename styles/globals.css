@@ -2471,6 +2471,243 @@ tbody tr:hover {
   margin-top: 16px;
 }
 
+.maintenance-command-page {
+  gap: 22px;
+}
+
+.maintenance-command-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 20px;
+  border: 1px solid rgba(213, 106, 85, 0.34);
+  border-radius: 8px;
+  padding: 28px;
+  background:
+    linear-gradient(135deg, rgba(213, 106, 85, 0.18), rgba(201, 164, 81, 0.1)),
+    rgba(8, 7, 6, 0.68);
+  box-shadow: var(--shadow-strong);
+}
+
+.maintenance-command-header h2 {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 4.2rem);
+  line-height: 0.98;
+}
+
+.maintenance-command-header p {
+  max-width: 840px;
+  color: var(--cream-muted);
+  line-height: 1.55;
+}
+
+.maintenance-kpi-grid {
+  grid-template-columns: repeat(8, minmax(130px, 1fr));
+}
+
+.maintenance-health-panel {
+  border-color: rgba(213, 106, 85, 0.4);
+  background:
+    linear-gradient(135deg, rgba(213, 106, 85, 0.12), rgba(247, 240, 228, 0.055)),
+    rgba(8, 7, 6, 0.44);
+}
+
+.maintenance-health-panel p {
+  margin: 0;
+  color: var(--cream-muted);
+  line-height: 1.5;
+}
+
+.maintenance-cause-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.maintenance-cause-grid article,
+.maintenance-proof-grid article {
+  display: flex;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 13px;
+  background: rgba(8, 7, 6, 0.26);
+}
+
+.maintenance-cause-grid svg {
+  color: var(--danger);
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
+.maintenance-proof-grid svg {
+  color: var(--gold-soft);
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
+.maintenance-cause-grid span,
+.maintenance-proof-grid span {
+  color: var(--cream);
+  line-height: 1.38;
+}
+
+.maintenance-filter-panel {
+  border-color: rgba(201, 164, 81, 0.25);
+}
+
+.maintenance-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.maintenance-filter-grid label {
+  display: grid;
+  gap: 7px;
+}
+
+.maintenance-filter-grid span {
+  color: var(--gold-soft);
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.maintenance-filter-grid select,
+.maintenance-filter-grid input {
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: var(--cream);
+  background: rgba(8, 7, 6, 0.42);
+}
+
+.maintenance-action-grid,
+.maintenance-command-button-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.maintenance-action-card {
+  min-height: 150px;
+  display: grid;
+  align-content: space-between;
+  gap: 10px;
+  border: 1px solid rgba(201, 164, 81, 0.18);
+  border-left: 4px solid var(--gold);
+  border-radius: 8px;
+  padding: 14px;
+  background: rgba(18, 17, 15, 0.86);
+}
+
+.maintenance-action-card.queue-green {
+  border-left-color: var(--success);
+}
+
+.maintenance-action-card.queue-yellow {
+  border-left-color: var(--warning);
+}
+
+.maintenance-action-card.queue-red {
+  border-left-color: var(--danger);
+}
+
+.maintenance-action-card span {
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.maintenance-action-card p {
+  margin: 0;
+  color: var(--cream-muted);
+  line-height: 1.42;
+}
+
+.maintenance-blocked-panel {
+  border-color: rgba(213, 106, 85, 0.38);
+}
+
+.maintenance-warning-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.maintenance-warning-list article {
+  display: flex;
+  gap: 10px;
+  border: 1px solid rgba(213, 106, 85, 0.28);
+  border-radius: 8px;
+  padding: 13px;
+  color: #ffd5ca;
+  background: rgba(213, 106, 85, 0.08);
+}
+
+.maintenance-warning-list svg {
+  color: var(--danger);
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
+.maintenance-proof-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.maintenance-tracker-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.maintenance-mini-list {
+  display: grid;
+  gap: 12px;
+}
+
+.maintenance-mini-list div {
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--gold);
+  border-radius: 8px;
+  padding: 13px;
+  background: rgba(8, 7, 6, 0.25);
+}
+
+.maintenance-mini-list span {
+  color: var(--gold-soft);
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.maintenance-mini-list strong {
+  display: block;
+  margin-top: 6px;
+  color: var(--cream);
+}
+
+.maintenance-mini-list p,
+.maintenance-mini-list footer {
+  margin: 7px 0 0;
+  color: var(--cream-muted);
+  line-height: 1.42;
+}
+
+.maintenance-mini-list footer {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.maintenance-command-preview {
+  margin-top: 16px;
+}
+
 @media (max-width: 900px) {
   .app-shell {
     grid-template-columns: 1fr;
@@ -2543,7 +2780,16 @@ tbody tr:hover {
   .rent-filter-grid,
   .rent-action-grid,
   .rent-command-button-grid,
-  .rent-warning-list {
+  .rent-warning-list,
+  .maintenance-command-header,
+  .maintenance-kpi-grid,
+  .maintenance-cause-grid,
+  .maintenance-filter-grid,
+  .maintenance-action-grid,
+  .maintenance-command-button-grid,
+  .maintenance-warning-list,
+  .maintenance-proof-grid,
+  .maintenance-tracker-grid {
     grid-template-columns: 1fr;
   }
 }

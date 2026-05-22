@@ -28,6 +28,7 @@ export type RentCollectionRow = {
 export type MaintenanceCommandRow = {
   id: string;
   dateReported: string;
+  month?: string;
   property: string;
   unit: string;
   tenant: string;
@@ -40,6 +41,8 @@ export type MaintenanceCommandRow = {
   dateCompleted: string;
   tenantUpdateSent: string;
   photosReceiptsLink: string;
+  proofStatus?: string;
+  ownerAction?: string;
   notes: string;
 };
 
@@ -424,6 +427,7 @@ export const maintenanceRows: MaintenanceCommandRow[] = [
   {
     id: "maint-1",
     dateReported: "2026-05-12",
+    month: "May 2026",
     property: "7-Unit",
     unit: "Unit 6 / Building Heat",
     tenant: "Jennifer Badger",
@@ -436,8 +440,49 @@ export const maintenanceRows: MaintenanceCommandRow[] = [
     dateCompleted: "",
     tenantUpdateSent: "No",
     photosReceiptsLink: "RentRedi Gmail alert 05/12/2026",
+    proofStatus: "Missing",
+    ownerAction: "Verify heat controls and determine vendor path",
     notes:
       "Health/safety-sensitive tenant communication. Verify heat/boiler control, whether any tenant is operating heat controls, and whether building heat can be adjusted/off safely. Respond in RentRedi and document."
+  },
+  {
+    id: "maint-2",
+    dateReported: "2026-05-03",
+    month: "May 2026",
+    property: "4-Unit",
+    unit: "Common Area",
+    tenant: "Common",
+    issue: "Routine common-area cleaning completed after move-out turnover touch-up.",
+    priority: "Normal",
+    assignedVendor: "PM Cleaning Crew",
+    estimatedCost: 150,
+    actualCost: 150,
+    status: "Complete",
+    dateCompleted: "2026-05-04",
+    tenantUpdateSent: "Not needed",
+    photosReceiptsLink: "Local sample proof saved",
+    proofStatus: "Saved",
+    ownerAction: "No action needed",
+    notes: "Local sample completed item for proof/completion tracking display only."
+  },
+  {
+    id: "maint-3",
+    dateReported: "2026-05-10",
+    month: "May 2026",
+    property: "7-Unit",
+    unit: "Unit 2",
+    tenant: "Marc Gosselin",
+    issue: "Minor sink drain slow; tenant reports intermittent backup and requests vendor review.",
+    priority: "High",
+    assignedVendor: "TBD / Quote needed",
+    estimatedCost: 225,
+    status: "Waiting",
+    dateCompleted: "",
+    tenantUpdateSent: "No",
+    photosReceiptsLink: "Not saved",
+    proofStatus: "Missing",
+    ownerAction: "Get quote and decide vendor path",
+    notes: "Local sample pending quote item. Do not contact vendor from dashboard."
   }
 ];
 
