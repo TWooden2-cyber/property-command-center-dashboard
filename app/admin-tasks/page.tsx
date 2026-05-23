@@ -6,7 +6,10 @@ export default async function AdminTasksPage() {
   await requireOwnerSession();
 
   return (
-    <LuxuryShell title="Admin Tasks" subtitle="Critical operations work and owner review queue">
+    <LuxuryShell
+      title="Admin Tasks Command"
+      subtitle="Owner approvals, proof collection, Drive update needs, weekly reviews, blocked items, and task-sync preparation"
+    >
       <AdminTasksView />
     </LuxuryShell>
   );

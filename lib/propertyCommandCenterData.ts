@@ -127,6 +127,24 @@ export type AdminTaskCommandRow = {
   futureSyncStatus?: string;
 };
 
+export type AdminTaskControlRow = {
+  id: string;
+  taskTitle: string;
+  relatedModule: string;
+  property: string;
+  unit: string;
+  priority: "Critical" | "High" | "Medium" | "Low";
+  status: string;
+  ownerApprovalRequired: "Yes" | "No";
+  proofNeeded: "Yes" | "No";
+  driveUpdateNeeded: "Yes" | "No";
+  calendarTaskNeeded: "Yes" | "No";
+  blockedUntilVerified: "Yes" | "No";
+  dueDate: string;
+  resultNotes: string;
+  nextOwnerAction: string;
+};
+
 export type CommandActionCard = {
   id: string;
   actionType: string;
@@ -849,6 +867,145 @@ export const adminTaskRows: AdminTaskCommandRow[] = [
     due: "ASAP",
     blockedAction: "Do not send, serve, file, or upload notice packet without owner approval.",
     futureSyncStatus: "Ready for future sync"
+  }
+];
+
+export const adminTaskControlRows: AdminTaskControlRow[] = [
+  {
+    id: "ADMIN-2026-001",
+    taskTitle: "Prepare Weekly Property Command Review",
+    relatedModule: "Dashboard",
+    property: "All",
+    unit: "All",
+    priority: "High",
+    status: "Open",
+    ownerApprovalRequired: "Yes",
+    proofNeeded: "No",
+    driveUpdateNeeded: "Yes",
+    calendarTaskNeeded: "Yes",
+    blockedUntilVerified: "No",
+    dueDate: "Every Friday",
+    resultNotes: "Weekly review should cover rent, maintenance, notices, mortgage, utilities, Drive, Calendar, and owner approvals.",
+    nextOwnerAction: "Review weekly package before any live updates."
+  },
+  {
+    id: "ADMIN-2026-002",
+    taskTitle: "Update Google Drive Property Command Folder",
+    relatedModule: "Google Drive",
+    property: "All",
+    unit: "All",
+    priority: "High",
+    status: "Open",
+    ownerApprovalRequired: "Yes",
+    proofNeeded: "Yes",
+    driveUpdateNeeded: "Yes",
+    calendarTaskNeeded: "No",
+    blockedUntilVerified: "Yes",
+    dueDate: "Daily",
+    resultNotes: "Prepare preview package only. No Drive upload/move/rename/delete without approval.",
+    nextOwnerAction: "Approve Drive update package after reviewing proof."
+  },
+  {
+    id: "ADMIN-2026-003",
+    taskTitle: "Verify Mortgage Payment Posting Proof",
+    relatedModule: "Mortgage / Allotment",
+    property: "7-Unit",
+    unit: "All",
+    priority: "Critical",
+    status: "Open",
+    ownerApprovalRequired: "Yes",
+    proofNeeded: "Yes",
+    driveUpdateNeeded: "Yes",
+    calendarTaskNeeded: "Yes",
+    blockedUntilVerified: "Yes",
+    dueDate: "Immediate",
+    resultNotes: "MBFS payment requests accepted but final lender posting proof is still needed.",
+    nextOwnerAction: "Confirm lender posting and save proof."
+  },
+  {
+    id: "ADMIN-2026-004",
+    taskTitle: "Verify Unit 6 Maintenance Completion Proof",
+    relatedModule: "Maintenance",
+    property: "7-Unit",
+    unit: "Unit 6",
+    priority: "Critical",
+    status: "Open",
+    ownerApprovalRequired: "Yes",
+    proofNeeded: "Yes",
+    driveUpdateNeeded: "Yes",
+    calendarTaskNeeded: "Yes",
+    blockedUntilVerified: "Yes",
+    dueDate: "Immediate",
+    resultNotes: "Heat/breathing safety issue must remain open until proof or tenant/vendor confirmation is saved.",
+    nextOwnerAction: "Confirm completion proof."
+  },
+  {
+    id: "ADMIN-2026-005",
+    taskTitle: "Review Unit 4 Section 8 / Balance Verification",
+    relatedModule: "Notices / Evictions",
+    property: "7-Unit",
+    unit: "Unit 4",
+    priority: "Critical",
+    status: "Open",
+    ownerApprovalRequired: "Yes",
+    proofNeeded: "Yes",
+    driveUpdateNeeded: "Yes",
+    calendarTaskNeeded: "Yes",
+    blockedUntilVerified: "Yes",
+    dueDate: "Immediate",
+    resultNotes: "Kevin Royster balance and Section 8 status must be verified before notice escalation.",
+    nextOwnerAction: "Verify ledger and Section 8/HAP status."
+  },
+  {
+    id: "ADMIN-2026-006",
+    taskTitle: "Track Greg Mckinney Payment Arrangement",
+    relatedModule: "Rent Collection",
+    property: "7-Unit",
+    unit: "Unit 1",
+    priority: "High",
+    status: "Open",
+    ownerApprovalRequired: "No",
+    proofNeeded: "Yes",
+    driveUpdateNeeded: "Yes",
+    calendarTaskNeeded: "Yes",
+    blockedUntilVerified: "Yes",
+    dueDate: "2026-05-20 and 2026-05-30",
+    resultNotes: "Expected $900 payments on May 20 and May 30. Do not mark received until proof is verified.",
+    nextOwnerAction: "Confirm payment proof."
+  },
+  {
+    id: "ADMIN-2026-007",
+    taskTitle: "Prepare Google Calendar / Task Sync Preview",
+    relatedModule: "Calendar Follow-Ups",
+    property: "All",
+    unit: "All",
+    priority: "Medium",
+    status: "Open",
+    ownerApprovalRequired: "Yes",
+    proofNeeded: "No",
+    driveUpdateNeeded: "No",
+    calendarTaskNeeded: "Yes",
+    blockedUntilVerified: "No",
+    dueDate: "Weekly",
+    resultNotes: "Preview only. No live Calendar or Task actions.",
+    nextOwnerAction: "Review proposed events/tasks."
+  },
+  {
+    id: "ADMIN-2026-008",
+    taskTitle: "Review Dashboard Data Accuracy",
+    relatedModule: "Dashboard",
+    property: "All",
+    unit: "All",
+    priority: "High",
+    status: "Open",
+    ownerApprovalRequired: "Yes",
+    proofNeeded: "Yes",
+    driveUpdateNeeded: "Yes",
+    calendarTaskNeeded: "No",
+    blockedUntilVerified: "Yes",
+    dueDate: "Weekly",
+    resultNotes: "Confirm local sample values match verified ledgers, proof, and owner records before live migration.",
+    nextOwnerAction: "Approve corrected source data."
   }
 ];
 
