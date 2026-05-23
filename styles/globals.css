@@ -2929,6 +2929,214 @@ tbody tr:hover {
   margin-top: 16px;
 }
 
+.notice-command-page {
+  display: grid;
+  gap: 22px;
+}
+
+.notice-command-header,
+.notice-health-panel,
+.notice-filter-panel,
+.notice-proof-panel,
+.notice-approval-panel,
+.notice-command-panel,
+.notice-action-card,
+.notice-blocked-panel,
+.notice-command-preview {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 18px;
+  background:
+    linear-gradient(145deg, rgba(235, 196, 112, 0.08), transparent 42%),
+    rgba(21, 19, 16, 0.9);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.18);
+}
+
+.notice-command-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: start;
+  border-color: rgba(235, 196, 112, 0.3);
+}
+
+.notice-command-header h2,
+.notice-health-panel h3,
+.notice-action-card h3,
+.notice-blocked-panel h3,
+.notice-proof-panel h3,
+.notice-approval-panel h3,
+.notice-command-panel h3 {
+  margin: 0;
+  color: var(--cream);
+}
+
+.notice-command-header p,
+.notice-health-panel p,
+.notice-action-card p,
+.notice-command-preview p {
+  color: var(--cream-muted);
+  line-height: 1.5;
+}
+
+.notice-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.notice-health-panel {
+  border-color: rgba(213, 106, 85, 0.36);
+}
+
+.notice-cause-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.notice-cause-grid article {
+  border: 1px solid rgba(213, 106, 85, 0.25);
+  border-radius: 8px;
+  padding: 14px;
+  background: rgba(213, 106, 85, 0.08);
+}
+
+.notice-cause-grid svg,
+.notice-blocked-panel li::marker {
+  color: var(--danger);
+}
+
+.notice-cause-grid strong,
+.notice-proof-grid span,
+.notice-approval-grid span,
+.notice-action-card footer {
+  display: block;
+  color: var(--cream);
+}
+
+.notice-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.notice-filter-grid label,
+.notice-filter-panel label {
+  color: var(--muted);
+  display: grid;
+  gap: 7px;
+  font-size: 0.74rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.notice-filter-grid select,
+.notice-filter-panel input {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(4, 4, 4, 0.55);
+  color: var(--cream);
+  padding: 11px 12px;
+}
+
+.notice-draft-grid,
+.notice-two-column {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.notice-action-card.yellow {
+  border-color: rgba(235, 196, 112, 0.34);
+}
+
+.notice-action-card.red,
+.notice-blocked-panel {
+  border-color: rgba(213, 106, 85, 0.38);
+}
+
+.notice-action-card footer {
+  margin-top: 14px;
+  color: var(--gold-soft);
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.notice-blocked-panel {
+  background:
+    linear-gradient(145deg, rgba(213, 106, 85, 0.12), transparent 42%),
+    rgba(21, 19, 16, 0.9);
+}
+
+.notice-action-card ul,
+.notice-blocked-panel ul {
+  margin: 12px 0 0;
+  padding-left: 20px;
+  color: var(--cream-muted);
+  line-height: 1.6;
+}
+
+.notice-proof-grid,
+.notice-approval-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.notice-proof-grid article,
+.notice-approval-grid span {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 13px;
+  background: rgba(8, 7, 6, 0.28);
+}
+
+.notice-proof-grid svg,
+.notice-approval-grid svg {
+  color: var(--gold);
+  flex: 0 0 auto;
+}
+
+.notice-command-button-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.notice-command-preview {
+  margin-top: 16px;
+}
+
+.risk-dot {
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 0.72rem;
+  font-weight: 900;
+  padding: 7px 10px;
+  text-transform: uppercase;
+}
+
+.risk-dot.green {
+  background: rgba(99, 190, 123, 0.16);
+  color: #bff3c7;
+}
+
+.risk-dot.yellow {
+  background: rgba(235, 196, 112, 0.18);
+  color: var(--gold-soft);
+}
+
+.risk-dot.red {
+  background: rgba(213, 106, 85, 0.18);
+  color: #ffd5ca;
+}
+
 @media (max-width: 900px) {
   .app-shell {
     grid-template-columns: 1fr;
@@ -3019,7 +3227,16 @@ tbody tr:hover {
   .mortgage-two-column,
   .mortgage-proof-grid,
   .mortgage-follow-grid,
-  .mortgage-command-button-grid {
+  .mortgage-command-button-grid,
+  .notice-command-header,
+  .notice-kpi-grid,
+  .notice-cause-grid,
+  .notice-filter-grid,
+  .notice-draft-grid,
+  .notice-two-column,
+  .notice-proof-grid,
+  .notice-approval-grid,
+  .notice-command-button-grid {
     grid-template-columns: 1fr;
   }
 }

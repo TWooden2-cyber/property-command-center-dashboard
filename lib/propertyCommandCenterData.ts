@@ -72,6 +72,9 @@ export type NoticeCommandRow = {
   amountOwed: string;
   noticeDate: string;
   status: string;
+  proofStatus?: string;
+  ownerAction?: string;
+  blockedAction?: string;
 };
 
 export type DocumentDraftStatus = {
@@ -498,7 +501,10 @@ export const noticeRows: NoticeCommandRow[] = [
     noticeType: "10-Day Notice for Nonpayment / Ledger Conflict",
     amountOwed: "$315.00",
     noticeDate: "2026-05-07",
-    status: "Ledger verification needed"
+    status: "Hold / Verify Ledger",
+    proofStatus: "Payment email found + overdue summary conflict",
+    ownerAction: "Verify RentRedi ledger and payment allocation",
+    blockedAction: "Do not serve/file until ledger is confirmed"
   },
   {
     id: "notice-2",
@@ -509,7 +515,10 @@ export const noticeRows: NoticeCommandRow[] = [
     noticeType: "10-Day Notice for Nonpayment",
     amountOwed: "$0.00",
     noticeDate: "2026-05-07",
-    status: "Draft status review"
+    status: "Closed / No Service",
+    proofStatus: "Payment email found",
+    ownerAction: "No action",
+    blockedAction: "Closed duplicate/payment superseded"
   },
   {
     id: "notice-3",
@@ -520,7 +529,10 @@ export const noticeRows: NoticeCommandRow[] = [
     noticeType: "10-Day Notice for Nonpayment",
     amountOwed: "$0.00",
     noticeDate: "2026-05-07",
-    status: "Maintenance sensitivity"
+    status: "Paid / Closed",
+    proofStatus: "Payment email found",
+    ownerAction: "Verify ledger only",
+    blockedAction: "Do not mail/file unless ledger later shows balance"
   },
   {
     id: "notice-4",
@@ -531,7 +543,10 @@ export const noticeRows: NoticeCommandRow[] = [
     noticeType: "10-Day Notice for Nonpayment",
     amountOwed: "$0.00",
     noticeDate: "2026-05-07",
-    status: "UPMC verification"
+    status: "Paid / Closed",
+    proofStatus: "Payment email found",
+    ownerAction: "Verify older balance only",
+    blockedAction: "Do not mail/file unless ledger later shows balance"
   },
   {
     id: "notice-5",
@@ -542,7 +557,10 @@ export const noticeRows: NoticeCommandRow[] = [
     noticeType: "Balance / Section 8 Contract Review",
     amountOwed: "Pending verification",
     noticeDate: "2026-05-11",
-    status: "Owner review"
+    status: "Active Review",
+    proofStatus: "Needs ledger and Section 8 verification",
+    ownerAction: "Verify tenant portion, Section 8 payment status, and ledger",
+    blockedAction: "Do not serve/escalate notice until verified"
   }
 ];
 
