@@ -2708,6 +2708,227 @@ tbody tr:hover {
   margin-top: 16px;
 }
 
+.mortgage-command-page {
+  display: grid;
+  gap: 22px;
+}
+
+.mortgage-command-header,
+.mortgage-health-panel,
+.mortgage-filter-panel,
+.mortgage-payoff-panel,
+.mortgage-proof-panel,
+.mortgage-command-panel,
+.mortgage-action-card,
+.mortgage-blocked-panel,
+.mortgage-command-preview {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 18px;
+  background:
+    linear-gradient(145deg, rgba(235, 196, 112, 0.08), transparent 42%),
+    rgba(21, 19, 16, 0.9);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.18);
+}
+
+.mortgage-command-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: start;
+  border-color: rgba(235, 196, 112, 0.3);
+}
+
+.mortgage-command-header h2,
+.mortgage-health-panel h3,
+.mortgage-payoff-panel h3,
+.mortgage-action-card h3,
+.mortgage-blocked-panel h3,
+.mortgage-command-panel h3 {
+  margin: 0;
+  color: var(--cream);
+}
+
+.mortgage-command-header p,
+.mortgage-health-panel p,
+.mortgage-payoff-panel p,
+.mortgage-action-card p,
+.mortgage-command-preview p {
+  color: var(--cream-muted);
+  line-height: 1.5;
+}
+
+.mortgage-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.mortgage-health-panel {
+  border-color: rgba(213, 106, 85, 0.4);
+}
+
+.mortgage-cause-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.mortgage-cause-grid article {
+  border: 1px solid rgba(213, 106, 85, 0.25);
+  border-radius: 8px;
+  padding: 14px;
+  background: rgba(213, 106, 85, 0.08);
+}
+
+.mortgage-cause-grid svg,
+.mortgage-blocked-panel li::marker {
+  color: var(--danger);
+}
+
+.mortgage-cause-grid strong,
+.mortgage-proof-grid span,
+.mortgage-follow-grid span {
+  display: block;
+  color: var(--cream);
+}
+
+.mortgage-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.mortgage-filter-grid label,
+.mortgage-filter-panel label {
+  color: var(--muted);
+  display: grid;
+  gap: 7px;
+  font-size: 0.74rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.mortgage-filter-grid select,
+.mortgage-filter-panel input {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(4, 4, 4, 0.55);
+  color: var(--cream);
+  padding: 11px 12px;
+}
+
+.mortgage-payoff-grid,
+.mortgage-proof-grid,
+.mortgage-follow-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.mortgage-payoff-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 12px;
+}
+
+.mortgage-payoff-grid article,
+.mortgage-proof-grid article,
+.mortgage-follow-grid span,
+.mortgage-mini-grid span {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 13px;
+  background: rgba(8, 7, 6, 0.28);
+}
+
+.mortgage-payoff-grid span,
+.mortgage-mini-grid span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.mortgage-payoff-grid strong,
+.mortgage-mini-grid strong {
+  display: block;
+  margin-top: 6px;
+  color: var(--cream);
+}
+
+.mortgage-progress {
+  height: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(235, 196, 112, 0.32);
+  border-radius: 999px;
+  background: rgba(213, 106, 85, 0.18);
+  margin-top: 16px;
+}
+
+.mortgage-progress-bar {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--danger), var(--gold));
+}
+
+.mortgage-two-column {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.mortgage-action-card ul,
+.mortgage-blocked-panel ul {
+  margin: 12px 0 0;
+  padding-left: 20px;
+  color: var(--cream-muted);
+  line-height: 1.6;
+}
+
+.mortgage-mini-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.mortgage-proof-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.mortgage-proof-grid article {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.mortgage-proof-grid svg {
+  color: var(--gold);
+  flex: 0 0 auto;
+}
+
+.mortgage-blocked-panel {
+  border-color: rgba(213, 106, 85, 0.38);
+  background:
+    linear-gradient(145deg, rgba(213, 106, 85, 0.12), transparent 42%),
+    rgba(21, 19, 16, 0.9);
+}
+
+.mortgage-follow-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 14px;
+}
+
+.mortgage-command-button-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.mortgage-command-preview {
+  margin-top: 16px;
+}
+
 @media (max-width: 900px) {
   .app-shell {
     grid-template-columns: 1fr;
@@ -2789,7 +3010,16 @@ tbody tr:hover {
   .maintenance-command-button-grid,
   .maintenance-warning-list,
   .maintenance-proof-grid,
-  .maintenance-tracker-grid {
+  .maintenance-tracker-grid,
+  .mortgage-command-header,
+  .mortgage-kpi-grid,
+  .mortgage-cause-grid,
+  .mortgage-filter-grid,
+  .mortgage-payoff-grid,
+  .mortgage-two-column,
+  .mortgage-proof-grid,
+  .mortgage-follow-grid,
+  .mortgage-command-button-grid {
     grid-template-columns: 1fr;
   }
 }

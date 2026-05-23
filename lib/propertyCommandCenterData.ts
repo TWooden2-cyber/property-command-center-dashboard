@@ -590,11 +590,11 @@ export const mortgageRows: MortgageCommandRow[] = [
     currentArrears: 0,
     payoffPlan: "Keep current",
     dueDate: "Monthly",
-    lastPaidDate: "",
-    confirmationSaved: "Current sample status",
+    lastPaidDate: "Unknown / verify",
+    confirmationSaved: "Pending / verify",
     notes: "Property manager takes 10% fee.",
     paidThisMonth: 2000,
-    nextOwnerAction: "Set and verify monthly allotment process."
+    nextOwnerAction: "Keep current and verify recurring payment process."
   }
 ];
 

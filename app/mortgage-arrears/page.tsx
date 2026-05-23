@@ -6,7 +6,10 @@ export default async function MortgageArrearsPage() {
   await requireOwnerSession();
 
   return (
-    <LuxuryShell title="Mortgage & Arrears" subtitle="Allotment setup, arrears risk, and payoff tracking">
+    <LuxuryShell
+      title="Mortgage / Allotment Command"
+      subtitle="Mortgage payment tracking, arrears status, payoff plan, allotment setup, proof confirmation, and owner financial risk controls."
+    >
       <MortgageArrearsView />
     </LuxuryShell>
   );
