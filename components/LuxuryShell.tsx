@@ -14,7 +14,13 @@ import {
   Settings,
   CalendarClock,
   DollarSign,
-  Zap
+  Zap,
+  FileWarning,
+  FileText,
+  FolderUp,
+  Mail,
+  BarChart3,
+  ShieldCheck
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -34,6 +40,12 @@ const navigation = [
   { href: "/mortgage-arrears", label: "Mortgage & Arrears", icon: Landmark },
   { href: "/admin-tasks", label: "Admin Tasks", icon: ClipboardList },
   { href: "/calendar-follow-ups", label: "Calendar & Follow-Ups", icon: CalendarClock },
+  { href: "/lease-violations", label: "Lease Violations", icon: FileWarning },
+  { href: "/draft-status", label: "Draft Status", icon: FileText },
+  { href: "/drive-update-center", label: "Drive Update Center", icon: FolderUp },
+  { href: "/gmail-follow-ups", label: "Gmail Follow-Ups", icon: Mail },
+  { href: "/reports", label: "Reports", icon: BarChart3 },
+  { href: "/data-accuracy", label: "Data Accuracy", icon: ShieldCheck },
   { href: "/settings", label: "Settings", icon: Settings }
 ] satisfies readonly NavItem[];
 

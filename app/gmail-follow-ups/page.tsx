@@ -3,12 +3,12 @@ import { LuxuryShell } from "@/components/LuxuryShell";
 import { CommandPageView } from "@/components/views/CommandPageView";
 import { commandPages } from "@/lib/remainingCommandCenterData";
 
-export default async function UtilitiesPage() {
+export default async function GmailFollowUpsPage() {
   await requireOwnerSession();
 
   return (
-    <LuxuryShell title="Utilities Command" subtitle="Utility usage, account setup, payment proof, paperless/autopay status, and due-date controls">
-      <CommandPageView config={commandPages.utilities} />
+    <LuxuryShell title="Gmail Follow-Up Center" subtitle="Email follow-up tracking, draft-needed items, readback approval gates, and communication safety controls">
+      <CommandPageView config={commandPages["gmail-follow-ups"]} />
     </LuxuryShell>
   );
 }

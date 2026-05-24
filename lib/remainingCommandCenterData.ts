@@ -1,0 +1,521 @@
+import type { SignalTone } from "@/lib/propertyCommandCenterData";
+
+export type CommandTableRow = {
+  id: string;
+  values: Record<string, string>;
+  tone?: SignalTone;
+};
+
+export type CommandTableColumn = {
+  key: string;
+  header: string;
+};
+
+export type CommandButtonConfig = {
+  id: string;
+  title: string;
+  actionName: string;
+  controls: string;
+  tone: SignalTone;
+  prompt: string;
+};
+
+export type CommandPageConfig = {
+  id: string;
+  title: string;
+  subtitle: string;
+  localNotice: string;
+  healthStatus: string;
+  healthDetail: string;
+  kpis: Array<{ label: string; value: string; helper: string; tone: SignalTone }>;
+  tableColumns: CommandTableColumn[];
+  tableRows: CommandTableRow[];
+  queues: Array<{ title: string; detail: string; items: string[]; tone: SignalTone }>;
+  blocked: string[];
+  approvalGate: string[];
+  filters: string[];
+  commands: CommandButtonConfig[];
+  safetyFooter: string;
+};
+
+const commonStopRules = [
+  "Owner approval required before live actions.",
+  "Live writes disabled from dashboard.",
+  "Preview/copy command only.",
+  "Local Sample Mode is not a live source of truth."
+];
+
+function commandPrompt(title: string, body: string) {
+  return `${title}
+
+Rules:
+- Read-only/local review first.
+- Do not perform live Google Drive, Gmail, Calendar, Google Tasks, Sheets, RentRedi, tenant, legal, payment, lender, vendor, court, or banking actions without owner approval.
+- Prepare a preview only.
+${body}
+- Stop before all live actions.`;
+}
+
+export const commandPages: Record<string, CommandPageConfig> = {
+  utilities: {
+    id: "utilities",
+    title: "Utilities Command",
+    subtitle: "Utility usage, account setup, payment proof, paperless/autopay status, and due-date controls.",
+    localNotice: "No live Google Sheets, utility provider, bank, Drive, Gmail, Calendar, or Task updates.",
+    healthStatus: "Stable / Setup Watch",
+    healthDetail:
+      "Utility costs are inside the local sample threshold, but account setup, paperless/autopay confirmation, and payment proof remain review items before anything can be treated as verified.",
+    kpis: [
+      { label: "Total Utilities", value: "$403.00", helper: "May local sample total", tone: "green" },
+      { label: "Electric", value: "$210.00", helper: "Duquesne Light / account setup watch", tone: "yellow" },
+      { label: "Gas", value: "$64.00", helper: "No spike flagged", tone: "green" },
+      { label: "Water", value: "$72.00", helper: "Proof needed", tone: "yellow" },
+      { label: "Sewer", value: "$38.00", helper: "Local sample entry", tone: "green" },
+      { label: "Trash", value: "$19.00", helper: "Local sample entry", tone: "green" },
+      { label: "Internet / Other", value: "$0.00", helper: "No active bill in sample", tone: "green" },
+      { label: "Payment Proof Needed", value: "3", helper: "Bills/receipts to verify", tone: "yellow" },
+      { label: "Account Setup Needed", value: "1", helper: "Duquesne Light paperless/autopay", tone: "yellow" }
+    ],
+    tableColumns: [
+      { key: "utility", header: "Utility" },
+      { key: "provider", header: "Provider" },
+      { key: "property", header: "Property" },
+      { key: "account", header: "Account Setup" },
+      { key: "paperless", header: "Paperless / Autopay" },
+      { key: "cost", header: "Total Cost" },
+      { key: "due", header: "Due Date" },
+      { key: "proof", header: "Payment Proof" },
+      { key: "status", header: "Status" },
+      { key: "ownerAction", header: "Owner Action" }
+    ],
+    tableRows: [
+      {
+        id: "utility-electric",
+        tone: "yellow",
+        values: {
+          utility: "Electric",
+          provider: "Duquesne Light",
+          property: "7-Unit",
+          account: "Paperless setup confirmed / verify account file",
+          paperless: "Setup watch",
+          cost: "$210.00",
+          due: "2026-05-20",
+          proof: "Bill/receipt needed",
+          status: "Review",
+          ownerAction: "Confirm account setup and save proof later"
+        }
+      },
+      {
+        id: "utility-gas",
+        values: {
+          utility: "Gas",
+          provider: "Local sample provider",
+          property: "7-Unit",
+          account: "Verify account",
+          paperless: "Unknown",
+          cost: "$64.00",
+          due: "2026-05-22",
+          proof: "Needed",
+          status: "Open",
+          ownerAction: "Confirm bill and account status"
+        }
+      },
+      {
+        id: "utility-water",
+        values: {
+          utility: "Water",
+          provider: "Water authority",
+          property: "4-Unit",
+          account: "Verify",
+          paperless: "Not set",
+          cost: "$72.00",
+          due: "2026-05-25",
+          proof: "Needed",
+          status: "Open",
+          ownerAction: "Verify bill/payment proof"
+        }
+      },
+      {
+        id: "utility-sewer",
+        values: {
+          utility: "Sewer",
+          provider: "Sewer authority",
+          property: "4-Unit",
+          account: "Local sample",
+          paperless: "Unknown",
+          cost: "$38.00",
+          due: "2026-05-25",
+          proof: "Review",
+          status: "Open",
+          ownerAction: "Confirm bill source"
+        }
+      },
+      {
+        id: "utility-trash",
+        values: {
+          utility: "Trash",
+          provider: "Waste provider",
+          property: "All",
+          account: "Local sample",
+          paperless: "Unknown",
+          cost: "$19.00",
+          due: "2026-05-28",
+          proof: "Review",
+          status: "Open",
+          ownerAction: "Confirm payment proof"
+        }
+      },
+      {
+        id: "utility-other",
+        values: {
+          utility: "Internet / Other",
+          provider: "None active",
+          property: "All",
+          account: "Not applicable",
+          paperless: "Not applicable",
+          cost: "$0.00",
+          due: "None",
+          proof: "Not needed",
+          status: "No active bill",
+          ownerAction: "No action in local sample data"
+        }
+      }
+    ],
+    queues: [
+      { title: "Account Setup Tracker", detail: "Utility accounts needing setup or owner verification.", items: ["Duquesne Light paperless/account setup", "Water account source verification", "Gas account proof review"], tone: "yellow" },
+      { title: "Payment Proof Checklist", detail: "Proof needed before utility entries are treated as verified.", items: ["Bill/receipt copy", "Payment confirmation", "Account number redacted where needed", "Due date confirmed"], tone: "yellow" },
+      { title: "Utility Due-Date Queue", detail: "Local sample due dates only; no provider payments are made.", items: ["Electric due 2026-05-20", "Gas due 2026-05-22", "Water/Sewer due 2026-05-25", "Trash due 2026-05-28"], tone: "green" }
+    ],
+    blocked: [
+      "Do not mark a utility bill paid until proof is verified.",
+      "Do not set paperless/autopay status complete until account setup proof is saved.",
+      "Do not update Drive, Calendar, or Tasks from this dashboard."
+    ],
+    approvalGate: commonStopRules,
+    filters: ["Utility Type", "Property", "Provider", "Payment Proof Needed", "Account Setup Needed", "Status", "Search notes"],
+    commands: [
+      { id: "utility-review", title: "Codex Command - Utility Review", actionName: "Generate Codex Command: Utility Review", controls: "Utility costs, due dates, account setup, paperless/autopay, and proof gaps.", tone: "yellow", prompt: commandPrompt("Run a Utility Review for the Property Command Center.", "- Review utility costs, account setup, paperless/autopay, payment proof, due dates, owner approvals, and blocked items.") },
+      { id: "utility-proof", title: "Codex Command - Utility Proof Checklist", actionName: "Generate Codex Command: Utility Proof Checklist", controls: "Proof list for bills, receipts, payment status, and account setup.", tone: "yellow", prompt: commandPrompt("Prepare a Utility Proof Checklist.", "- Identify bill, receipt, account setup, and payment confirmation proof needed before closure.") },
+      { id: "utility-account", title: "Codex Command - Utility Account Setup Prep", actionName: "Generate Codex Command: Utility Account Setup Prep", controls: "Account setup and paperless/autopay preparation checklist.", tone: "yellow", prompt: commandPrompt("Prepare Utility Account Setup Prep.", "- Prepare a checklist for account setup, paperless/autopay review, proof capture, and follow-up tracking.") },
+      { id: "utility-drive", title: "Codex Command - Utility Drive Update Prep", actionName: "Generate Codex Command: Utility Drive Update Prep", controls: "Preview-only utility proof folder update package.", tone: "green", prompt: commandPrompt("Prepare a Google Drive utility update package.", "- Do not upload, move, rename, delete, or update files. Preview folder/package needs only.") },
+      { id: "utility-calendar", title: "Codex Command - Utility Calendar / Task Prep", actionName: "Generate Codex Command: Utility Calendar / Task Prep", controls: "Preview utility due-date follow-ups and future task candidates.", tone: "green", prompt: commandPrompt("Prepare Utility Calendar and Task previews.", "- Preview due-date follow-ups and future Google Task candidates. Do not create events or tasks.") }
+    ],
+    safetyFooter: "No provider, bank, Drive, Gmail, Calendar, Task, Sheet, or live utility account action occurs from this dashboard."
+  },
+  "lease-violations": {
+    id: "lease-violations",
+    title: "Lease Violations Command",
+    subtitle: "Lease issue tracking, proof status, owner approval, communication review, and blocked legal-sensitive actions.",
+    localNotice: "No live tenant communication, legal notice, Drive, Gmail, Calendar, Task, or Sheets updates.",
+    healthStatus: "Watch / Proof First",
+    healthDetail: "Lease issue tracking is preview-only. Proof and owner approval are required before communication, notice review, or escalation.",
+    kpis: [
+      { label: "Active Lease Issues", value: "4", helper: "Local sample watch items", tone: "yellow" },
+      { label: "Proof Needed", value: "4", helper: "Proof required before action", tone: "red" },
+      { label: "Owner Approval Required", value: "5", helper: "Before communication/escalation", tone: "yellow" },
+      { label: "Communication Needed", value: "2", helper: "Draft only", tone: "yellow" },
+      { label: "Closed / Resolved", value: "1", helper: "Sample resolved item", tone: "green" },
+      { label: "Blocked Until Verified", value: "4", helper: "Do not escalate", tone: "red" }
+    ],
+    tableColumns: [
+      { key: "property", header: "Property" },
+      { key: "unit", header: "Unit" },
+      { key: "tenant", header: "Tenant" },
+      { key: "issue", header: "Issue Type" },
+      { key: "date", header: "Date Reported" },
+      { key: "proof", header: "Proof Status" },
+      { key: "communication", header: "Communication Status" },
+      { key: "ownerAction", header: "Owner Action" },
+      { key: "risk", header: "Risk" },
+      { key: "status", header: "Status" }
+    ],
+    tableRows: [
+      { id: "lease-1", tone: "yellow", values: { property: "7-Unit", unit: "Common", tenant: "Local sample", issue: "Unauthorized occupancy", date: "2026-05-10", proof: "Needed", communication: "Draft only", ownerAction: "Verify proof before action", risk: "High", status: "Owner Review" } },
+      { id: "lease-2", tone: "yellow", values: { property: "7-Unit", unit: "Unit 2", tenant: "Marc Gosselin", issue: "Noise/complaint", date: "2026-05-09", proof: "Needed", communication: "Review needed", ownerAction: "Collect details", risk: "Medium", status: "Open" } },
+      { id: "lease-3", tone: "green", values: { property: "4-Unit", unit: "Common", tenant: "Common area", issue: "Cleanliness/common area issue", date: "2026-05-06", proof: "Saved in sample", communication: "No message needed", ownerAction: "Monitor", risk: "Low", status: "Resolved" } },
+      { id: "lease-4", tone: "red", values: { property: "7-Unit", unit: "Unit 6", tenant: "Jennifer Badger", issue: "Maintenance access issue", date: "2026-05-12", proof: "Missing", communication: "Owner approval required", ownerAction: "Confirm safety/proof path", risk: "Critical", status: "Blocked" } },
+      { id: "lease-5", tone: "red", values: { property: "7-Unit", unit: "Unit 4", tenant: "Kevin Royster", issue: "Payment-related lease concern", date: "2026-05-11", proof: "Ledger/HAP proof needed", communication: "Blocked", ownerAction: "Verify Section 8/HAP first", risk: "Critical", status: "Blocked Until Verified" } }
+    ],
+    queues: [
+      { title: "Proof Checklist", detail: "Required before communication or escalation.", items: ["Photo/proof link", "Communication log", "Lease clause reference", "Owner review note"], tone: "red" },
+      { title: "Communication Review Queue", detail: "Draft-only review items.", items: ["Unauthorized occupancy draft review", "Noise/complaint clarification", "Maintenance access owner-approved wording"], tone: "yellow" },
+      { title: "Owner Approval Gate", detail: "No legal-sensitive action without owner approval.", items: ["Communication approval", "Notice review approval", "Proof acceptance", "Escalation decision"], tone: "yellow" }
+    ],
+    blocked: [
+      "Do not send tenant communications from this dashboard.",
+      "Do not escalate any lease issue without proof and owner approval.",
+      "Do not create, serve, file, or upload notices from this page."
+    ],
+    approvalGate: commonStopRules,
+    filters: ["Property", "Unit", "Tenant", "Issue Type", "Proof Needed", "Communication Needed", "Blocked", "Status", "Search issue text"],
+    commands: [
+      { id: "lease-review", title: "Codex Command - Lease Violation Review", actionName: "Generate Codex Command: Lease Violation Review", controls: "Lease issue status, proof, communication review, and blocked items.", tone: "yellow", prompt: commandPrompt("Run a Lease Violations review.", "- Review lease issues, proof gaps, owner approvals, communication needs, and blocked legal-sensitive actions.") },
+      { id: "lease-proof", title: "Codex Command - Lease Proof Checklist", actionName: "Generate Codex Command: Lease Proof Checklist", controls: "Proof checklist grouped by issue.", tone: "red", prompt: commandPrompt("Prepare a Lease Violation Proof Checklist.", "- Identify proof needed for each issue and what remains blocked until verified.") },
+      { id: "lease-comm", title: "Codex Command - Lease Communication Review", actionName: "Generate Codex Command: Lease Communication Review", controls: "Draft-only communication review.", tone: "yellow", prompt: commandPrompt("Prepare lease communication drafts for owner review.", "- Draft only. Do not contact tenants, vendors, agencies, or legal systems.") }
+    ],
+    safetyFooter: "No tenant, legal, notice, Gmail, Drive, Calendar, Task, or Sheet action occurs from this dashboard."
+  },
+  "draft-status": {
+    id: "draft-status",
+    title: "Draft Status / Document Drafts Command",
+    subtitle: "Draft notices, tenant messages, owner letters, vendor messages, reports, and document-review status.",
+    localNotice: "No final legal notices, Gmail drafts/sends, Drive uploads, or tenant/vendor communications.",
+    healthStatus: "Watch / Owner Review Required",
+    healthDetail: "Drafts are preview-only and require owner approval plus proof checks before use. Legal-sensitive drafts stay blocked until verified.",
+    kpis: [
+      { label: "Drafts in Review", value: "7", helper: "Local sample draft queue", tone: "yellow" },
+      { label: "Owner Approval Required", value: "7", helper: "Before use", tone: "yellow" },
+      { label: "Proof Needed Before Use", value: "4", helper: "Proof/ledger gaps", tone: "red" },
+      { label: "Legal-Sensitive Drafts", value: "2", helper: "Notice/eviction drafts", tone: "red" },
+      { label: "Ready for Review", value: "3", helper: "Preview-ready only", tone: "yellow" },
+      { label: "Blocked Drafts", value: "2", helper: "Verification missing", tone: "red" }
+    ],
+    tableColumns: [
+      { key: "draftId", header: "Draft ID" },
+      { key: "type", header: "Draft Type" },
+      { key: "module", header: "Related Module" },
+      { key: "property", header: "Property" },
+      { key: "unit", header: "Unit" },
+      { key: "recipient", header: "Tenant/Vendor/Recipient" },
+      { key: "status", header: "Status" },
+      { key: "approval", header: "Owner Approval Required" },
+      { key: "proof", header: "Proof Needed" },
+      { key: "legal", header: "Legal Sensitive" },
+      { key: "next", header: "Next Action" }
+    ],
+    tableRows: [
+      { id: "draft-1", tone: "red", values: { draftId: "DRAFT-001", type: "10-Day Notice Draft", module: "Notices / Evictions", property: "7-Unit", unit: "Unit 2", recipient: "Marc Gosselin", status: "Blocked by ledger verification", approval: "Yes", proof: "Yes", legal: "Yes", next: "Verify ledger before use" } },
+      { id: "draft-2", tone: "red", values: { draftId: "DRAFT-002", type: "Eviction Packet Draft", module: "Notices / Evictions", property: "7-Unit", unit: "Multiple", recipient: "Owner/legal review", status: "Draft tracking only", approval: "Yes", proof: "Yes", legal: "Yes", next: "Do not file or upload" } },
+      { id: "draft-3", tone: "yellow", values: { draftId: "DRAFT-003", type: "Maintenance Follow-Up Message", module: "Maintenance", property: "7-Unit", unit: "Unit 6", recipient: "Tenant", status: "Ready for owner review", approval: "Yes", proof: "Yes", legal: "No", next: "Review safety-aware wording" } },
+      { id: "draft-4", values: { draftId: "DRAFT-004", type: "Rent Follow-Up Message", module: "Rent Collection", property: "7-Unit", unit: "Unit 1", recipient: "Greg Mckinney", status: "Draft only", approval: "Yes", proof: "Yes", legal: "No", next: "Verify arrangement status" } },
+      { id: "draft-5", values: { draftId: "DRAFT-005", type: "Vendor Request Message", module: "Maintenance", property: "7-Unit", unit: "Unit 6", recipient: "Vendor TBD", status: "Draft only", approval: "Yes", proof: "No", legal: "No", next: "Owner picks vendor path" } },
+      { id: "draft-6", tone: "green", values: { draftId: "DRAFT-006", type: "Weekly Command Review Report", module: "Reports", property: "All", unit: "All", recipient: "Owner", status: "Ready for review", approval: "Yes", proof: "No", legal: "No", next: "Review preview" } },
+      { id: "draft-7", tone: "yellow", values: { draftId: "DRAFT-007", type: "Google Drive Update Package", module: "Drive Update Center", property: "All", unit: "All", recipient: "Owner", status: "Preview package", approval: "Yes", proof: "Yes", legal: "No", next: "Approve only after proof review" } }
+    ],
+    queues: [
+      { title: "Draft Safety Gate", detail: "Drafts are not final records.", items: ["Owner approval required", "Proof needed before use", "Legal-sensitive drafts blocked", "No automatic documents"], tone: "red" },
+      { title: "Owner Approval Queue", detail: "Drafts needing owner review.", items: ["10-Day Notice Draft", "Eviction Packet Draft", "Maintenance Follow-Up Message", "Drive Update Package"], tone: "yellow" },
+      { title: "Proof Needed Before Use", detail: "Drafts blocked by missing verification.", items: ["Ledger confirmation", "Service/proof status", "Maintenance completion proof", "Payment/HAP status"], tone: "red" }
+    ],
+    blocked: ["Do not send, serve, file, upload, or finalize drafts.", "Do not treat a draft as legal approval.", "Do not create Gmail drafts from this dashboard."],
+    approvalGate: commonStopRules,
+    filters: ["Draft Type", "Related Module", "Property", "Status", "Owner Approval", "Proof Needed", "Legal Sensitive", "Blocked", "Search draft text"],
+    commands: [
+      { id: "draft-review", title: "Codex Command - Draft Status Review", actionName: "Generate Codex Command: Draft Status Review", controls: "Draft queue, proof gaps, legal sensitivity, and owner approvals.", tone: "yellow", prompt: commandPrompt("Run a Draft Status review.", "- Review drafts, approval gates, proof-needed-before-use, legal-sensitive items, and blocked drafts.") },
+      { id: "draft-proof", title: "Codex Command - Draft Proof Review", actionName: "Generate Codex Command: Draft Proof Review", controls: "Proof requirements before drafts can be used.", tone: "red", prompt: commandPrompt("Prepare draft proof requirements.", "- Identify proof needed before any draft can be used, sent, served, uploaded, or filed.") },
+      { id: "draft-package", title: "Codex Command - Draft Package Preview", actionName: "Generate Codex Command: Draft Package Preview", controls: "Preview package for owner review.", tone: "green", prompt: commandPrompt("Prepare a draft package preview.", "- Prepare a preview list only. Do not create, send, serve, file, upload, or finalize documents.") }
+    ],
+    safetyFooter: "No legal notice, Gmail draft, Drive file, tenant message, vendor message, or report export is created from this dashboard."
+  },
+  "drive-update-center": {
+    id: "drive-update-center",
+    title: "Google Drive Update Center",
+    subtitle: "Preview-only Drive update packages, proof folders, weekly archives, dashboard exports, and owner approval gates.",
+    localNotice: "No Google Drive upload, move, rename, delete, or update happens from this dashboard.",
+    healthStatus: "Watch / Preview Ready",
+    healthDetail: "Drive packages are ready for preview, but proof gaps and owner approval gates block any live Drive write.",
+    kpis: [
+      { label: "Drive Updates Needed", value: "7", helper: "Preview packages", tone: "yellow" },
+      { label: "Proof Files Needed", value: "5", helper: "Before archive/update", tone: "red" },
+      { label: "Weekly Archive Needed", value: "1", helper: "Friday package", tone: "yellow" },
+      { label: "Owner Approval Required", value: "7", helper: "Before Drive writes", tone: "yellow" },
+      { label: "Blocked Until Verified", value: "4", helper: "Proof missing", tone: "red" },
+      { label: "Ready for Preview", value: "3", helper: "Preview-only packages", tone: "green" }
+    ],
+    tableColumns: [
+      { key: "package", header: "Package Name" },
+      { key: "module", header: "Related Module" },
+      { key: "property", header: "Property" },
+      { key: "proof", header: "Proof Needed" },
+      { key: "folder", header: "Folder Target" },
+      { key: "action", header: "Drive Action Type" },
+      { key: "status", header: "Status" },
+      { key: "approval", header: "Owner Approval Required" },
+      { key: "blocked", header: "Blocked Until Verified" }
+    ],
+    tableRows: [
+      { id: "drive-1", values: { package: "Weekly Property Command Review Archive", module: "Reports", property: "All", proof: "Dashboard review", folder: "Weekly Archives", action: "Preview archive", status: "Ready for preview", approval: "Yes", blocked: "No" } },
+      { id: "drive-2", tone: "red", values: { package: "Mortgage Proof Package", module: "Mortgage / Allotment", property: "7-Unit", proof: "Lender posting proof", folder: "Mortgage Proof", action: "Proof package", status: "Blocked", approval: "Yes", blocked: "Yes" } },
+      { id: "drive-3", tone: "red", values: { package: "Maintenance Proof Package", module: "Maintenance", property: "7-Unit", proof: "Tenant/vendor confirmation", folder: "Maintenance Proof", action: "Proof package", status: "Blocked", approval: "Yes", blocked: "Yes" } },
+      { id: "drive-4", values: { package: "Rent Payment Proof Package", module: "Rent Collection", property: "All", proof: "Payment/ledger proof", folder: "Rent Proof", action: "Proof package", status: "Review", approval: "Yes", blocked: "Yes" } },
+      { id: "drive-5", tone: "red", values: { package: "Notice / Legal Proof Package", module: "Notices / Evictions", property: "7-Unit", proof: "Ledger/service proof", folder: "Notice Proof", action: "Legal proof package", status: "Blocked", approval: "Yes", blocked: "Yes" } },
+      { id: "drive-6", values: { package: "Utility Account Proof Package", module: "Utilities", property: "All", proof: "Account/bill proof", folder: "Utilities", action: "Proof package", status: "Review", approval: "Yes", blocked: "No" } },
+      { id: "drive-7", tone: "green", values: { package: "Dashboard Snapshot Archive", module: "Dashboard", property: "All", proof: "Owner review", folder: "Dashboard Snapshots", action: "Preview archive", status: "Ready for preview", approval: "Yes", blocked: "No" } }
+    ],
+    queues: [
+      { title: "Folder Preview Only", detail: "Folder targets are display-only.", items: ["Weekly Archives", "Mortgage Proof", "Maintenance Proof", "Rent Proof", "Notice Proof"], tone: "green" },
+      { title: "Proof Missing Queue", detail: "Packages blocked by missing proof.", items: ["Mortgage posting proof", "Maintenance completion proof", "Rent ledger proof", "Notice/service proof"], tone: "red" },
+      { title: "Drive Action Safety Rules", detail: "Drive writes require explicit owner approval.", items: ["No upload", "No move", "No rename", "No delete", "No update"], tone: "red" }
+    ],
+    blocked: ["No Drive upload, move, rename, delete, or update happens from this dashboard.", "Do not archive proof packages until proof is verified.", "Do not treat preview folder targets as live Drive changes."],
+    approvalGate: commonStopRules,
+    filters: ["Package", "Related Module", "Property", "Proof Needed", "Status", "Blocked", "Owner Approval", "Search package text"],
+    commands: [
+      { id: "drive-review", title: "Codex Command - Drive Update Center Review", actionName: "Generate Codex Command: Drive Update Center Review", controls: "Drive package preview, proof gaps, owner approvals, and blocked packages.", tone: "yellow", prompt: commandPrompt("Run a Drive Update Center review.", "- Review Drive package needs, proof gaps, folder targets, blocked items, and owner approvals. Do not write files.") },
+      { id: "drive-package", title: "Codex Command - Drive Package Prep", actionName: "Generate Codex Command: Drive Package Prep", controls: "Preview package contents only.", tone: "green", prompt: commandPrompt("Prepare Google Drive update package previews.", "- Report what would be updated and stop before any Drive write.") },
+      { id: "drive-proof", title: "Codex Command - Drive Proof Gap Review", actionName: "Generate Codex Command: Drive Proof Gap Review", controls: "Proof missing queue grouped by module.", tone: "red", prompt: commandPrompt("Prepare a Drive proof gap review.", "- Identify missing proof files and blocked packages. Do not upload or move files.") }
+    ],
+    safetyFooter: "No Google Drive files were uploaded, moved, renamed, deleted, updated, read, or created by this dashboard."
+  }
+};
+
+commandPages["gmail-follow-ups"] = {
+  id: "gmail-follow-ups",
+  title: "Gmail Follow-Up Center",
+  subtitle: "Email follow-up tracking, draft-needed items, readback approval gates, and communication safety controls.",
+  localNotice: "No Gmail bodies are read, no drafts are created, and no emails are sent from this dashboard.",
+  healthStatus: "Watch / Communication Approval Required",
+  healthDetail: "Several follow-ups may need email review later, but Gmail body reads, drafts, sends, labels, archives, and deletes remain disabled.",
+  kpis: [
+    { label: "Email Follow-Ups", value: "7", helper: "Local sample topics", tone: "yellow" },
+    { label: "Draft Needed", value: "5", helper: "Draft only after approval", tone: "yellow" },
+    { label: "Owner Approval Required", value: "7", helper: "Before any Gmail action", tone: "yellow" },
+    { label: "Gmail Body Read Approval Needed", value: "4", helper: "Metadata/search first", tone: "red" },
+    { label: "Blocked Until Verified", value: "4", helper: "Proof/ledger gaps", tone: "red" },
+    { label: "Closed / No Email Needed", value: "1", helper: "Sample item closed", tone: "green" }
+  ],
+  tableColumns: [
+    { key: "id", header: "Follow-Up ID" },
+    { key: "module", header: "Related Module" },
+    { key: "recipient", header: "Recipient Type" },
+    { key: "property", header: "Property" },
+    { key: "unit", header: "Unit" },
+    { key: "topic", header: "Subject / Topic" },
+    { key: "draft", header: "Draft Needed" },
+    { key: "body", header: "Gmail Body Read Needed" },
+    { key: "send", header: "Send Approval Required" },
+    { key: "status", header: "Status" },
+    { key: "next", header: "Next Owner Action" }
+  ],
+  tableRows: [
+    { id: "gmail-1", tone: "red", values: { id: "GMAIL-001", module: "Maintenance", recipient: "Tenant", property: "7-Unit", unit: "Unit 6", topic: "Maintenance follow-up", draft: "Yes", body: "Approval needed", send: "Yes", status: "Blocked", next: "Verify proof and approve draft path" } },
+    { id: "gmail-2", tone: "yellow", values: { id: "GMAIL-002", module: "Rent Collection", recipient: "Tenant / ledger", property: "7-Unit", unit: "Unit 2", topic: "Rent ledger verification", draft: "As needed", body: "Approval needed", send: "Yes", status: "Review", next: "Verify ledger conflict first" } },
+    { id: "gmail-3", tone: "red", values: { id: "GMAIL-003", module: "Mortgage / Allotment", recipient: "Lender/MBFS", property: "7-Unit", unit: "All", topic: "Mortgage proof follow-up", draft: "Yes", body: "Approval needed", send: "Yes", status: "Owner Approval Required", next: "Confirm proof request path" } },
+    { id: "gmail-4", values: { id: "GMAIL-004", module: "Utilities", recipient: "Provider", property: "7-Unit", unit: "Common", topic: "Utility account follow-up", draft: "Maybe", body: "No", send: "Yes", status: "Open", next: "Review account proof need" } },
+    { id: "gmail-5", values: { id: "GMAIL-005", module: "Rent Collection", recipient: "Property manager", property: "4-Unit", unit: "All", topic: "Property manager follow-up", draft: "Yes", body: "Approval needed", send: "Yes", status: "Open", next: "Confirm PM data questions" } },
+    { id: "gmail-6", values: { id: "GMAIL-006", module: "Maintenance", recipient: "Vendor", property: "7-Unit", unit: "Unit 6", topic: "Vendor follow-up", draft: "Yes", body: "No", send: "Yes", status: "Draft Only", next: "Owner selects vendor path" } },
+    { id: "gmail-7", tone: "red", values: { id: "GMAIL-007", module: "Notices / Evictions", recipient: "Owner/legal review", property: "7-Unit", unit: "Unit 4", topic: "Notice/legal draft review", draft: "Yes", body: "Approval needed", send: "Yes", status: "Blocked Until Verified", next: "Verify ledger/HAP before any communication" } }
+  ],
+  queues: [
+    { title: "Gmail Safety Gate", detail: "No Gmail action from dashboard.", items: ["No body reads", "No drafts created", "No sends", "No labels/archive/delete"], tone: "red" },
+    { title: "Draft-Needed Queue", detail: "Drafts are future owner-reviewed prompts only.", items: ["Maintenance follow-up", "Mortgage proof follow-up", "PM follow-up", "Vendor follow-up"], tone: "yellow" },
+    { title: "Body-Read Approval Queue", detail: "Gmail body read requires owner approval.", items: ["Rent ledger emails", "Mortgage proof emails", "Maintenance proof emails", "Notice/legal proof emails"], tone: "red" }
+  ],
+  blocked: ["Do not read Gmail bodies without owner approval.", "Do not create Gmail drafts or send messages from this dashboard.", "Do not contact tenants, vendors, lenders, agencies, or property managers."],
+  approvalGate: commonStopRules,
+  filters: ["Related Module", "Recipient Type", "Property", "Draft Needed", "Body Read Needed", "Send Approval", "Blocked", "Status", "Search topic"],
+  commands: [
+    { id: "gmail-review", title: "Codex Command - Gmail Follow-Up Review", actionName: "Generate Codex Command: Gmail Follow-Up Review", controls: "Email follow-ups, draft needs, body-read approvals, send approvals, and blocked items.", tone: "yellow", prompt: commandPrompt("Run a Gmail Follow-Up Center review.", "- Metadata/search first. Identify follow-up topics, draft needs, body-read approvals, send approvals, and blocked items.") },
+    { id: "gmail-drafts", title: "Codex Command - Gmail Draft Prep", actionName: "Generate Codex Command: Gmail Draft Prep", controls: "Draft-needed queue for owner review.", tone: "yellow", prompt: commandPrompt("Prepare Gmail draft previews.", "- Draft language only in the report. Do not create Gmail drafts or send messages.") },
+    { id: "gmail-proof", title: "Codex Command - Gmail Proof Tracking", actionName: "Generate Codex Command: Gmail Proof Tracking", controls: "Proof emails that may need approval before read/save.", tone: "red", prompt: commandPrompt("Prepare Gmail proof tracking review.", "- Identify proof email topics that need owner approval before body read or Drive save.") }
+  ],
+  safetyFooter: "No Gmail bodies were read; no drafts, sends, labels, archives, deletes, or forwards were performed by this dashboard."
+};
+
+commandPages.reports = {
+  id: "reports",
+  title: "Reports / Weekly Command Review",
+  subtitle: "Weekly owner review, operational health, cashflow snapshot, proof gaps, blocked items, and approval decisions.",
+  localNotice: "Report generation is preview-only and no Drive export/upload occurs.",
+  healthStatus: "Watch / Weekly Review Ready",
+  healthDetail: "The weekly report preview is ready, but proof gaps, approval decisions, and blocked items remain before any export or live action.",
+  kpis: [
+    { label: "Open Risk Items", value: "12", helper: "Across command center", tone: "red" },
+    { label: "Owner Approvals", value: "9", helper: "Before live actions", tone: "yellow" },
+    { label: "Proof Gaps", value: "8", helper: "Before closure", tone: "red" },
+    { label: "Financial Watch Items", value: "4", helper: "Rent/mortgage/utilities", tone: "red" },
+    { label: "Maintenance Critical", value: "1", helper: "Unit 6 safety issue", tone: "red" },
+    { label: "Legal / Notice Holds", value: "3", helper: "Verification needed", tone: "yellow" },
+    { label: "Drive Updates Needed", value: "7", helper: "Preview packages", tone: "yellow" },
+    { label: "Calendar / Task Items", value: "11", helper: "Local suspense queue", tone: "yellow" }
+  ],
+  tableColumns: [
+    { key: "section", header: "Review Section" },
+    { key: "status", header: "Status" },
+    { key: "summary", header: "Summary" },
+    { key: "proof", header: "Proof Needed" },
+    { key: "approval", header: "Owner Approval" },
+    { key: "next", header: "Next 7 Days / Action" }
+  ],
+  tableRows: [
+    { id: "report-1", values: { section: "Executive Summary", status: "Watch", summary: "Critical mortgage/maintenance risks remain.", proof: "Yes", approval: "Yes", next: "Review before export" } },
+    { id: "report-2", values: { section: "Rent Collection Review", status: "Watch", summary: "Balances and verification items remain.", proof: "Yes", approval: "Yes", next: "Verify Unit 1/2/4/A/7 items" } },
+    { id: "report-3", tone: "red", values: { section: "Maintenance Review", status: "Critical", summary: "Unit 6 heat/breathing issue open.", proof: "Yes", approval: "Yes", next: "Confirm proof and response path" } },
+    { id: "report-4", tone: "red", values: { section: "Mortgage / Arrears Review", status: "Critical", summary: "MBFS posting confirmation pending.", proof: "Yes", approval: "Yes", next: "Confirm lender posting" } },
+    { id: "report-5", values: { section: "Notices / Legal Hold Review", status: "Hold", summary: "Ledger/HAP verification required.", proof: "Yes", approval: "Yes", next: "Do not serve/file" } },
+    { id: "report-6", values: { section: "Utilities Review", status: "Setup Watch", summary: "Account setup and proof review.", proof: "Yes", approval: "Yes", next: "Confirm utility proof" } },
+    { id: "report-7", values: { section: "Calendar Follow-Ups Review", status: "Open", summary: "Due dates and recurring reviews tracked locally.", proof: "No", approval: "Yes", next: "Preview event/task sync" } },
+    { id: "report-8", values: { section: "Admin Tasks Review", status: "Open", summary: "Proof and approval queues active.", proof: "Yes", approval: "Yes", next: "Review admin task queue" } },
+    { id: "report-9", values: { section: "Gmail Follow-Ups Review", status: "Disabled", summary: "No Gmail reads/sends/drafts.", proof: "Maybe", approval: "Yes", next: "Metadata/search only if approved" } },
+    { id: "report-10", values: { section: "Google Drive Update Needs", status: "Preview Only", summary: "Drive packages pending proof and approval.", proof: "Yes", approval: "Yes", next: "Prepare preview only" } }
+  ],
+  queues: [
+    { title: "Report Preview Card", detail: "Local weekly review only.", items: ["Executive Summary", "Cashflow snapshot", "Proof gaps", "Blocked items", "Approvals"], tone: "green" },
+    { title: "Proof Needed", detail: "Proof gaps in the weekly report.", items: ["Mortgage posting", "Maintenance completion", "Rent/HAP proof", "Notice ledger proof"], tone: "red" },
+    { title: "Next 7 Days", detail: "Local suspense items only.", items: ["Greg payment check", "Weekly admin review", "Utility follow-up", "Mortgage posting check"], tone: "yellow" }
+  ],
+  blocked: ["Do not export reports to Drive from this dashboard.", "Do not mark local report preview as verified source data.", "Do not execute approvals from the report page."],
+  approvalGate: commonStopRules,
+  filters: ["Review Section", "Status", "Proof Needed", "Approval Required", "Risk Area", "Search report text"],
+  commands: [
+    { id: "weekly-command", title: "Codex Command - Weekly Command Review", actionName: "Generate Codex Command: Weekly Command Review", controls: "Weekly owner review across every module.", tone: "green", prompt: commandPrompt("Prepare the Weekly Property Command Review.", "- Cover rent, maintenance, notices/legal holds, mortgage, utilities, calendar, Gmail, Drive, proof gaps, approvals, blocked items, and dashboard corrections.") },
+    { id: "report-preview", title: "Codex Command - Report Preview", actionName: "Generate Codex Command: Report Preview", controls: "Preview report sections only.", tone: "yellow", prompt: commandPrompt("Prepare a report preview for owner review.", "- Produce report content only. Do not export, upload, email, or save files.") },
+    { id: "report-blocked", title: "Codex Command - Blocked Items Report", actionName: "Generate Codex Command: Blocked Items Report", controls: "Blocked-until-verified and approval decisions.", tone: "red", prompt: commandPrompt("Prepare a blocked items report.", "- List blocked items, missing proof, owner approvals, and what cannot be closed.") }
+  ],
+  safetyFooter: "Reports are preview-only. No Drive export, Gmail send, Calendar event, Google Task, Sheet update, or live record change occurs."
+};
+
+commandPages["data-accuracy"] = {
+  id: "data-accuracy",
+  title: "Data Accuracy / Source Verification",
+  subtitle: "Local sample data review, source-of-truth verification, proof gaps, pending values, and migration readiness.",
+  localNotice: "Local Sample Mode is not a live source of truth.",
+  healthStatus: "Watch / Migration Not Ready",
+  healthDetail: "Several values are estimated, pending proof, or blocked by ledger/payment/source verification. Keep them marked unverified until source proof is reviewed.",
+  kpis: [
+    { label: "Verified Values", value: "4", helper: "Sample verified/low-risk", tone: "green" },
+    { label: "Estimated Values", value: "5", helper: "Do not treat as final", tone: "yellow" },
+    { label: "Pending Verification", value: "8", helper: "Source proof needed", tone: "red" },
+    { label: "Proof Missing", value: "7", helper: "Before live migration", tone: "red" },
+    { label: "Ledger Conflicts", value: "3", helper: "Rent/notice/HAP", tone: "red" },
+    { label: "Ready for Live Migration", value: "0", helper: "Blocked by proof gaps", tone: "red" },
+    { label: "Blocked Values", value: "6", helper: "Do not close", tone: "red" }
+  ],
+  tableColumns: [
+    { key: "item", header: "Data Item" },
+    { key: "module", header: "Related Module" },
+    { key: "value", header: "Current Dashboard Value" },
+    { key: "source", header: "Source Needed" },
+    { key: "proof", header: "Proof Status" },
+    { key: "confidence", header: "Confidence" },
+    { key: "risk", header: "Risk" },
+    { key: "ownerAction", header: "Owner Action" }
+  ],
+  tableRows: [
+    { id: "data-1", values: { item: "Rent collected values", module: "Rent Collection", value: "$9,653.40", source: "RentRedi/PM ledger", proof: "Pending", confidence: "Medium", risk: "Watch", ownerAction: "Verify ledger totals" } },
+    { id: "data-2", values: { item: "Projected rent", module: "Rent Collection", value: "$12,195.85", source: "Lease/rent roll", proof: "Review", confidence: "Medium", risk: "Watch", ownerAction: "Confirm current rent roll" } },
+    { id: "data-3", tone: "red", values: { item: "Unit balances", module: "Rent/Notices", value: "$3,055.00", source: "Ledger + HAP status", proof: "Missing", confidence: "Low", risk: "High", ownerAction: "Verify Unit 1/2/4/A/7 balances" } },
+    { id: "data-4", tone: "red", values: { item: "Mortgage arrears", module: "Mortgage", value: "$12,745.90 estimated", source: "Lender portal", proof: "Missing", confidence: "Low", risk: "Critical", ownerAction: "Confirm updated lender balance" } },
+    { id: "data-5", tone: "red", values: { item: "MBFS payment posting", module: "Mortgage", value: "$13,254.10 requested", source: "Lender posted proof", proof: "Pending", confidence: "Low", risk: "Critical", ownerAction: "Verify posting" } },
+    { id: "data-6", values: { item: "Utility account setup", module: "Utilities", value: "Duquesne setup watch", source: "Provider account proof", proof: "Review", confidence: "Medium", risk: "Watch", ownerAction: "Confirm account proof" } },
+    { id: "data-7", tone: "red", values: { item: "Maintenance completion proof", module: "Maintenance", value: "Unit 6 open", source: "Tenant/vendor confirmation", proof: "Missing", confidence: "Low", risk: "Critical", ownerAction: "Save proof before closure" } },
+    { id: "data-8", tone: "red", values: { item: "Notice ledger verification", module: "Notices", value: "Unit 2/4 watch", source: "Verified ledger", proof: "Missing", confidence: "Low", risk: "High", ownerAction: "Do not serve/file" } },
+    { id: "data-9", tone: "red", values: { item: "Section 8/HAP status", module: "Rent/Notices", value: "Pending", source: "HAP/PM confirmation", proof: "Missing", confidence: "Low", risk: "High", ownerAction: "Verify before treating as delinquency" } },
+    { id: "data-10", values: { item: "Google Drive proof package status", module: "Drive Update Center", value: "Preview only", source: "Owner-approved proof files", proof: "Pending", confidence: "Medium", risk: "Watch", ownerAction: "Review preview package" } }
+  ],
+  queues: [
+    { title: "Estimated vs Verified", detail: "Keep estimated values visibly marked.", items: ["Mortgage arrears estimated", "Cashflow sample-only", "Utility costs sample-only", "Rent balances pending proof"], tone: "yellow" },
+    { title: "Pending Proof Queue", detail: "Proof needed before migration.", items: ["Rent ledgers", "MBFS posting", "Unit 6 maintenance proof", "HAP status"], tone: "red" },
+    { title: "Source-of-Truth Checklist", detail: "Future live source checks.", items: ["Google Sheet Master Tracker", "RentRedi/PM ledgers", "Lender portal", "Utility bills", "Drive proof folders"], tone: "yellow" },
+    { title: "Live Migration Readiness", detail: "Not ready until proof gates clear.", items: ["OAuth intentionally disabled", "Google Sheets disabled", "No env vars required", "Local sample only"], tone: "red" }
+  ],
+  blocked: ["Do not treat Local Sample Mode as source of truth.", "Do not migrate values live until proof is verified.", "Do not mark estimated, pending, or conflicted values complete."],
+  approvalGate: commonStopRules,
+  filters: ["Related Module", "Proof Status", "Confidence", "Risk", "Pending Verification", "Ledger Conflict", "Ready for Live Migration", "Search data item"],
+  commands: [
+    { id: "data-review", title: "Codex Command - Data Accuracy Review", actionName: "Generate Codex Command: Data Accuracy Review", controls: "Source verification, confidence, proof gaps, and migration readiness.", tone: "red", prompt: commandPrompt("Prepare a dashboard data accuracy review.", "- Identify estimated values, pending proof, ledger conflicts, blocked values, and source-of-truth requirements.") },
+    { id: "data-proof", title: "Codex Command - Source Proof Checklist", actionName: "Generate Codex Command: Source Proof Checklist", controls: "Proof needed by module before live migration.", tone: "yellow", prompt: commandPrompt("Prepare a source proof checklist.", "- Group source proof requirements by rent, maintenance, mortgage, notices, utilities, Drive, and admin data.") },
+    { id: "data-migration", title: "Codex Command - Live Migration Readiness Preview", actionName: "Generate Codex Command: Live Migration Readiness Preview", controls: "Preview what blocks future live-data migration.", tone: "red", prompt: commandPrompt("Prepare a live migration readiness preview.", "- Identify what remains blocked before OAuth, Google Sheets, or live integrations are re-enabled.") }
+  ],
+  safetyFooter: "Local Sample Mode is not a live source of truth. No Sheets, Drive, Gmail, Calendar, Task, RentRedi, lender, payment, tenant, legal, or vendor record is changed."
+};

@@ -332,6 +332,7 @@ function ExecutiveSummaryCards() {
       title: "Lease Violations Summary",
       value: `${leaseViolations.length} active`,
       detail: leaseViolations.length ? "Lease violation records need review." : "No active lease violations in sample data.",
+      href: "/lease-violations",
       action: "Open Lease Violations tab",
       tone: "green"
     },
@@ -347,6 +348,7 @@ function ExecutiveSummaryCards() {
       title: "Codex Draft Summary",
       value: `${draftBlocks} blocked/review`,
       detail: "Draft status remains owner-review only; no legal documents are created here.",
+      href: "/draft-status",
       action: "Open Draft Status tab",
       tone: "red"
     },
