@@ -519,3 +519,270 @@ commandPages["data-accuracy"] = {
   ],
   safetyFooter: "Local Sample Mode is not a live source of truth. No Sheets, Drive, Gmail, Calendar, Task, RentRedi, lender, payment, tenant, legal, or vendor record is changed."
 };
+
+commandPages["live-readiness"] = {
+  id: "live-readiness",
+  title: "Live Readiness Command",
+  subtitle: "Real data cleanup, proof verification, source-of-truth review, and safe live-integration planning.",
+  localNotice: "Planning only. No live Google, Gmail, Calendar, Tasks, Drive, Sheets, RentRedi, tenant, legal, lender, vendor, bank, court, or payment actions.",
+  healthStatus: "Planning / Not Live Ready",
+  healthDetail:
+    "The command center is ready for owner review in Local Sample Mode, but real data migration remains blocked by proof gaps, source-of-truth cleanup, and explicit owner approval gates. The safest first integration is Google Drive read-only listing.",
+  kpis: [
+    { label: "Live Site Review", value: "In Review", helper: "Owner QA checklist", tone: "yellow" },
+    { label: "Real Data Readiness", value: "Blocked", helper: "Proof/source cleanup needed", tone: "red" },
+    { label: "Source Cleanup", value: "12 areas", helper: "Source-of-truth plan", tone: "yellow" },
+    { label: "Proof Folder Plan", value: "13 folders", helper: "Preview only", tone: "green" },
+    { label: "Weekly Review Workflow", value: "10 steps", helper: "Dry-run process", tone: "green" },
+    { label: "First Integration", value: "Drive read-only", helper: "Recommended lowest-risk start", tone: "green" },
+    { label: "Approval Gates", value: "9 gates", helper: "Before live integration", tone: "red" },
+    { label: "Live Writes", value: "Disabled", helper: "No live actions connected", tone: "green" }
+  ],
+  tableColumns: [
+    { key: "area", header: "Data Area" },
+    { key: "status", header: "Current Status" },
+    { key: "source", header: "Source Needed" },
+    { key: "proof", header: "Proof Needed" },
+    { key: "risk", header: "Risk" },
+    { key: "ownerAction", header: "Owner Action" },
+    { key: "migration", header: "Ready for Live Migration" }
+  ],
+  tableRows: [
+    { id: "readiness-rent-collected", tone: "yellow", values: { area: "Rent collected", status: "Pending Proof", source: "RentRedi ledger/export or verified rent tracker", proof: "Ledger totals and PM cash statement", risk: "Watch", ownerAction: "Verify collected totals", migration: "Ready Later" } },
+    { id: "readiness-balances", tone: "red", values: { area: "Tenant balances", status: "Conflict", source: "RentRedi ledger, PM ledger, HAP status", proof: "Unit-level verified balances", risk: "High", ownerAction: "Resolve Unit 1/2/4/A/7 items", migration: "Blocked" } },
+    { id: "readiness-rentredi", tone: "yellow", values: { area: "RentRedi ledger export", status: "Estimated", source: "Manual export or verified tracker", proof: "Export date and ledger notes", risk: "Medium", ownerAction: "Prepare manual export review", migration: "Ready Later" } },
+    { id: "readiness-hap", tone: "red", values: { area: "Section 8 / HAP status", status: "Pending Proof", source: "HAP/PM confirmation", proof: "Payment status and tenant portion", risk: "High", ownerAction: "Verify HAP before delinquency decisions", migration: "Blocked" } },
+    { id: "readiness-mortgage-arrears", tone: "red", values: { area: "Mortgage arrears", status: "Estimated", source: "Lender portal", proof: "Updated reinstatement/current balance", risk: "Critical", ownerAction: "Confirm lender balance", migration: "Blocked" } },
+    { id: "readiness-mbfs", tone: "red", values: { area: "MBFS payment posting", status: "Pending Proof", source: "Lender posted-payment proof", proof: "Posting proof, next due date, pause confirmation", risk: "Critical", ownerAction: "Save final proof before closure", migration: "Blocked" } },
+    { id: "readiness-utilities", tone: "yellow", values: { area: "Utility accounts", status: "Pending Proof", source: "Utility portal, bill, account confirmation", proof: "Bill/payment/account setup proof", risk: "Watch", ownerAction: "Verify account setup", migration: "Ready Later" } },
+    { id: "readiness-maintenance", tone: "red", values: { area: "Maintenance completion proof", status: "Blocked", source: "RentRedi work order, vendor invoice, tenant confirmation, photos", proof: "Completion proof for Unit 6 heat issue", risk: "Critical", ownerAction: "Do not close until proof is saved", migration: "Blocked" } },
+    { id: "readiness-notices", tone: "red", values: { area: "Notice/legal status", status: "Conflict", source: "Verified ledger, owner-approved draft, service proof if applicable", proof: "Ledger and approval proof", risk: "High", ownerAction: "Keep legal-sensitive items blocked", migration: "Blocked" } },
+    { id: "readiness-arrangements", tone: "yellow", values: { area: "Payment arrangements", status: "Pending Proof", source: "Rent ledger and payment confirmations", proof: "Greg payment proof for May 20 and May 30", risk: "Medium", ownerAction: "Verify before escalation or closure", migration: "Ready Later" } },
+    { id: "readiness-drive", tone: "yellow", values: { area: "Google Drive proof folders", status: "Ready Later", source: "Proof folder structure and owner-approved upload package", proof: "Folder listing and proof map", risk: "Low", ownerAction: "Start with read-only listing plan", migration: "Ready Later" } },
+    { id: "readiness-reports", tone: "green", values: { area: "Weekly reports", status: "Ready Later", source: "Reports page preview workflow", proof: "Owner-reviewed dry run", risk: "Low", ownerAction: "Run weekly review dry run", migration: "Ready Later" } }
+  ],
+  queues: [
+    {
+      title: "Live Site Review Checklist",
+      detail: "Local sample QA checklist before owner signs off on the deployed dashboard.",
+      items: [
+        "Review every sidebar page - In Review",
+        "Check mobile layout - In Review",
+        "Check copy-command buttons - Passed",
+        "Check KPI readability - In Review",
+        "Check Local Sample Mode labels - Passed",
+        "Check blocked-until-verified language - Passed",
+        "Check owner approval gates - Passed",
+        "Check no page implies live actions are connected - Passed"
+      ],
+      tone: "yellow"
+    },
+    {
+      title: "Source-of-Truth Cleanup Plan",
+      detail: "Preferred source by data area before any live migration.",
+      items: [
+        "Rent: RentRedi ledger/export or verified rent tracker",
+        "Maintenance: RentRedi work order, vendor invoice, tenant confirmation, photos",
+        "Mortgage: lender portal, MBFS confirmation, posted-payment proof, updated balance",
+        "Notices/legal: verified ledger, owner-approved draft, service proof if applicable",
+        "Utilities: utility portal, bill, account confirmation, payment proof",
+        "Drive: proof folder structure and owner-approved upload package",
+        "Calendar/Tasks: owner-approved preview list before live creation",
+        "Gmail: metadata first; body read only with owner approval"
+      ],
+      tone: "yellow"
+    },
+    {
+      title: "Proof Folder Planning",
+      detail: "Preview-only Google Drive folder structure. No folders or files are created.",
+      items: [
+        "PROPERTY MANAGEMENT OPERATING SYSTEM/",
+        "00 Command Dashboard",
+        "01 Rent Collection",
+        "02 Maintenance",
+        "03 Mortgage and Arrears",
+        "04 Notices and Legal Holds",
+        "05 Utilities",
+        "06 Lease Violations",
+        "07 Tenant Communications",
+        "08 Vendor Communications",
+        "09 Weekly Command Reviews",
+        "10 Proof Archive",
+        "11 Source Data Exports",
+        "12 Owner Approvals"
+      ],
+      tone: "green"
+    },
+    {
+      title: "Weekly Command Review Workflow",
+      detail: "Turns the Reports page into a repeatable preview process.",
+      items: [
+        "Open /reports",
+        "Review executive summary",
+        "Review rent, maintenance, mortgage, notices, utilities, admin tasks, and calendar follow-ups",
+        "Review proof needed",
+        "Review blocked items",
+        "Review owner approvals",
+        "Prepare Google Drive update preview",
+        "Prepare Calendar/Task preview",
+        "Approve or reject live actions later",
+        "Keep unresolved items open"
+      ],
+      tone: "green"
+    },
+    {
+      title: "Safe Live Integration Roadmap",
+      detail: "Lowest-risk order for future integrations after owner approval.",
+      items: [
+        "Phase 1: Google Drive read-only/listing - low risk",
+        "Phase 2: Google Drive preview upload package - medium risk",
+        "Phase 3: Google Calendar preview-to-create - medium risk",
+        "Phase 4: Google Tasks preview-to-create - medium risk",
+        "Phase 5: Google Sheets read-only source data - medium risk",
+        "Phase 6: Gmail metadata-only tracking - medium risk",
+        "Phase 7: Gmail body readback with approval - higher risk",
+        "Phase 8: RentRedi manual import/export review - medium/high risk"
+      ],
+      tone: "yellow"
+    },
+    {
+      title: "Recommended First Integration",
+      detail: "Google Drive Read-Only / Listing should only list folders and files.",
+      items: [
+        "Verify proof folders without changing files",
+        "Support source-of-truth cleanup",
+        "Avoid upload, move, rename, delete, and edit scopes",
+        "Safer than starting with Gmail, Calendar, Tasks, Sheets, or RentRedi writes",
+        "Confirm token stays outside repo",
+        "Confirm no secrets committed",
+        "Confirm read-only dry run passes"
+      ],
+      tone: "green"
+    }
+  ],
+  blocked: [
+    "Preview only. No Google Drive folders are created, moved, renamed, uploaded, deleted, or updated from this dashboard.",
+    "Do not enable OAuth, environment variables, or live APIs from this planning page.",
+    "Do not mark rent, mortgage, maintenance, notice, utility, or HAP values live-ready until proof is verified.",
+    "Do not read Gmail bodies, create drafts, send emails, create Calendar events, create Google Tasks, or update Sheets.",
+    "Do not perform tenant, vendor, lender, legal, bank, court, or payment actions.",
+    "Do not treat Local Sample Mode data as a live source of truth."
+  ],
+  approvalGate: [
+    "Owner approves integration type.",
+    "Scope is defined.",
+    "Read-only tested first.",
+    "Token location confirmed outside repo.",
+    "No secrets committed.",
+    "Dry run passes.",
+    "Rollback plan exists.",
+    "Live write disabled by default.",
+    "Owner approves each live action."
+  ],
+  filters: [
+    "Data Area",
+    "Current Status",
+    "Source Needed",
+    "Proof Needed",
+    "Risk",
+    "Ready for Live Migration",
+    "Owner Approval Required",
+    "Search readiness notes"
+  ],
+  commands: [
+    {
+      id: "live-readiness-review",
+      title: "Codex Command - Live Readiness Review",
+      actionName: "Generate Codex Command: Live Readiness Review",
+      controls: "Data readiness, proof gaps, source-of-truth status, approval gates, and integration readiness.",
+      tone: "yellow",
+      prompt: `Run a Live Readiness Review for the Property Command Center.
+
+Rules:
+- Read-only/local review only.
+- Do not connect live services.
+- Do not update Google Drive, Gmail, Calendar, Tasks, Sheets, RentRedi, tenant, legal, lender, vendor, bank, court, or payment records.
+- Review data readiness, proof gaps, source-of-truth status, owner approval gates, and live integration readiness.
+- Recommend what is ready, what is blocked, and what needs proof first.
+- Stop before live actions.`
+    },
+    {
+      id: "source-data-cleanup",
+      title: "Codex Command - Source Data Cleanup Plan",
+      actionName: "Generate Codex Command: Source Data Cleanup Plan",
+      controls: "Source-of-truth plan and correction checklist.",
+      tone: "yellow",
+      prompt: `Prepare a Source Data Cleanup Plan.
+
+Rules:
+- Do not update live systems.
+- Identify the source of truth for rent, maintenance, mortgage, notices, utilities, lease violations, admin tasks, Drive proof, Gmail follow-ups, Calendar follow-ups, and reports.
+- Mark each area as verified, estimated, pending proof, conflict, blocked, or ready later.
+- Produce a correction checklist only.
+- Stop before live actions.`
+    },
+    {
+      id: "proof-folder-plan",
+      title: "Codex Command - Proof Folder Plan",
+      actionName: "Generate Codex Command: Proof Folder Plan",
+      controls: "Preview-only Drive proof folder structure.",
+      tone: "green",
+      prompt: `Prepare a Google Drive proof folder plan.
+
+Rules:
+- Do not create, move, rename, upload, delete, or update Drive files or folders.
+- Prepare a preview-only folder structure for the Property Management Operating System.
+- Include proof folders for rent, maintenance, mortgage, notices/legal, utilities, lease violations, tenant communications, vendor communications, weekly reviews, source exports, and owner approvals.
+- Stop before Drive actions.`
+    },
+    {
+      id: "drive-read-only-prep",
+      title: "Codex Command - Google Drive Read-Only Prep",
+      actionName: "Generate Codex Command: Google Drive Read-Only Prep",
+      controls: "Read-only/listing dry-run plan and scope checks.",
+      tone: "green",
+      prompt: `Prepare Google Drive read-only integration planning.
+
+Rules:
+- Do not request write scopes.
+- Do not upload, move, rename, delete, or edit Drive files.
+- Do not commit credentials or tokens.
+- Confirm token storage outside the repo.
+- Prepare a read-only/listing dry-run plan for the Property Management Operating System folder.
+- Include safety checks, scope checks, and rollback steps.
+- Stop before OAuth or live connection.`
+    },
+    {
+      id: "weekly-command-dry-run",
+      title: "Codex Command - Weekly Command Review Dry Run",
+      actionName: "Generate Codex Command: Weekly Command Review Dry Run",
+      controls: "Preview weekly review workflow from Reports.",
+      tone: "green",
+      prompt: `Run a Weekly Command Review dry run for the Property Command Center.
+
+Rules:
+- Read-only/local review only.
+- Do not update Google Drive, Gmail, Calendar, Tasks, Sheets, RentRedi, tenant, legal, lender, vendor, bank, court, or payment records.
+- Review rent, maintenance, mortgage, notices, utilities, lease violations, admin tasks, calendar follow-ups, Gmail follow-ups, Drive update needs, proof gaps, owner approvals, and blocked items.
+- Produce a preview report only.
+- Stop before live actions.`
+    },
+    {
+      id: "live-risk-review",
+      title: "Codex Command - Live Integration Risk Review",
+      actionName: "Generate Codex Command: Live Integration Risk Review",
+      controls: "Risk review and safest integration order.",
+      tone: "red",
+      prompt: `Prepare a live integration risk review.
+
+Rules:
+- Do not connect live services.
+- Do not perform live writes.
+- Review risks for Google Drive, Gmail, Calendar, Tasks, Sheets, RentRedi, tenant communications, legal notices, mortgage/lender workflows, vendor workflows, and payments.
+- Recommend the safest integration order and approval gates.
+- Stop before live actions.`
+    }
+  ],
+  safetyFooter:
+    "Live Readiness is planning-only. No OAuth, Google Drive, Gmail, Calendar, Tasks, Sheets, RentRedi, tenant, legal, lender, vendor, bank, court, payment, or live record action is connected or performed."
+};

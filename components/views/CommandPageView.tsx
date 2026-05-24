@@ -212,10 +212,13 @@ function CommandButtons({ config }: { config: CommandPageConfig }) {
             </button>
           </div>
           <div className="command-preview-labels">
-            <span>Draft command only</span>
+            <span>Preview only</span>
             <span>Owner approval required</span>
-            <span>Live writes disabled</span>
-            <span>Paste into Codex to execute</span>
+            <span>No live writes</span>
+            <span>No Gmail body read</span>
+            <span>No Calendar/Task created</span>
+            <span>No Drive upload</span>
+            <span>No RentRedi connection</span>
           </div>
           <p className="command-preview-warning">This dashboard does not perform live actions. It only prepares the Codex command.</p>
           <pre>{activeCommand.prompt}</pre>

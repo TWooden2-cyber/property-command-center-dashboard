@@ -20,7 +20,8 @@ import {
   FolderUp,
   Mail,
   BarChart3,
-  ShieldCheck
+  ShieldCheck,
+  Route as RouteIcon
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -46,6 +47,7 @@ const navigation = [
   { href: "/gmail-follow-ups", label: "Gmail Follow-Ups", icon: Mail },
   { href: "/reports", label: "Reports", icon: BarChart3 },
   { href: "/data-accuracy", label: "Data Accuracy", icon: ShieldCheck },
+  { href: "/live-readiness", label: "Live Readiness", icon: RouteIcon },
   { href: "/settings", label: "Settings", icon: Settings }
 ] satisfies readonly NavItem[];
 

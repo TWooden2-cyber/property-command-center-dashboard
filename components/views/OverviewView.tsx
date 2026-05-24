@@ -376,6 +376,14 @@ function ExecutiveSummaryCards() {
       href: "/admin-tasks",
       action: "Open Admin Tasks tab",
       tone: "red"
+    },
+    {
+      title: "Live Readiness Summary",
+      value: "Drive read-only first",
+      detail: "Real data cleanup, proof verification, and integration planning stay preview-only.",
+      href: "/live-readiness",
+      action: "Open Live Readiness tab",
+      tone: "yellow"
     }
   ];
 
