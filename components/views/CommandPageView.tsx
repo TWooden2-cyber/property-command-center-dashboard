@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
+import type { Route } from "next";
 import { CheckCircle2, Copy, Database, Search, ShieldAlert } from "lucide-react";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { EmptyState } from "@/components/DataState";
@@ -214,7 +216,9 @@ function CommandButtons({ config }: { config: CommandPageConfig }) {
           <div className="command-preview-labels">
             <span>Preview only</span>
             <span>Owner approval required</span>
+            <span>No live import</span>
             <span>No live writes</span>
+            <span>No Google Sheets connection</span>
             <span>No Gmail body read</span>
             <span>No Calendar/Task created</span>
             <span>No Drive upload</span>
@@ -231,6 +235,27 @@ function CommandButtons({ config }: { config: CommandPageConfig }) {
           </div>
         </div>
       ) : null}
+    </section>
+  );
+}
+
+function RelatedLinks({ config }: { config: CommandPageConfig }) {
+  if (!config.relatedLinks?.length) {
+    return null;
+  }
+
+  return (
+    <section className="remaining-related-grid">
+      {config.relatedLinks.map((link) => (
+        <article className={`remaining-queue-card queue-${link.tone}`} key={link.href}>
+          <ShieldAlert size={19} />
+          <h3>{link.title}</h3>
+          <p>{link.detail}</p>
+          <Link href={link.href as Route} className="summary-link-button">
+            {link.action}
+          </Link>
+        </article>
+      ))}
     </section>
   );
 }
@@ -273,6 +298,7 @@ export function CommandPageView({ config }: { config: CommandPageConfig }) {
   return (
     <div className="remaining-command-page">
       <CommandHeader config={config} />
+      <RelatedLinks config={config} />
       <CommandKpis config={config} />
       <HealthPanel config={config} />
       <FilterPanel filters={filters} setFilters={setFilters} config={config} />

@@ -384,6 +384,14 @@ function ExecutiveSummaryCards() {
       href: "/live-readiness",
       action: "Open Live Readiness tab",
       tone: "yellow"
+    },
+    {
+      title: "Real Data Cleanup",
+      value: "Import prep blocked",
+      detail: "Verify source data, track proof gaps, prepare import worksheet, and block unverified values.",
+      href: "/real-data-cleanup",
+      action: "Open Real Data Cleanup tab",
+      tone: "red"
     }
   ];
 

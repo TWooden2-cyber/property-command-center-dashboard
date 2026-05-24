@@ -21,7 +21,8 @@ import {
   Mail,
   BarChart3,
   ShieldCheck,
-  Route as RouteIcon
+  Route as RouteIcon,
+  Database
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -48,6 +49,7 @@ const navigation = [
   { href: "/reports", label: "Reports", icon: BarChart3 },
   { href: "/data-accuracy", label: "Data Accuracy", icon: ShieldCheck },
   { href: "/live-readiness", label: "Live Readiness", icon: RouteIcon },
+  { href: "/real-data-cleanup", label: "Real Data Cleanup", icon: Database },
   { href: "/settings", label: "Settings", icon: Settings }
 ] satisfies readonly NavItem[];
 

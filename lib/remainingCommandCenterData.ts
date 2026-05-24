@@ -36,6 +36,7 @@ export type CommandPageConfig = {
   filters: string[];
   commands: CommandButtonConfig[];
   safetyFooter: string;
+  relatedLinks?: Array<{ title: string; detail: string; href: string; action: string; tone: SignalTone }>;
 };
 
 const commonStopRules = [
@@ -783,6 +784,270 @@ Rules:
 - Stop before live actions.`
     }
   ],
+  relatedLinks: [
+    {
+      title: "Next Step: Real Data Cleanup Worksheet",
+      detail: "Open the source-of-truth worksheet to map sample values to verified real data, proof gaps, conflicts, and future import readiness.",
+      href: "/real-data-cleanup",
+      action: "Open Real Data Cleanup Worksheet",
+      tone: "yellow"
+    }
+  ],
   safetyFooter:
     "Live Readiness is planning-only. No OAuth, Google Drive, Gmail, Calendar, Tasks, Sheets, RentRedi, tenant, legal, lender, vendor, bank, court, payment, or live record action is connected or performed."
+};
+
+commandPages["real-data-cleanup"] = {
+  id: "real-data-cleanup",
+  title: "Real Data Cleanup Command",
+  subtitle: "Source-of-truth worksheet, proof collection, import prep, and verified-data migration planning.",
+  localNotice: "Worksheet only. No live Sheets, Drive, Gmail, Calendar, Tasks, RentRedi, tenant, legal, lender, vendor, bank, court, or payment actions.",
+  healthStatus: "Blocked / Cleanup Required",
+  healthDetail:
+    "The dashboard is still in Local Sample Mode. Real data migration is blocked until source-of-truth exports, proof references, owner review, and conflict resolution are complete. No import or live connection happens from this worksheet.",
+  kpis: [
+    { label: "Total Data Items", value: "21", helper: "Cleanup worksheet rows", tone: "yellow" },
+    { label: "Verified", value: "1", helper: "Report workflow only", tone: "green" },
+    { label: "Pending Proof", value: "9", helper: "Proof needed before migration", tone: "red" },
+    { label: "Conflicts", value: "5", helper: "Resolve before import", tone: "red" },
+    { label: "Estimated Values", value: "4", helper: "Keep clearly marked", tone: "yellow" },
+    { label: "Blocked Values", value: "7", helper: "Do not import", tone: "red" },
+    { label: "Ready for Import", value: "0", helper: "Verified-only gate", tone: "red" },
+    { label: "Owner Review Required", value: "21", helper: "Before real data replaces samples", tone: "yellow" }
+  ],
+  tableColumns: [
+    { key: "dataId", header: "Data ID" },
+    { key: "area", header: "Data Area" },
+    { key: "module", header: "Related Module" },
+    { key: "property", header: "Property" },
+    { key: "unit", header: "Unit" },
+    { key: "current", header: "Current Dashboard Value" },
+    { key: "proposed", header: "Proposed Real Value" },
+    { key: "source", header: "Source of Truth Needed" },
+    { key: "proof", header: "Proof Needed" },
+    { key: "confidence", header: "Current Confidence" },
+    { key: "status", header: "Status" },
+    { key: "risk", header: "Risk" },
+    { key: "ownerAction", header: "Owner Action" },
+    { key: "import", header: "Ready for Import" },
+    { key: "notes", header: "Notes" }
+  ],
+  tableRows: [
+    { id: "rdc-001", tone: "yellow", values: { dataId: "RDC-001", area: "Rent collected May 2026", module: "Rent Collection", property: "All", unit: "All", current: "$9,653.40", proposed: "Pending verified export", source: "RentRedi ledger export / verified rent tracker", proof: "Ledger totals and deposit proof if needed", confidence: "Medium", status: "Pending Proof", risk: "Watch", ownerAction: "Verify total collected", import: "No", notes: "Do not replace sample value until proof is mapped." } },
+    { id: "rdc-002", tone: "yellow", values: { dataId: "RDC-002", area: "Projected rent May 2026", module: "Rent Collection", property: "All", unit: "All", current: "$12,195.85", proposed: "Pending rent roll", source: "Lease/rent roll or verified tracker", proof: "Current rent roll", confidence: "Medium", status: "Estimated", risk: "Watch", ownerAction: "Confirm rent roll", import: "No", notes: "Projection must match active lease and subsidy data." } },
+    { id: "rdc-003", tone: "yellow", values: { dataId: "RDC-003", area: "Unit 1 Greg Mckinney balance/payment arrangement", module: "Rent Collection", property: "7-Unit", unit: "Unit 1", current: "$935 balance / arrangement", proposed: "Pending proof", source: "RentRedi ledger and payment proof", proof: "May 20 and May 30 payment confirmation", confidence: "Low", status: "Pending Proof", risk: "High", ownerAction: "Verify arrangement payments", import: "No", notes: "Do not escalate while arrangement is active without proof review." } },
+    { id: "rdc-004", tone: "red", values: { dataId: "RDC-004", area: "Unit 2 Marc Gosselin ledger conflict", module: "Rent / Notices", property: "7-Unit", unit: "Unit 2", current: "$315 conflict", proposed: "Resolve ledger discrepancy", source: "RentRedi ledger export and overdue summary", proof: "Payment allocation proof", confidence: "Low", status: "Conflict", risk: "High", ownerAction: "Resolve conflict before notice action", import: "No", notes: "Blocked until ledger is reconciled." } },
+    { id: "rdc-005", tone: "red", values: { dataId: "RDC-005", area: "Unit 4 Kevin Royster Section 8/HAP status", module: "Rent / Notices", property: "7-Unit", unit: "Unit 4", current: "Late / Section 8 review", proposed: "Pending HAP and tenant portion", source: "Section 8/HAP confirmation and ledger", proof: "HAP payment status and balance proof", confidence: "Low", status: "Conflict", risk: "Critical", ownerAction: "Verify before escalation", import: "No", notes: "Do not serve/escalate until verified." } },
+    { id: "rdc-006", tone: "red", values: { dataId: "RDC-006", area: "Unit 6 Jennifer Badger maintenance/safety proof", module: "Maintenance", property: "7-Unit", unit: "Unit 6", current: "Critical open heat issue", proposed: "Pending completion proof", source: "RentRedi work order, vendor proof, tenant confirmation", proof: "Photos, invoice, completion/date, communication log", confidence: "Low", status: "Blocked", risk: "Critical", ownerAction: "Save proof before closure", import: "No", notes: "Safety-sensitive item remains open." } },
+    { id: "rdc-007", tone: "red", values: { dataId: "RDC-007", area: "Unit 7 Alexandrea McCurdy May rent status", module: "Rent Collection", property: "7-Unit", unit: "Unit 7", current: "Paid in RentRedi / UPMC unresolved", proposed: "Resolve payment source", source: "RentRedi, UPMC/payment proof", proof: "May rent receipt or missing-payment confirmation", confidence: "Low", status: "Conflict", risk: "High", ownerAction: "Verify UPMC issue", import: "No", notes: "Do not close unresolved payment source." } },
+    { id: "rdc-008", tone: "red", values: { dataId: "RDC-008", area: "4-Unit Unit A Lacourtney Martin HAP payment", module: "Rent Collection", property: "4-Unit", unit: "Unit A", current: "$469.95 balance / HAP verification", proposed: "Pending HAP proof", source: "PM statement and HAP confirmation", proof: "Section 8/HAP payment status", confidence: "Low", status: "Pending Proof", risk: "High", ownerAction: "Verify before delinquency decision", import: "No", notes: "Do not treat balance as tenant delinquency until HAP is verified." } },
+    { id: "rdc-009", tone: "red", values: { dataId: "RDC-009", area: "7-Unit mortgage arrears", module: "Mortgage / Allotment", property: "7-Unit", unit: "All", current: "$12,745.90 estimated", proposed: "Pending lender balance", source: "Lender portal", proof: "Updated reinstatement/current balance", confidence: "Low", status: "Estimated", risk: "Critical", ownerAction: "Confirm lender balance", import: "No", notes: "Estimated arrears cannot be migrated as final." } },
+    { id: "rdc-010", tone: "red", values: { dataId: "RDC-010", area: "MBFS payment posting proof", module: "Mortgage / Allotment", property: "7-Unit", unit: "All", current: "$13,254.10 accepted requests", proposed: "Posted payment proof", source: "Lender/MBFS proof", proof: "Posted payment, next due date, foreclosure/legal pause confirmation", confidence: "Low", status: "Pending Proof", risk: "Critical", ownerAction: "Confirm posting before closure", import: "No", notes: "Payment request emails are not final posting proof." } },
+    { id: "rdc-011", tone: "yellow", values: { dataId: "RDC-011", area: "4-Unit mortgage current status", module: "Mortgage / Allotment", property: "4-Unit", unit: "All", current: "$0 arrears sample", proposed: "Verify current status", source: "Lender/PM/payment process", proof: "Payment confirmation and next due date", confidence: "Medium", status: "Owner Review", risk: "Watch", ownerAction: "Verify recurring payment process", import: "No", notes: "Keep current but verify proof." } },
+    { id: "rdc-012", tone: "yellow", values: { dataId: "RDC-012", area: "Duquesne Light account setup", module: "Utilities", property: "7-Unit", unit: "Common", current: "Setup watch", proposed: "Verified account setup", source: "Utility portal/account confirmation", proof: "Paperless/account proof", confidence: "Medium", status: "Pending Proof", risk: "Watch", ownerAction: "Confirm utility account setup", import: "No", notes: "No provider connection in dashboard." } },
+    { id: "rdc-013", tone: "yellow", values: { dataId: "RDC-013", area: "Gas account", module: "Utilities", property: "7-Unit", unit: "Common", current: "$64 sample", proposed: "Verified gas bill", source: "Utility bill/portal", proof: "Bill and payment proof", confidence: "Medium", status: "Estimated", risk: "Watch", ownerAction: "Verify account and bill", import: "No", notes: "Sample value only." } },
+    { id: "rdc-014", tone: "yellow", values: { dataId: "RDC-014", area: "Water account", module: "Utilities", property: "4-Unit", unit: "Common", current: "$72 sample", proposed: "Verified water bill", source: "Utility bill/portal", proof: "Bill and payment proof", confidence: "Medium", status: "Estimated", risk: "Watch", ownerAction: "Verify account and bill", import: "No", notes: "Sample value only." } },
+    { id: "rdc-015", tone: "yellow", values: { dataId: "RDC-015", area: "Sewer account", module: "Utilities", property: "4-Unit", unit: "Common", current: "$38 sample", proposed: "Verified sewer bill", source: "Utility bill/portal", proof: "Bill and payment proof", confidence: "Medium", status: "Estimated", risk: "Watch", ownerAction: "Verify account and bill", import: "No", notes: "Sample value only." } },
+    { id: "rdc-016", tone: "yellow", values: { dataId: "RDC-016", area: "Trash account", module: "Utilities", property: "All", unit: "Common", current: "$19 sample", proposed: "Verified trash bill", source: "Utility bill/portal", proof: "Bill and payment proof", confidence: "Medium", status: "Ready Later", risk: "Low", ownerAction: "Verify source", import: "No", notes: "Ready later after bill proof." } },
+    { id: "rdc-017", tone: "red", values: { dataId: "RDC-017", area: "Notices/legal status", module: "Notices / Evictions", property: "7-Unit", unit: "Multiple", current: "Hold / verification risk", proposed: "Verified legal hold status", source: "Verified ledger and owner-approved draft", proof: "Ledger, draft review, service proof if applicable", confidence: "Low", status: "Blocked", risk: "High", ownerAction: "Keep legal-sensitive items blocked", import: "No", notes: "No final legal status without proof." } },
+    { id: "rdc-018", tone: "yellow", values: { dataId: "RDC-018", area: "Lease violations", module: "Lease Violations", property: "All", unit: "Multiple", current: "Sample issue categories", proposed: "Verified incident tracker", source: "Incident proof, communication record, owner approval", proof: "Photos/logs/lease reference if applicable", confidence: "Low", status: "Owner Review", risk: "Watch", ownerAction: "Verify incidents before migration", import: "No", notes: "Do not escalate from sample categories." } },
+    { id: "rdc-019", tone: "yellow", values: { dataId: "RDC-019", area: "Google Drive proof folder status", module: "Drive Update Center", property: "All", unit: "All", current: "Preview only", proposed: "Read-only folder listing later", source: "Proof folder list and package map", proof: "Owner-approved folder plan", confidence: "Medium", status: "Ready Later", risk: "Low", ownerAction: "Approve read-only dry run later", import: "No", notes: "No Drive upload or write." } },
+    { id: "rdc-020", tone: "yellow", values: { dataId: "RDC-020", area: "Gmail follow-up status", module: "Gmail Follow-Ups", property: "All", unit: "Multiple", current: "Preview only", proposed: "Metadata-first review later", source: "Gmail metadata only; body read with approval", proof: "Owner-approved readback if needed", confidence: "Medium", status: "Ready Later", risk: "Medium", ownerAction: "Define Gmail scope later", import: "No", notes: "No body reads, drafts, or sends." } },
+    { id: "rdc-021", tone: "green", values: { dataId: "RDC-021", area: "Weekly report status", module: "Reports", property: "All", unit: "All", current: "Preview workflow", proposed: "Verified report after module proof", source: "Verified module summaries and owner decisions", proof: "Owner review and proof gaps list", confidence: "Medium", status: "Ready Later", risk: "Low", ownerAction: "Run dry review after proof mapping", import: "No", notes: "Preview only; no export." } }
+  ],
+  queues: [
+    {
+      title: "Source-of-Truth Import Prep",
+      detail: "Module cards for what should be imported later after approval.",
+      items: [
+        "Rent Collection: RentRedi ledger export, verified rent tracker, bank/deposit proof if needed",
+        "Maintenance: RentRedi work order, invoice, photos, tenant/vendor confirmation",
+        "Mortgage / Allotment: lender portal, MBFS confirmation, posted-payment proof, updated balance, next due date",
+        "Notices / Evictions: verified ledger, owner-approved draft, service proof only if applicable, legal hold status",
+        "Utilities: portal bill, account setup confirmation, due date, payment proof",
+        "Lease Violations: incident proof, communication record, owner approval, lease reference if applicable",
+        "Google Drive: proof folder list, package map, owner approval before upload",
+        "Gmail: metadata first; body readback only with approval",
+        "Calendar / Tasks: approved preview events/tasks",
+        "Reports: verified module summaries, proof gaps, owner decisions"
+      ],
+      tone: "yellow"
+    },
+    {
+      title: "Import Template Preview",
+      detail: "Preview only. No import is performed from this dashboard.",
+      items: [
+        "module | record_id | property | unit | tenant_or_party",
+        "amount | status | source_type | proof_reference",
+        "verified_by_owner | ready_for_dashboard | notes",
+        "Sample template rows remain local worksheet planning only"
+      ],
+      tone: "green"
+    },
+    {
+      title: "Proof Gap Queue",
+      detail: "Items where proof is missing before any migration.",
+      items: [
+        "Mortgage posting proof",
+        "Maintenance completion proof",
+        "RentRedi ledger proof",
+        "HAP/Section 8 proof",
+        "Utility account proof",
+        "Notice/legal proof if applicable",
+        "Drive proof folder confirmation"
+      ],
+      tone: "red"
+    },
+    {
+      title: "Conflict Resolution Queue",
+      detail: "Conflicts that must be resolved before sample values are replaced.",
+      items: [
+        "Unit 2 Marc Gosselin ledger conflict",
+        "Unit 4 Kevin Royster balance/Section 8 conflict",
+        "Unit A HAP payment uncertainty",
+        "Mortgage arrears estimated vs lender balance",
+        "Local sample values vs source export"
+      ],
+      tone: "red"
+    },
+    {
+      title: "Ready-for-Import Checklist",
+      detail: "Every item must clear before real data replaces samples.",
+      items: [
+        "All values have source-of-truth assigned",
+        "Proof is saved or identified",
+        "Owner reviewed high-risk items",
+        "Conflicts resolved",
+        "Estimated values marked correctly",
+        "Blocked values remain blocked",
+        "Import template reviewed",
+        "Live integration scope approved",
+        "Rollback plan exists",
+        "No secrets/tokens in repo"
+      ],
+      tone: "yellow"
+    }
+  ],
+  blocked: [
+    "Do not replace sample values with real data until owner approves the source and field mapping.",
+    "Do not mark pending proof, conflict, estimated, or blocked values ready for import.",
+    "Do not import data, connect Google Sheets, connect RentRedi, or update dashboard source records from this page.",
+    "Do not upload Drive files, read Gmail bodies, create Calendar events, create Google Tasks, or perform live service actions.",
+    "Do not treat legal, mortgage, payment, tenant, or HAP values as verified until proof is reviewed."
+  ],
+  approvalGate: [
+    "Owner approves data source.",
+    "Owner approves field mapping.",
+    "Owner approves proof status.",
+    "High-risk legal/payment/mortgage values reviewed.",
+    "Import dry run passes.",
+    "Dashboard backup created.",
+    "Git branch/commit plan approved.",
+    "No live writes unless separately approved."
+  ],
+  filters: [
+    "Data Area",
+    "Related Module",
+    "Property",
+    "Status",
+    "Risk",
+    "Confidence",
+    "Ready for Import",
+    "Proof Needed",
+    "Conflict",
+    "Search worksheet"
+  ],
+  commands: [
+    {
+      id: "cleanup-review",
+      title: "Codex Command - Real Data Cleanup Review",
+      actionName: "Generate Codex Command: Real Data Cleanup Review",
+      controls: "Sample values, source needs, proof gaps, conflicts, estimated values, and import readiness.",
+      tone: "yellow",
+      prompt: `Run a Real Data Cleanup Review for the Property Command Center.
+
+Rules:
+- Read-only/local review only.
+- Do not connect live services.
+- Do not update Google Sheets, Drive, Gmail, Calendar, Tasks, RentRedi, tenant, legal, lender, vendor, bank, court, payment, or dashboard source records without owner approval.
+- Review current sample values, source-of-truth needs, proof gaps, conflicts, estimated values, blocked values, and ready-for-import items.
+- Produce a cleanup report only.
+- Stop before live actions.`
+    },
+    {
+      id: "source-export-mapping",
+      title: "Codex Command - Source Export Mapping Prep",
+      actionName: "Generate Codex Command: Source Export Mapping Prep",
+      controls: "Map future source exports to dashboard modules and fields.",
+      tone: "yellow",
+      prompt: `Prepare a source export mapping plan.
+
+Rules:
+- Do not import data.
+- Do not connect Google Sheets or RentRedi.
+- Map expected source exports to dashboard modules and fields.
+- Identify required fields, proof references, owner verification fields, and blocked values.
+- Stop before live actions.`
+    },
+    {
+      id: "proof-gap-checklist",
+      title: "Codex Command - Proof Gap Checklist",
+      actionName: "Generate Codex Command: Proof Gap Checklist",
+      controls: "Missing proof by module and risk level.",
+      tone: "red",
+      prompt: `Prepare a proof gap checklist.
+
+Rules:
+- Do not upload, move, rename, delete, or update Drive files.
+- Do not mark items complete.
+- List missing proof by module and risk level.
+- Include owner action required for each proof gap.
+- Stop before live actions.`
+    },
+    {
+      id: "conflict-resolution",
+      title: "Codex Command - Conflict Resolution Plan",
+      actionName: "Generate Codex Command: Conflict Resolution Plan",
+      controls: "Conflicting values, source needs, owner decisions, and blocked statuses.",
+      tone: "red",
+      prompt: `Prepare a conflict resolution plan.
+
+Rules:
+- Do not update dashboard source data.
+- Do not change tenant, legal, payment, mortgage, RentRedi, Gmail, Drive, Calendar, Task, or Sheets records.
+- Identify conflicting values, likely source needed, owner decision needed, and blocked status.
+- Stop before live actions.`
+    },
+    {
+      id: "import-template-prep",
+      title: "Codex Command - Import Template Prep",
+      actionName: "Generate Codex Command: Import Template Prep",
+      controls: "Preview field map for future verified-data import.",
+      tone: "green",
+      prompt: `Prepare a verified-data import template.
+
+Rules:
+- Do not import data.
+- Do not connect live systems.
+- Create a preview field map for module, record ID, property, unit, tenant/party, amount, status, source type, proof reference, owner verification, dashboard readiness, and notes.
+- Stop before live actions.`
+    },
+    {
+      id: "sample-to-verified",
+      title: "Codex Command - Sample-to-Verified Migration Plan",
+      actionName: "Generate Codex Command: Sample-to-Verified Migration Plan",
+      controls: "Future migration plan with validation, commit, rollback, and owner approval steps.",
+      tone: "yellow",
+      prompt: `Prepare a sample-to-verified dashboard migration plan.
+
+Rules:
+- Do not modify dashboard data yet.
+- Do not connect live services.
+- Identify which sample values can be replaced later, which must remain estimated, which are blocked, and what proof is required.
+- Include validation, commit, rollback, and owner approval steps.
+- Stop before live actions.`
+    }
+  ],
+  safetyFooter:
+    "Real Data Cleanup is worksheet-only. No live import, Google Sheets connection, Drive upload, Gmail read, Calendar event, Google Task, RentRedi connection, tenant/vendor/lender/legal/payment action, or dashboard source update is performed."
 };
