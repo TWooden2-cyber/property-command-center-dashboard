@@ -791,6 +791,13 @@ Rules:
       href: "/real-data-cleanup",
       action: "Open Real Data Cleanup Worksheet",
       tone: "yellow"
+    },
+    {
+      title: "Master Workflow: Operations Readiness",
+      detail: "Roll live-site review, data cleanup, source packaging, proof folders, and Drive read-only planning into one controlled readiness plan.",
+      href: "/operations-readiness",
+      action: "Open Operations Readiness",
+      tone: "green"
     }
   ],
   safetyFooter:
@@ -1050,4 +1057,298 @@ Rules:
   ],
   safetyFooter:
     "Real Data Cleanup is worksheet-only. No live import, Google Sheets connection, Drive upload, Gmail read, Calendar event, Google Task, RentRedi connection, tenant/vendor/lender/legal/payment action, or dashboard source update is performed."
+};
+
+commandPages["real-data-cleanup"].relatedLinks = [
+  {
+    title: "Master Workflow: Operations Readiness",
+    detail: "Use the five-phase readiness plan to connect this worksheet to live-site verification, source-of-truth packaging, Drive folder planning, and the integration roadmap.",
+    href: "/operations-readiness",
+    action: "Open Operations Readiness",
+    tone: "green"
+  }
+];
+
+commandPages["operations-readiness"] = {
+  id: "operations-readiness",
+  title: "Operations Readiness Command",
+  subtitle: "Five-phase readiness plan for live-site review, verified data cleanup, source-of-truth packaging, proof folders, and safe live integration.",
+  localNotice: "Planning only. No live service connections, no live writes, and owner approval required before any live integration.",
+  healthStatus: "Five-Phase Readiness / Not Live Connected",
+  healthDetail:
+    "This page rolls the next five workstreams into one controlled workflow. The dashboard remains Local Sample Mode while the owner verifies the live site, cleans real data, packages source-of-truth proof, previews Drive folders, and reviews the safest integration roadmap.",
+  kpis: [
+    { label: "Phase 1", value: "Live site review", helper: "Manual verification checklist", tone: "yellow" },
+    { label: "Phase 2", value: "Real data cleanup", helper: "Proof/conflict worksheet", tone: "red" },
+    { label: "Phase 3", value: "Source package", helper: "Source-of-truth matrix", tone: "yellow" },
+    { label: "Phase 4", value: "Drive folders", helper: "Preview only / not created", tone: "green" },
+    { label: "Phase 5", value: "Integration roadmap", helper: "Drive read-only first", tone: "green" },
+    { label: "Write Integrations", value: "Not approved", helper: "Live writes disabled", tone: "red" },
+    { label: "Owner Approval", value: "Required", helper: "Before every live step", tone: "yellow" },
+    { label: "Recommended First", value: "Drive read-only", helper: "Listing only / low risk", tone: "green" }
+  ],
+  tableColumns: [
+    { key: "phase", header: "Phase" },
+    { key: "task", header: "Task" },
+    { key: "status", header: "Status" },
+    { key: "risk", header: "Risk" },
+    { key: "ownerAction", header: "Owner Action" },
+    { key: "blocked", header: "Blocked Until" },
+    { key: "ready", header: "Ready for Next Step" }
+  ],
+  tableRows: [
+    { id: "ops-1", tone: "yellow", values: { phase: "Phase 1", task: "Live site review complete", status: "In Review", risk: "Medium", ownerAction: "Review every deployed route", blocked: "Manual QA complete", ready: "No" } },
+    { id: "ops-2", tone: "yellow", values: { phase: "Phase 2", task: "Real data cleanup started", status: "In Review", risk: "High", ownerAction: "Use /real-data-cleanup worksheet", blocked: "Source/proof map complete", ready: "No" } },
+    { id: "ops-3", tone: "yellow", values: { phase: "Phase 3", task: "Source-of-truth assigned", status: "Owner Review", risk: "Medium", ownerAction: "Approve preferred source by module", blocked: "Owner source approval", ready: "No" } },
+    { id: "ops-4", tone: "red", values: { phase: "Phase 3", task: "Proof gaps identified", status: "Pending Proof", risk: "High", ownerAction: "List missing proof by module", blocked: "Proof references identified", ready: "No" } },
+    { id: "ops-5", tone: "red", values: { phase: "Phase 2", task: "Conflicts resolved", status: "Blocked", risk: "High", ownerAction: "Resolve Unit 2, Unit 4, Unit A, mortgage, and sample/export conflicts", blocked: "Conflicts resolved", ready: "No" } },
+    { id: "ops-6", tone: "yellow", values: { phase: "Phase 4", task: "Drive folder plan reviewed", status: "In Review", risk: "Low", ownerAction: "Review folder purpose/proof map", blocked: "Owner folder plan approval", ready: "No" } },
+    { id: "ops-7", tone: "yellow", values: { phase: "Phase 5", task: "Drive read-only preflight approved", status: "Not Started", risk: "Low", ownerAction: "Approve read-only/listing scope later", blocked: "Owner preflight approval", ready: "No" } },
+    { id: "ops-8", tone: "green", values: { phase: "Phase 5", task: "No write integrations approved yet", status: "Passed", risk: "Low", ownerAction: "Keep write integrations disabled", blocked: "Separate owner approval", ready: "Yes" } },
+    { id: "ops-9", tone: "yellow", values: { phase: "Phase 1", task: "Weekly review dry run completed", status: "Not Started", risk: "Low", ownerAction: "Run Reports dry run", blocked: "Owner review", ready: "No" } },
+    { id: "ops-10", tone: "yellow", values: { phase: "Phase 5", task: "Owner approves next phase", status: "Not Started", risk: "Medium", ownerAction: "Approve specific integration type and scope", blocked: "All earlier phases reviewed", ready: "No" } }
+  ],
+  queues: [
+    {
+      title: "Phase 1: Live Website Manual Verification",
+      detail: "Status options: Not Started, In Review, Passed, Needs Fix.",
+      items: [
+        "Open every sidebar page - In Review",
+        "Verify Overview cards - In Review",
+        "Verify command buttons copy correctly - In Review",
+        "Verify tables are readable - In Review",
+        "Verify mobile layout - In Review",
+        "Verify Local Sample Mode labels - Passed",
+        "Verify no page implies live actions are connected - Passed",
+        "Verify owner approval gates - Passed",
+        "Verify blocked-until-verified language - Passed",
+        "Verify Settings page still shows disabled live integrations - Passed",
+        "Route checklist: /, /rent-collection, /maintenance, /mortgage-arrears, /notices-evictions, /calendar-follow-ups, /admin-tasks, /utilities, /lease-violations, /draft-status, /drive-update-center, /gmail-follow-ups, /reports, /data-accuracy, /live-readiness, /real-data-cleanup, /settings"
+      ],
+      tone: "yellow"
+    },
+    {
+      title: "Phase 2: Real Data Cleanup",
+      detail: "Do not replace sample values with real values until proof and owner review are complete.",
+      items: [
+        "Rent collected - Pending Proof",
+        "Projected rent - Estimated",
+        "Tenant balances - Conflict",
+        "RentRedi ledger/export - Pending Proof",
+        "Section 8 / HAP status - Conflict",
+        "Mortgage arrears - Estimated",
+        "MBFS payment posting - Pending Proof",
+        "Utility accounts - Pending Proof",
+        "Maintenance completion proof - Blocked",
+        "Notice/legal status - Blocked",
+        "Lease violation proof - Owner Review",
+        "Payment arrangements - Pending Proof",
+        "Drive proof folder status - Ready Later",
+        "Gmail follow-up status - Ready Later",
+        "Calendar follow-up status - Ready Later",
+        "Weekly report status - Ready Later"
+      ],
+      tone: "red"
+    },
+    {
+      title: "Phase 3: Source-of-Truth Package",
+      detail: "Preferred source matrix before any real data migration.",
+      items: [
+        "Rent: RentRedi ledger/export, verified rent tracker, bank/deposit proof if needed",
+        "Maintenance: RentRedi work order, vendor invoice, photos, tenant/vendor confirmation",
+        "Mortgage: lender portal, MBFS confirmation, posted-payment proof, updated reinstatement/current balance, next due date",
+        "Notices/legal: verified ledger, owner-approved draft, service proof only if applicable, legal hold status",
+        "Utilities: utility portal, bill, account setup confirmation, due date, payment proof",
+        "Lease Violations: incident proof, communication record, owner approval, lease reference if applicable",
+        "Google Drive: proof folder structure, package map, owner approval before upload",
+        "Gmail: metadata first; body readback only with approval",
+        "Calendar / Tasks: approved preview events/tasks only",
+        "Reports: verified module summaries, proof gaps, owner decisions"
+      ],
+      tone: "yellow"
+    },
+    {
+      title: "Phase 4: Google Drive Proof Folder Structure",
+      detail: "Preview only / not created. No Google Drive folders are created, moved, renamed, uploaded, deleted, or updated.",
+      items: [
+        "PROPERTY MANAGEMENT OPERATING SYSTEM/",
+        "00 Command Dashboard - dashboard snapshots and owner review exports",
+        "01 Rent Collection - rent ledgers, deposits, HAP proof",
+        "02 Maintenance - work orders, invoices, photos, completion proof",
+        "03 Mortgage and Arrears - MBFS/lender proof, balances, due dates",
+        "04 Notices and Legal Holds - drafts, proof, legal hold status",
+        "05 Utilities - bills, account setup, payment proof",
+        "06 Lease Violations - incident proof and owner approvals",
+        "07 Tenant Communications - approved communications only",
+        "08 Vendor Communications - approved vendor proof and messages",
+        "09 Weekly Command Reviews - weekly preview archives",
+        "10 Proof Archive - final verified proof",
+        "11 Source Data Exports - exports used for migration",
+        "12 Owner Approvals - approval logs and decisions"
+      ],
+      tone: "green"
+    },
+    {
+      title: "Phase 5: Safe Live Integration Roadmap",
+      detail: "Safest order starts with Drive read-only/listing.",
+      items: [
+        "1. Google Drive read-only/listing - view folder and proof structure without changing files - low risk if read-only",
+        "2. Google Drive preview upload package - prepare owner-approved package before write - medium risk",
+        "3. Google Sheets read-only source data - use verified Sheets as source data - medium risk",
+        "4. Google Calendar preview-to-create - create events only after owner approval - medium risk",
+        "5. Google Tasks preview-to-create - create tasks only after owner approval - medium risk",
+        "6. Gmail metadata-only tracking - track follow-up emails without body readback - medium risk",
+        "7. Gmail body readback with approval - read selected emails only after owner approval - high risk",
+        "8. RentRedi manual export/import review - use verified exports before any API connection - medium/high risk"
+      ],
+      tone: "yellow"
+    },
+    {
+      title: "Recommended First Integration: Google Drive Read-Only / Listing",
+      detail: "Read-only listing should verify proof folders without upload, move, rename, delete, or edit scopes.",
+      items: [
+        "Confirm Drive folder structure",
+        "Confirm proof folders",
+        "Confirm read-only scope only",
+        "Confirm no write scopes",
+        "Confirm token stored outside repo",
+        "Confirm no secrets committed",
+        "Confirm dry run lists folders only",
+        "Confirm no file uploads/moves/renames/deletes",
+        "Confirm owner approval gate remains active"
+      ],
+      tone: "green"
+    }
+  ],
+  blocked: [
+    "Do not connect OAuth or live APIs from this planning workflow.",
+    "Do not create, upload, move, rename, delete, or update Google Drive folders or files.",
+    "Do not read Gmail bodies, send emails, create drafts, create Calendar events, or create Google Tasks.",
+    "Do not connect live Google Sheets data or RentRedi.",
+    "Do not import real data or replace sample values until proof and owner review are complete.",
+    "Do not perform tenant, vendor, lender, legal, bank, court, payment, or dashboard source record actions."
+  ],
+  approvalGate: [
+    "Owner approves the next phase.",
+    "Integration type is named.",
+    "Scope is read-only first when possible.",
+    "Token storage remains outside repo.",
+    "No secrets or tokens committed.",
+    "Dry run passes.",
+    "Rollback plan exists.",
+    "Live writes remain disabled by default.",
+    "Each live action requires separate owner approval."
+  ],
+  filters: ["Phase", "Task", "Status", "Risk", "Owner Action", "Blocked Until", "Ready for Next Step", "Search readiness plan"],
+  commands: [
+    {
+      id: "ops-review",
+      title: "Codex Command - Operations Readiness Review",
+      actionName: "Generate Codex Command: Operations Readiness Review",
+      controls: "Five-phase readiness report across live site review, data cleanup, source package, proof folders, and roadmap.",
+      tone: "yellow",
+      prompt: `Run an Operations Readiness Review for the Property Command Center.
+
+Rules:
+- Read-only/local review only.
+- Do not connect live services.
+- Do not update Google Drive, Gmail, Calendar, Tasks, Sheets, RentRedi, tenant, legal, lender, vendor, bank, court, payment, or dashboard source records.
+- Review live-site verification, real data cleanup, source-of-truth status, proof folder readiness, and live integration roadmap.
+- Produce a readiness report only.
+- Stop before live actions.`
+    },
+    {
+      id: "live-site-checklist",
+      title: "Codex Command - Live Site Verification Checklist",
+      actionName: "Generate Codex Command: Live Site Verification Checklist",
+      controls: "Manual live-site route, navigation, copy button, label, and approval-gate QA.",
+      tone: "yellow",
+      prompt: `Prepare a live-site verification checklist.
+
+Rules:
+- Do not change files unless owner separately approves a fix.
+- Review all dashboard routes, navigation, command buttons, Local Sample Mode labels, owner approval gates, and blocked-until-verified language.
+- Report issues and recommended fixes.
+- Stop before live actions.`
+    },
+    {
+      id: "real-data-dry-run",
+      title: "Codex Command - Real Data Cleanup Dry Run",
+      actionName: "Generate Codex Command: Real Data Cleanup Dry Run",
+      controls: "Verified values, estimated values, conflicts, proof gaps, and blocked items.",
+      tone: "red",
+      prompt: `Run a Real Data Cleanup dry run.
+
+Rules:
+- Do not import data.
+- Do not connect live services.
+- Review rent, maintenance, mortgage, notices, utilities, lease violations, Drive proof, Gmail follow-ups, Calendar follow-ups, and reports.
+- Identify verified values, estimated values, conflicts, proof gaps, and blocked items.
+- Stop before live actions.`
+    },
+    {
+      id: "source-package",
+      title: "Codex Command - Source-of-Truth Package Prep",
+      actionName: "Generate Codex Command: Source-of-Truth Package Prep",
+      controls: "Preferred source assignments, required exports, proof docs, approvals, and blocked items.",
+      tone: "yellow",
+      prompt: `Prepare a Source-of-Truth Package.
+
+Rules:
+- Do not update live systems.
+- Assign the preferred source for each dashboard module.
+- Identify required exports, proof documents, owner approvals, and blocked items.
+- Stop before live actions.`
+    },
+    {
+      id: "drive-folder-preview",
+      title: "Codex Command - Drive Folder Structure Preview",
+      actionName: "Generate Codex Command: Drive Folder Structure Preview",
+      controls: "Preview-only Drive folder purposes, proof types, and approval requirements.",
+      tone: "green",
+      prompt: `Prepare a Google Drive folder structure preview.
+
+Rules:
+- Do not create, upload, move, rename, delete, or update Drive folders or files.
+- Use preview-only planning for the Property Management Operating System folder.
+- Include folder purposes, proof types, and owner approval requirements.
+- Stop before Drive actions.`
+    },
+    {
+      id: "drive-readonly-preflight",
+      title: "Codex Command - Google Drive Read-Only Preflight",
+      actionName: "Generate Codex Command: Google Drive Read-Only Preflight",
+      controls: "Read-only scope, token storage, dry-run plan, rollback, and approval gates.",
+      tone: "green",
+      prompt: `Prepare a Google Drive read-only preflight.
+
+Rules:
+- Do not connect OAuth yet.
+- Do not request write scopes.
+- Do not create, upload, move, rename, delete, or edit Drive files.
+- Confirm token storage outside repo, scope safety, no secrets committed, dry-run plan, rollback plan, and owner approval gates.
+- Stop before OAuth or live connection.`
+    },
+    {
+      id: "roadmap-review",
+      title: "Codex Command - Live Integration Roadmap Review",
+      actionName: "Generate Codex Command: Live Integration Roadmap Review",
+      controls: "Safest integration order, risk, approval gates, rollback needs, and blocked items.",
+      tone: "yellow",
+      prompt: `Prepare a live integration roadmap review.
+
+Rules:
+- Do not connect live services.
+- Do not perform live writes.
+- Review the safest order for Google Drive, Google Sheets, Calendar, Tasks, Gmail, and RentRedi.
+- Identify risks, approval gates, rollback needs, and blocked items.
+- Stop before live actions.`
+    }
+  ],
+  relatedLinks: [
+    { title: "Supporting Worksheet: Real Data Cleanup", detail: "Open the worksheet that tracks sample values, proof gaps, conflicts, and import readiness.", href: "/real-data-cleanup", action: "Open Real Data Cleanup", tone: "yellow" },
+    { title: "Supporting Plan: Live Readiness", detail: "Open the live-readiness page for source cleanup, proof folder planning, and Drive read-only recommendations.", href: "/live-readiness", action: "Open Live Readiness", tone: "green" }
+  ],
+  safetyFooter:
+    "Operations Readiness is planning-only. No OAuth, Google Drive, Gmail, Calendar, Tasks, Sheets, RentRedi, tenant, legal, lender, vendor, bank, court, payment, import, or live record action is connected or performed."
 };

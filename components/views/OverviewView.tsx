@@ -392,6 +392,14 @@ function ExecutiveSummaryCards() {
       href: "/real-data-cleanup",
       action: "Open Real Data Cleanup tab",
       tone: "red"
+    },
+    {
+      title: "Operations Readiness",
+      value: "5-phase plan",
+      detail: "Verify live site, clean real data, and prepare Drive read-only as the first safe integration.",
+      href: "/operations-readiness",
+      action: "Open Operations Readiness tab",
+      tone: "yellow"
     }
   ];
 

@@ -22,7 +22,8 @@ import {
   BarChart3,
   ShieldCheck,
   Route as RouteIcon,
-  Database
+  Database,
+  ListChecks
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -50,6 +51,7 @@ const navigation = [
   { href: "/data-accuracy", label: "Data Accuracy", icon: ShieldCheck },
   { href: "/live-readiness", label: "Live Readiness", icon: RouteIcon },
   { href: "/real-data-cleanup", label: "Real Data Cleanup", icon: Database },
+  { href: "/operations-readiness", label: "Operations Readiness", icon: ListChecks },
   { href: "/settings", label: "Settings", icon: Settings }
 ] satisfies readonly NavItem[];
 
