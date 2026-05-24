@@ -5,6 +5,7 @@ import { AlertTriangle, BarChart3, CheckCircle2, Copy, Search, ShieldCheck } fro
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { EmptyState } from "@/components/DataState";
 import { StatusBadge } from "@/components/StatusBadge";
+import { copyTextToClipboard } from "@/lib/clipboard";
 import {
   commandCenterPeriod,
   money,
@@ -624,12 +625,8 @@ function RentCommandButtons() {
   const [copiedCommandId, setCopiedCommandId] = useState<string | null>(null);
 
   async function copyCommand(command: RentCommandTemplate) {
-    try {
-      await navigator.clipboard.writeText(`${command.title}\n\n${command.prompt}`);
-      setCopiedCommandId(command.id);
-    } catch {
-      setCopiedCommandId(null);
-    }
+    const copied = await copyTextToClipboard(`${command.title}\n\n${command.prompt}`);
+    setCopiedCommandId(copied ? command.id : null);
   }
 
   return (

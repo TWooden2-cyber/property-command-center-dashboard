@@ -5,6 +5,7 @@ import { CheckCircle2, Copy, Database, Search, ShieldAlert } from "lucide-react"
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { EmptyState } from "@/components/DataState";
 import { StatusBadge } from "@/components/StatusBadge";
+import { copyTextToClipboard } from "@/lib/clipboard";
 import type { CommandButtonConfig, CommandPageConfig, CommandTableRow } from "@/lib/remainingCommandCenterData";
 import { commandCenterPeriod, monthOptions, yearOptions, type SignalTone } from "@/lib/propertyCommandCenterData";
 
@@ -177,8 +178,8 @@ function CommandButtons({ config }: { config: CommandPageConfig }) {
   const [copiedCommandId, setCopiedCommandId] = useState<string | null>(null);
 
   async function copyCommand(command: CommandButtonConfig) {
-    await navigator.clipboard.writeText(command.prompt);
-    setCopiedCommandId(command.id);
+    const copied = await copyTextToClipboard(command.prompt);
+    setCopiedCommandId(copied ? command.id : null);
   }
 
   return (

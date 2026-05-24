@@ -5,6 +5,7 @@ import { CheckCircle2, ClipboardList, Copy, Database, FileCheck2, FolderUp, Sear
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { EmptyState } from "@/components/DataState";
 import { StatusBadge } from "@/components/StatusBadge";
+import { copyTextToClipboard } from "@/lib/clipboard";
 import {
   adminTaskControlRows,
   commandCenterPeriod,
@@ -493,8 +494,8 @@ function AdminCommandButtons() {
   const [copiedCommandId, setCopiedCommandId] = useState<string | null>(null);
 
   async function copyCommand(command: AdminCommandTemplate) {
-    await navigator.clipboard.writeText(command.prompt);
-    setCopiedCommandId(command.id);
+    const copied = await copyTextToClipboard(command.prompt);
+    setCopiedCommandId(copied ? command.id : null);
   }
 
   return (

@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { EmptyState } from "@/components/DataState";
 import { StatusBadge } from "@/components/StatusBadge";
+import { copyTextToClipboard } from "@/lib/clipboard";
 import {
   adminTaskRows,
   blockedUntilVerifiedQueue,
@@ -454,13 +455,8 @@ function CodexCommandGenerator() {
 
   async function copyCommand(command: CodexCommandTemplate) {
     const commandText = `${command.title}\n\n${command.prompt}`;
-
-    try {
-      await navigator.clipboard.writeText(commandText);
-      setCopiedCommandId(command.id);
-    } catch {
-      setCopiedCommandId(null);
-    }
+    const copied = await copyTextToClipboard(commandText);
+    setCopiedCommandId(copied ? command.id : null);
   }
 
   return (

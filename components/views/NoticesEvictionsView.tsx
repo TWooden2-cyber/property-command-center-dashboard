@@ -5,6 +5,7 @@ import { AlertTriangle, ClipboardCheck, Copy, FileText, Gavel, Search, ShieldAle
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { EmptyState } from "@/components/DataState";
 import { StatusBadge } from "@/components/StatusBadge";
+import { copyTextToClipboard } from "@/lib/clipboard";
 import {
   commandCenterPeriod,
   documentDraftStatuses,
@@ -503,9 +504,11 @@ function NoticeCommandButtons() {
 
   async function copyPrompt() {
     if (!selected) return;
-    await navigator.clipboard.writeText(selected.prompt);
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1800);
+    const copiedCommand = await copyTextToClipboard(selected.prompt);
+    setCopied(copiedCommand);
+    if (copiedCommand) {
+      window.setTimeout(() => setCopied(false), 1800);
+    }
   }
 
   return (

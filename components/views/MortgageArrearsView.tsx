@@ -5,6 +5,7 @@ import { AlertTriangle, Banknote, CheckCircle2, ClipboardList, Copy, Search, Shi
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { EmptyState } from "@/components/DataState";
 import { StatusBadge } from "@/components/StatusBadge";
+import { copyTextToClipboard } from "@/lib/clipboard";
 import {
   commandCenterPeriod,
   money,
@@ -550,9 +551,11 @@ function MortgageCommandButtons() {
 
   async function copyPrompt() {
     if (!selected) return;
-    await navigator.clipboard.writeText(selected.prompt);
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1800);
+    const copiedCommand = await copyTextToClipboard(selected.prompt);
+    setCopied(copiedCommand);
+    if (copiedCommand) {
+      window.setTimeout(() => setCopied(false), 1800);
+    }
   }
 
   return (

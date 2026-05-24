@@ -5,6 +5,7 @@ import { AlertTriangle, CheckCircle2, ClipboardList, Copy, Search, ShieldCheck, 
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { EmptyState } from "@/components/DataState";
 import { StatusBadge } from "@/components/StatusBadge";
+import { copyTextToClipboard } from "@/lib/clipboard";
 import {
   commandCenterPeriod,
   maintenanceRows,
@@ -503,12 +504,8 @@ function MaintenanceCommandButtons() {
   const [copiedCommandId, setCopiedCommandId] = useState<string | null>(null);
 
   async function copyCommand(command: MaintenanceCommandTemplate) {
-    try {
-      await navigator.clipboard.writeText(`${command.title}\n\n${command.prompt}`);
-      setCopiedCommandId(command.id);
-    } catch {
-      setCopiedCommandId(null);
-    }
+    const copied = await copyTextToClipboard(`${command.title}\n\n${command.prompt}`);
+    setCopiedCommandId(copied ? command.id : null);
   }
 
   return (
