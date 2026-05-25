@@ -408,6 +408,14 @@ function ExecutiveSummaryCards() {
       href: "/drive-readonly",
       action: "Open Drive Read-Only tab",
       tone: "green"
+    },
+    {
+      title: "Final Integration",
+      value: "Launch prep",
+      detail: "Drive correction preview, verified data forms, import mapping, SOP launch checklist.",
+      href: "/final-integration",
+      action: "Open Final Integration tab",
+      tone: "yellow"
     }
   ];
 

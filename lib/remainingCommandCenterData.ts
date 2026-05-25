@@ -370,6 +370,13 @@ export const commandPages: Record<string, CommandPageConfig> = {
     safetyFooter: "No Google Drive files were uploaded, moved, renamed, deleted, updated, read, or created by this dashboard.",
     relatedLinks: [
       {
+        title: "Drive Correction Package Preview",
+        detail: "Open the final integration package for missing folders, name mismatches, and future write package planning after owner approval.",
+        href: "/final-integration",
+        action: "Open Final Integration",
+        tone: "yellow"
+      },
+      {
         title: "Drive Read-Only Folder Health",
         detail: "Open the controlled Drive Read-Only page to review found, missing, and mismatched folders. Future Drive package items require separate owner approval.",
         href: "/drive-readonly",
@@ -540,6 +547,16 @@ commandPages["data-accuracy"] = {
   ],
   safetyFooter: "Local Sample Mode is not a live source of truth. No Sheets, Drive, Gmail, Calendar, Task, RentRedi, lender, payment, tenant, legal, or vendor record is changed."
 };
+
+commandPages["data-accuracy"].relatedLinks = [
+  {
+    title: "Sample-to-Verified Migration Preview",
+    detail: "Open the final integration package to review migration gates, proof requirements, rollback needs, and owner approval before any data source change.",
+    href: "/final-integration",
+    action: "Open Final Integration",
+    tone: "yellow"
+  }
+];
 
 commandPages["live-readiness"] = {
   id: "live-readiness",
@@ -805,6 +822,13 @@ Rules:
     }
   ],
   relatedLinks: [
+    {
+      title: "Final Integration Readiness",
+      detail: "Open the final package for Drive correction preview, verified worksheets, import mapping, Sheets read-only planning, SOPs, and launch checklist.",
+      href: "/final-integration",
+      action: "Open Final Integration",
+      tone: "yellow"
+    },
     {
       title: "Next Step: Real Data Cleanup Worksheet",
       detail: "Open the source-of-truth worksheet to map sample values to verified real data, proof gaps, conflicts, and future import readiness.",
@@ -1088,6 +1112,13 @@ Rules:
 
 commandPages["real-data-cleanup"].relatedLinks = [
   {
+    title: "Verified Data Entry Forms in Final Integration",
+    detail: "Open the final package to prepare verified worksheets before any source import or sample-to-verified migration.",
+    href: "/final-integration",
+    action: "Open Final Integration",
+    tone: "yellow"
+  },
+  {
     title: "Master Workflow: Operations Readiness",
     detail: "Use the five-phase readiness plan to connect this worksheet to live-site verification, source-of-truth packaging, Drive folder planning, and the integration roadmap.",
     href: "/operations-readiness",
@@ -1116,7 +1147,7 @@ commandPages["operations-readiness"] = {
     { label: "Phase 2", value: "Real data cleanup", helper: "Proof/conflict worksheet", tone: "red" },
     { label: "Phase 3", value: "Source package", helper: "Source-of-truth matrix", tone: "yellow" },
     { label: "Phase 4", value: "Drive folders", helper: "Preview only / not created", tone: "green" },
-    { label: "Phase 5", value: "Read-only complete", helper: "Folder health mapping Batch 38", tone: "green" },
+    { label: "Phase 5", value: "Drive health mapped", helper: "Correction package preview Batch 39", tone: "green" },
     { label: "Write Integrations", value: "Not approved", helper: "Live writes disabled", tone: "red" },
     { label: "Owner Approval", value: "Required", helper: "Before every live step", tone: "yellow" },
     { label: "Recommended First", value: "Drive read-only", helper: "Listing only / low risk", tone: "green" }
@@ -1138,7 +1169,7 @@ commandPages["operations-readiness"] = {
     { id: "ops-5", tone: "red", values: { phase: "Phase 2", task: "Conflicts resolved", status: "Blocked", risk: "High", ownerAction: "Resolve Unit 2, Unit 4, Unit A, mortgage, and sample/export conflicts", blocked: "Conflicts resolved", ready: "No" } },
     { id: "ops-6", tone: "yellow", values: { phase: "Phase 4", task: "Drive folder plan reviewed", status: "In Review", risk: "Low", ownerAction: "Review folder purpose/proof map", blocked: "Owner folder plan approval", ready: "No" } },
     { id: "ops-7", tone: "green", values: { phase: "Phase 5", task: "Drive read-only integration", status: "Completed locally", risk: "Low", ownerAction: "Keep metadata-read-only listing gated to owner machine", blocked: "No write approval", ready: "Yes" } },
-    { id: "ops-7b", tone: "yellow", values: { phase: "Phase 5", task: "Folder health mapping", status: "In progress / Batch 38", risk: "Low", ownerAction: "Review found, missing, mismatched, and owner-review folders", blocked: "Read-only health mapping review", ready: "No" } },
+    { id: "ops-7b", tone: "yellow", values: { phase: "Phase 5", task: "Folder health mapping", status: "Mapped / Batch 39 correction preview", risk: "Low", ownerAction: "Review correction package preview in /final-integration", blocked: "Next owner decision: manual Drive cleanup or future controlled Drive-write package", ready: "No" } },
     { id: "ops-7c", tone: "red", values: { phase: "Phase 5", task: "Drive writes", status: "Blocked / not approved", risk: "High", ownerAction: "Do not upload, move, rename, delete, create, edit, copy, trash, or change permissions", blocked: "Separate owner write approval", ready: "No" } },
     { id: "ops-8", tone: "green", values: { phase: "Phase 5", task: "No write integrations approved yet", status: "Passed", risk: "Low", ownerAction: "Keep write integrations disabled", blocked: "Separate owner approval", ready: "Yes" } },
     { id: "ops-9", tone: "yellow", values: { phase: "Phase 1", task: "Weekly review dry run completed", status: "Not Started", risk: "Low", ownerAction: "Run Reports dry run", blocked: "Owner review", ready: "No" } },
@@ -1228,7 +1259,7 @@ commandPages["operations-readiness"] = {
       title: "Phase 5: Safe Live Integration Roadmap",
       detail: "Safest order starts with Drive read-only/listing.",
       items: [
-        "1. Google Drive read-only/listing - completed locally for metadata-only folder visibility; folder health mapping in progress / Batch 38",
+        "1. Google Drive read-only/listing - completed locally; Drive health mapped; correction package preview in Batch 39",
         "2. Google Drive preview upload package - prepare owner-approved package before write - medium risk",
         "3. Google Sheets read-only source data - use verified Sheets as source data - medium risk",
         "4. Google Calendar preview-to-create - create events only after owner approval - medium risk",
@@ -1382,6 +1413,7 @@ Rules:
     }
   ],
   relatedLinks: [
+    { title: "Final Integration Package", detail: "Open Batch 39 for Drive correction preview, verified data entry forms, source import mapping, SOPs, and the launch checklist.", href: "/final-integration", action: "Open Final Integration", tone: "yellow" },
     { title: "Supporting Worksheet: Real Data Cleanup", detail: "Open the worksheet that tracks sample values, proof gaps, conflicts, and import readiness.", href: "/real-data-cleanup", action: "Open Real Data Cleanup", tone: "yellow" },
     { title: "Supporting Plan: Live Readiness", detail: "Open the live-readiness page for source cleanup, proof folder planning, and Drive read-only recommendations.", href: "/live-readiness", action: "Open Live Readiness", tone: "green" },
     { title: "First Integration: Drive Read-Only", detail: "Open the metadata-only Drive listing status page. Drive writes and file-content reads remain blocked.", href: "/drive-readonly", action: "Open Drive Read-Only", tone: "green" }

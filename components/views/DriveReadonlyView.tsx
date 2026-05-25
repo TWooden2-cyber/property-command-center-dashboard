@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { Copy, FolderCheck, ShieldCheck } from "lucide-react";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { EmptyState, LoadingState } from "@/components/DataState";
@@ -366,6 +367,17 @@ export function DriveReadonlyView() {
         ) : (
           <EmptyState title="No future Drive folder actions suggested" message="Folder health currently has no missing, mismatched, or owner-review rows." />
         )}
+      </section>
+
+      <section className="remaining-related-grid">
+        <article className="remaining-queue-card queue-yellow">
+          <ShieldCheck size={19} />
+          <h3>Final Integration Package</h3>
+          <p>Drive correction preview, recheck workflow, and manual vs future automation decision.</p>
+          <Link href="/final-integration" className="summary-link-button">
+            Open Final Integration
+          </Link>
+        </article>
       </section>
 
       <section className="calendar-command-panel">
