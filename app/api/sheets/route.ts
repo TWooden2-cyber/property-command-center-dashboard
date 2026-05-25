@@ -1,14 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { protectedCacheHeaders, requireApiOwner } from "@/lib/apiAuth";
+import { getAuthSetupStatus } from "@/lib/authConfig";
 import { sampleWorkbookSnapshot } from "@/lib/sampleWorkbook";
 import { parseWorkbook } from "@/lib/sheetParsers";
 import type { SheetsView, SystemStatus } from "@/types/sheets";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
-
-const cacheHeaders = {
-  "Cache-Control": "no-store, max-age=0"
-};
 
 function selectView(data: ReturnType<typeof parseWorkbook>, view: SheetsView) {
   switch (view) {
@@ -50,15 +48,21 @@ function selectView(data: ReturnType<typeof parseWorkbook>, view: SheetsView) {
 
 export async function GET(request: NextRequest) {
   try {
+    const auth = await requireApiOwner();
+    if (auth.response) return auth.response;
+
     const view = (request.nextUrl.searchParams.get("view") || "overview") as SheetsView;
     const snapshot = sampleWorkbookSnapshot;
     const parsed = parseWorkbook(snapshot);
+    const authSetup = getAuthSetupStatus();
     const system: SystemStatus = {
       ...parsed.system,
       auth: {
         authenticated: true,
         approved: true,
-        email: "local-owner@example.local"
+        email: auth.session.user.email,
+        accessControlEnabled: true,
+        allowedOwnerEmailCount: authSetup.allowedOwnerEmailCount
       }
     };
 
@@ -70,7 +74,7 @@ export async function GET(request: NextRequest) {
         system,
         warnings: parsed.overview.warnings
       },
-      { headers: cacheHeaders }
+      { headers: protectedCacheHeaders }
     );
   } catch (error) {
     return NextResponse.json(
@@ -78,7 +82,7 @@ export async function GET(request: NextRequest) {
         ok: false,
         error: error instanceof Error ? error.message : "Unable to load local sample dashboard data."
       },
-      { status: 500, headers: cacheHeaders }
+      { status: 500, headers: protectedCacheHeaders }
     );
   }
 }

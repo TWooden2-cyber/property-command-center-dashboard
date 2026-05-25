@@ -236,7 +236,8 @@ export const sampleWorkbookSnapshot: WorkbookSnapshot = {
       googlePrivateKey: false,
       googleSheetId: false,
       nextAuthSecret: false,
-      approvedOwnerEmail: true,
+      nextAuthUrl: false,
+      allowedOwnerEmails: false,
       googleClientId: false,
       googleClientSecret: false
     }

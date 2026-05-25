@@ -44,8 +44,9 @@ export function SettingsView() {
     ["GOOGLE_SHEET_ID", system.env.googleSheetId],
     ["GOOGLE_CLIENT_ID", system.env.googleClientId],
     ["GOOGLE_CLIENT_SECRET", system.env.googleClientSecret],
-    ["NEXTAUTH_SECRET", system.env.nextAuthSecret],
-    ["APPROVED_OWNER_EMAIL", system.env.approvedOwnerEmail]
+    ["AUTH_SECRET / NEXTAUTH_SECRET", system.env.nextAuthSecret],
+    ["AUTH_URL / NEXTAUTH_URL", system.env.nextAuthUrl],
+    ["ALLOWED_OWNER_EMAILS", system.env.allowedOwnerEmails]
   ] as const;
 
   return (
@@ -60,7 +61,7 @@ export function SettingsView() {
         </div>
         <div className="settings-lines">
           <p>{system.connectionMessage}</p>
-          <p>This dashboard is using local sample records only. Missing Google environment variables are expected in this mode.</p>
+          <p>This dashboard is using local sample records only. Auth environment variables are required in production and fail closed when missing.</p>
           <div className="mode-status-list">
             <span>Mode: <strong>Local Sample Mode</strong></span>
             <StatusBadge label="Stable" />
@@ -78,20 +79,28 @@ export function SettingsView() {
         </div>
         <div className="settings-lines">
           <div className="mode-status-list">
-            <span>Google OAuth: <strong>Disabled</strong></span>
+            <span>Dashboard Access Control: <strong>Enabled</strong></span>
+            <StatusBadge label="Enabled" />
+          </div>
+          <div className="mode-status-list">
+            <span>Login Provider: <strong>Google</strong></span>
+            <StatusBadge label="Google" />
+          </div>
+          <div className="mode-status-list">
+            <span>Allowed Owner Emails: <strong>{system.env.allowedOwnerEmails ? `${system.auth.allowedOwnerEmailCount ?? 0} configured` : "Missing"}</strong></span>
+            <StatusBadge label={system.env.allowedOwnerEmails ? "Configured" : "Missing"} />
+          </div>
+          <div className="mode-status-list">
+            <span>Public Access: <strong>Disabled</strong></span>
             <StatusBadge label="Disabled" />
           </div>
           <div className="mode-status-list">
-            <span>Live sheet backend: <strong>Disabled</strong></span>
-            <StatusBadge label="Disabled" />
+            <span>API Protection: <strong>Enabled</strong></span>
+            <StatusBadge label="Enabled" />
           </div>
           <div className="mode-status-list">
-            <span>Live Google APIs: <strong>Disabled</strong></span>
+            <span>Live Actions: <strong>Still Disabled</strong></span>
             <StatusBadge label="Disabled" />
-          </div>
-          <div className="mode-status-list">
-            <span>Approval Gate: <strong>Active</strong></span>
-            <StatusBadge label="Stable" />
           </div>
         </div>
       </section>
@@ -137,7 +146,7 @@ export function SettingsView() {
           </div>
         </div>
         <p className="muted-line">
-          These live-service variables are intentionally disabled for this reset. They are shown for readiness tracking only, not as production failures.
+          These values show configured/missing status only. Secret values and allowed email addresses are never displayed.
         </p>
         <div className="config-grid">
           {envEntries.map(([label, configured]) => (

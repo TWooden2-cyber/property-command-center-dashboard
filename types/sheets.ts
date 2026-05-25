@@ -24,7 +24,8 @@ export type EnvStatus = {
   googlePrivateKey: boolean;
   googleSheetId: boolean;
   nextAuthSecret: boolean;
-  approvedOwnerEmail: boolean;
+  nextAuthUrl: boolean;
+  allowedOwnerEmails: boolean;
   googleClientId: boolean;
   googleClientSecret: boolean;
 };
@@ -33,6 +34,8 @@ export type AuthStatus = {
   authenticated: boolean;
   approved: boolean;
   email?: string | null;
+  accessControlEnabled?: boolean;
+  allowedOwnerEmailCount?: number;
 };
 
 export type SystemStatus = {

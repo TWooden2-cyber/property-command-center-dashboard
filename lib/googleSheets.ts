@@ -8,6 +8,7 @@ import {
   type SourceTabName,
   type WorkbookSnapshot
 } from "@/types/sheets";
+import { getAuthSetupStatus } from "@/lib/authConfig";
 
 const SHEETS_SCOPE = "https://www.googleapis.com/auth/spreadsheets.readonly";
 
@@ -28,14 +29,17 @@ function hasEnv(value: string | undefined): boolean {
 }
 
 export function getEnvironmentStatus(): EnvStatus {
+  const authStatus = getAuthSetupStatus();
+
   return {
     googleServiceAccountEmail: hasEnv(process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL),
     googlePrivateKey: hasEnv(process.env.GOOGLE_PRIVATE_KEY),
     googleSheetId: hasEnv(process.env.GOOGLE_SHEET_ID),
-    nextAuthSecret: hasEnv(process.env.NEXTAUTH_SECRET),
-    approvedOwnerEmail: hasEnv(process.env.APPROVED_OWNER_EMAIL),
-    googleClientId: hasEnv(process.env.GOOGLE_CLIENT_ID),
-    googleClientSecret: hasEnv(process.env.GOOGLE_CLIENT_SECRET)
+    nextAuthSecret: authStatus.authSecretConfigured,
+    nextAuthUrl: authStatus.authUrlConfigured,
+    allowedOwnerEmails: authStatus.allowedOwnerEmailsConfigured,
+    googleClientId: authStatus.googleClientIdConfigured,
+    googleClientSecret: authStatus.googleClientSecretConfigured
   };
 }
 
