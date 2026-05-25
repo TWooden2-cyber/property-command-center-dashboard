@@ -321,7 +321,8 @@ export const commandPages: Record<string, CommandPageConfig> = {
       { label: "Weekly Archive Needed", value: "1", helper: "Friday package", tone: "yellow" },
       { label: "Owner Approval Required", value: "7", helper: "Before Drive writes", tone: "yellow" },
       { label: "Blocked Until Verified", value: "4", helper: "Proof missing", tone: "red" },
-      { label: "Ready for Preview", value: "3", helper: "Preview-only packages", tone: "green" }
+      { label: "Ready for Preview", value: "3", helper: "Preview-only packages", tone: "green" },
+      { label: "Folder Health", value: "Batch 38", helper: "Review in Drive Read-Only", tone: "yellow" }
     ],
     tableColumns: [
       { key: "package", header: "Package Name" },
@@ -344,6 +345,16 @@ export const commandPages: Record<string, CommandPageConfig> = {
       { id: "drive-7", tone: "green", values: { package: "Dashboard Snapshot Archive", module: "Dashboard", property: "All", proof: "Owner review", folder: "Dashboard Snapshots", action: "Preview archive", status: "Ready for preview", approval: "Yes", blocked: "No" } }
     ],
     queues: [
+      {
+        title: "Drive Read-Only Folder Health",
+        detail: "Folder health should be reviewed in /drive-readonly before any future Drive package planning.",
+        items: [
+          "Missing/mismatched folders become future Drive update package items only after owner approval",
+          "No Drive writes are active",
+          "No folders are created, renamed, moved, deleted, or archived from this dashboard"
+        ],
+        tone: "yellow"
+      },
       { title: "Folder Preview Only", detail: "Folder targets are display-only.", items: ["Weekly Archives", "Mortgage Proof", "Maintenance Proof", "Rent Proof", "Notice Proof"], tone: "green" },
       { title: "Proof Missing Queue", detail: "Packages blocked by missing proof.", items: ["Mortgage posting proof", "Maintenance completion proof", "Rent ledger proof", "Notice/service proof"], tone: "red" },
       { title: "Drive Action Safety Rules", detail: "Drive writes require explicit owner approval.", items: ["No upload", "No move", "No rename", "No delete", "No update"], tone: "red" }
@@ -359,10 +370,10 @@ export const commandPages: Record<string, CommandPageConfig> = {
     safetyFooter: "No Google Drive files were uploaded, moved, renamed, deleted, updated, read, or created by this dashboard.",
     relatedLinks: [
       {
-        title: "Read-Only First: Drive Metadata Listing",
-        detail: "Open the controlled Drive Read-Only page to check folder metadata status before any future proof package writes are considered.",
+        title: "Drive Read-Only Folder Health",
+        detail: "Open the controlled Drive Read-Only page to review found, missing, and mismatched folders. Future Drive package items require separate owner approval.",
         href: "/drive-readonly",
-        action: "Open Drive Read-Only",
+        action: "Review Folder Health",
         tone: "green"
       }
     ]
@@ -1105,7 +1116,7 @@ commandPages["operations-readiness"] = {
     { label: "Phase 2", value: "Real data cleanup", helper: "Proof/conflict worksheet", tone: "red" },
     { label: "Phase 3", value: "Source package", helper: "Source-of-truth matrix", tone: "yellow" },
     { label: "Phase 4", value: "Drive folders", helper: "Preview only / not created", tone: "green" },
-    { label: "Phase 5", value: "Integration roadmap", helper: "Drive read-only first", tone: "green" },
+    { label: "Phase 5", value: "Read-only complete", helper: "Folder health mapping Batch 38", tone: "green" },
     { label: "Write Integrations", value: "Not approved", helper: "Live writes disabled", tone: "red" },
     { label: "Owner Approval", value: "Required", helper: "Before every live step", tone: "yellow" },
     { label: "Recommended First", value: "Drive read-only", helper: "Listing only / low risk", tone: "green" }
@@ -1126,9 +1137,9 @@ commandPages["operations-readiness"] = {
     { id: "ops-4", tone: "red", values: { phase: "Phase 3", task: "Proof gaps identified", status: "Pending Proof", risk: "High", ownerAction: "List missing proof by module", blocked: "Proof references identified", ready: "No" } },
     { id: "ops-5", tone: "red", values: { phase: "Phase 2", task: "Conflicts resolved", status: "Blocked", risk: "High", ownerAction: "Resolve Unit 2, Unit 4, Unit A, mortgage, and sample/export conflicts", blocked: "Conflicts resolved", ready: "No" } },
     { id: "ops-6", tone: "yellow", values: { phase: "Phase 4", task: "Drive folder plan reviewed", status: "In Review", risk: "Low", ownerAction: "Review folder purpose/proof map", blocked: "Owner folder plan approval", ready: "No" } },
-    { id: "ops-7", tone: "green", values: { phase: "Phase 5", task: "Drive Read-Only Preflight", status: "Ready", risk: "Low", ownerAction: "Run local preflight; no OAuth exchange without approval", blocked: "Token/scope safety check", ready: "Yes" } },
-    { id: "ops-7b", tone: "yellow", values: { phase: "Phase 5", task: "Drive Read-Only Listing", status: "Ready after token/preflight", risk: "Low", ownerAction: "List metadata only after safe token is confirmed", blocked: "Read-only token and preflight", ready: "No" } },
-    { id: "ops-7c", tone: "red", values: { phase: "Phase 5", task: "Drive Writes", status: "Blocked / Not approved", risk: "High", ownerAction: "Do not upload, move, rename, delete, create, or edit Drive files", blocked: "Separate owner write approval", ready: "No" } },
+    { id: "ops-7", tone: "green", values: { phase: "Phase 5", task: "Drive read-only integration", status: "Completed locally", risk: "Low", ownerAction: "Keep metadata-read-only listing gated to owner machine", blocked: "No write approval", ready: "Yes" } },
+    { id: "ops-7b", tone: "yellow", values: { phase: "Phase 5", task: "Folder health mapping", status: "In progress / Batch 38", risk: "Low", ownerAction: "Review found, missing, mismatched, and owner-review folders", blocked: "Read-only health mapping review", ready: "No" } },
+    { id: "ops-7c", tone: "red", values: { phase: "Phase 5", task: "Drive writes", status: "Blocked / not approved", risk: "High", ownerAction: "Do not upload, move, rename, delete, create, edit, copy, trash, or change permissions", blocked: "Separate owner write approval", ready: "No" } },
     { id: "ops-8", tone: "green", values: { phase: "Phase 5", task: "No write integrations approved yet", status: "Passed", risk: "Low", ownerAction: "Keep write integrations disabled", blocked: "Separate owner approval", ready: "Yes" } },
     { id: "ops-9", tone: "yellow", values: { phase: "Phase 1", task: "Weekly review dry run completed", status: "Not Started", risk: "Low", ownerAction: "Run Reports dry run", blocked: "Owner review", ready: "No" } },
     { id: "ops-10", tone: "yellow", values: { phase: "Phase 5", task: "Owner approves next phase", status: "Not Started", risk: "Medium", ownerAction: "Approve specific integration type and scope", blocked: "All earlier phases reviewed", ready: "No" } }
@@ -1217,7 +1228,7 @@ commandPages["operations-readiness"] = {
       title: "Phase 5: Safe Live Integration Roadmap",
       detail: "Safest order starts with Drive read-only/listing.",
       items: [
-        "1. Google Drive read-only/listing - view folder and proof structure without changing files - low risk if read-only; preflight ready",
+        "1. Google Drive read-only/listing - completed locally for metadata-only folder visibility; folder health mapping in progress / Batch 38",
         "2. Google Drive preview upload package - prepare owner-approved package before write - medium risk",
         "3. Google Sheets read-only source data - use verified Sheets as source data - medium risk",
         "4. Google Calendar preview-to-create - create events only after owner approval - medium risk",

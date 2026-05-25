@@ -9,7 +9,8 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "drive:readonly:preflight": "node scripts/drive-readonly-preflight.mjs",
-    "drive:readonly:list": "node scripts/drive-readonly-list.mjs"
+    "drive:readonly:list": "node scripts/drive-readonly-list.mjs",
+    "drive:readonly:health": "node scripts/drive-folder-health.mjs"
   },
   "dependencies": {
     "googleapis": "^144.0.0",

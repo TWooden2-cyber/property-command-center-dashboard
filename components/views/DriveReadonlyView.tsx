@@ -6,6 +6,13 @@ import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { EmptyState, LoadingState } from "@/components/DataState";
 import { StatusBadge } from "@/components/StatusBadge";
 import { copyTextToClipboard } from "@/lib/clipboard";
+import {
+  EXPECTED_DRIVE_PROOF_FOLDERS,
+  buildDriveFolderHealthMap,
+  buildDriveFutureActionPreview,
+  type DriveFolderFutureAction,
+  type DriveFolderHealthRow
+} from "@/lib/driveFolderHealth";
 import { DRIVE_READONLY_TARGET_FOLDER_ID, DRIVE_READONLY_TARGET_FOLDER_NAME } from "@/lib/googleDriveReadonlyConfig";
 import {
   type DriveReadonlyMetadata,
@@ -18,35 +25,12 @@ type ApiPayload = {
   status: DriveReadonlyStatus;
 };
 
-type HealthRow = {
-  id: string;
-  folder: string;
-  status: string;
-  note: string;
-};
-
 type CommandTemplate = {
   id: string;
   title: string;
   actionName: string;
   prompt: string;
 };
-
-const expectedFolders = [
-  "00 Command Dashboard",
-  "01 Rent Collection",
-  "02 Maintenance",
-  "03 Mortgage and Arrears",
-  "04 Notices and Legal Holds",
-  "05 Utilities",
-  "06 Lease Violations",
-  "07 Tenant Communications",
-  "08 Vendor Communications",
-  "09 Weekly Command Reviews",
-  "10 Proof Archive",
-  "11 Source Data Exports",
-  "12 Owner Approvals"
-];
 
 const commands: CommandTemplate[] = [
   {
@@ -82,17 +66,59 @@ Rules:
 - Stop before any Drive write actions.`
   },
   {
-    id: "health",
-    title: "Codex Command - Drive Folder Health Review",
-    actionName: "Generate Codex Command: Drive Folder Health Review",
-    prompt: `Prepare a Drive Folder Health Review.
+    id: "folder-health-mapping",
+    title: "Codex Command - Drive Folder Health Mapping",
+    actionName: "Generate Codex Command: Drive Folder Health Mapping",
+    prompt: `Run Drive Folder Health Mapping.
 
 Rules:
-- Do not modify Drive.
-- Review the expected folder structure against read-only listing results.
-- Mark folders as Found, Missing, Not Checked, or Needs Owner Review.
+- Use metadata-only Drive read-only listing.
+- Do not create, upload, move, rename, delete, edit, copy, trash, or change permissions.
+- Do not read file contents.
+- Compare expected proof folders to actual listed Drive metadata.
+- Mark folders as Found, Missing, Name Mismatch, Needs Owner Review, or Not Checked.
 - Produce a folder health report.
+- Stop before Drive write actions.`
+  },
+  {
+    id: "missing-folder-review",
+    title: "Codex Command - Missing Folder Review",
+    actionName: "Generate Codex Command: Missing Folder Review",
+    prompt: `Prepare a Missing Folder Review.
+
+Rules:
+- Do not create folders.
+- Do not update Drive.
+- Identify expected proof folders that are missing from the read-only listing.
+- Explain why each folder may be needed.
+- Prepare owner decision list for possible future Drive write package.
 - Stop before live writes.`
+  },
+  {
+    id: "write-package-preview",
+    title: "Codex Command - Drive Write Package Preview",
+    actionName: "Generate Codex Command: Drive Write Package Preview",
+    prompt: `Prepare a Drive Write Package Preview.
+
+Rules:
+- Preview only.
+- Do not create, upload, move, rename, delete, edit, copy, trash, or change permissions.
+- List potential future Drive actions separately from completed actions.
+- Mark all actions as not approved and blocked until owner approval.
+- Stop before Drive writes.`
+  },
+  {
+    id: "folder-naming-review",
+    title: "Codex Command - Drive Folder Naming Review",
+    actionName: "Generate Codex Command: Drive Folder Naming Review",
+    prompt: `Prepare a Drive Folder Naming Review.
+
+Rules:
+- Do not rename folders.
+- Do not update Drive.
+- Compare actual folder names to expected naming standard.
+- Identify possible mismatches and owner decisions required.
+- Stop before Drive writes.`
   },
   {
     id: "token",
@@ -120,12 +146,6 @@ Rules:
 - Do not perform Drive writes.`
   }
 ];
-
-function toneForStatus(status: string) {
-  if (status === "Found") return "green";
-  if (status === "Missing") return "red";
-  return "yellow";
-}
 
 export function DriveReadonlyView() {
   const [payload, setPayload] = useState<ApiPayload | null>(null);
@@ -168,19 +188,11 @@ export function DriveReadonlyView() {
   }, []);
 
   const status = payload?.status;
-  const folderNames = useMemo(() => new Set((status?.items || []).map((item) => item.name)), [status?.items]);
-  const healthRows: HealthRow[] = useMemo(() => {
-    const connected = Boolean(status?.connected);
-    return [
-      { id: "main", folder: "Main folder", status: connected ? "Found" : "Not Checked", note: status?.reason || "Waiting for local preflight." },
-      ...expectedFolders.map((folder) => ({
-        id: folder,
-        folder,
-        status: connected ? (folderNames.has(folder) ? "Found" : "Missing") : "Not Checked",
-        note: connected ? (folderNames.has(folder) ? "Read-only metadata returned." : "Needs owner review; do not create automatically.") : "Run local preflight and listing first."
-      }))
-    ];
-  }, [folderNames, status?.connected, status?.reason]);
+  const folderHealth = useMemo(
+    () => buildDriveFolderHealthMap(status?.items || [], Boolean(status?.connected)),
+    [status?.items, status?.connected]
+  );
+  const futureActions = useMemo(() => buildDriveFutureActionPreview(folderHealth.rows), [folderHealth.rows]);
 
   const metadataColumns: DataTableColumn<DriveReadonlyMetadata>[] = [
     { key: "name", header: "Name", render: (row) => row.name },
@@ -189,10 +201,23 @@ export function DriveReadonlyView() {
     { key: "size", header: "Size", render: (row) => row.size || "Folder / not available" },
     { key: "webViewLink", header: "View Link", render: (row) => (row.webViewLink ? "Metadata link available" : "Not available") }
   ];
-  const healthColumns: DataTableColumn<HealthRow>[] = [
-    { key: "folder", header: "Folder", render: (row) => row.folder },
+  const healthColumns: DataTableColumn<DriveFolderHealthRow>[] = [
+    { key: "expectedFolder", header: "Expected Folder", render: (row) => row.expectedFolder },
+    { key: "actualMatch", header: "Actual Match", render: (row) => row.actualMatch },
     { key: "status", header: "Status", render: (row) => <StatusBadge label={row.status} /> },
-    { key: "note", header: "Notes", render: (row) => row.note }
+    { key: "driveItemType", header: "Drive Item Type", render: (row) => row.driveItemType },
+    { key: "modifiedTime", header: "Modified Time", render: (row) => row.modifiedTime },
+    { key: "ownerAction", header: "Owner Action", render: (row) => row.ownerAction },
+    { key: "blockedAction", header: "Blocked Action", render: (row) => row.blockedAction },
+    { key: "notes", header: "Notes", render: (row) => row.notes }
+  ];
+  const futureActionColumns: DataTableColumn<DriveFolderFutureAction>[] = [
+    { key: "actionType", header: "Potential Future Action", render: (row) => row.actionType },
+    { key: "target", header: "Target", render: (row) => row.target },
+    { key: "status", header: "Status", render: (row) => <StatusBadge label={row.status} /> },
+    { key: "ownerApproval", header: "Owner Approval", render: (row) => row.ownerApproval },
+    { key: "performed", header: "Performed", render: (row) => row.performed },
+    { key: "notes", header: "Notes", render: (row) => row.notes }
   ];
 
   async function copyCommand(command: CommandTemplate) {
@@ -221,14 +246,14 @@ export function DriveReadonlyView() {
 
       <section className="remaining-kpi-grid">
         {[
-          ["Target Folder", DRIVE_READONLY_TARGET_FOLDER_NAME, "Configured folder", "green"],
-          ["Connection Status", status?.connected ? "Connected" : "Not connected", status?.reason || "Safe fallback", status?.connected ? "green" : "yellow"],
-          ["Token Location", status?.tokenPathSafe ? "Outside repo" : "Unsafe", status?.tokenPresent ? "Token present" : "Token missing", status?.tokenPathSafe ? "green" : "red"],
-          ["Scope Status", status?.scopeSafe ? "Read-only" : "Not verified", status?.scopeStatus || "No scope checked", status?.scopeSafe ? "green" : "yellow"],
-          ["Write Access", "Disabled", "No upload/move/rename/delete/edit", "green"],
-          ["Last Local Check", status?.lastLocalCheck || "Not checked", "Safe status endpoint", "yellow"],
-          ["Listed Items", String(status?.items.length || 0), "Safe metadata only", status?.items.length ? "green" : "yellow"],
-          ["Next Owner Action", status?.connected ? "Review folder health" : "Run local preflight", "Stop before writes", "yellow"]
+          ["Expected Folders", String(folderHealth.summary.expectedFolders), "Proof-folder standard", "green"],
+          ["Found", String(folderHealth.summary.found), "Exact metadata match", "green"],
+          ["Missing", String(folderHealth.summary.missing), "Future write package only after approval", folderHealth.summary.missing ? "red" : "green"],
+          ["Name Mismatch", String(folderHealth.summary.nameMismatch), "Review naming before any future rename", folderHealth.summary.nameMismatch ? "yellow" : "green"],
+          ["Needs Owner Review", String(folderHealth.summary.needsOwnerReview), "Ambiguous folder mapping", folderHealth.summary.needsOwnerReview ? "yellow" : "green"],
+          ["Read-Only Status", status?.connected ? "Active" : "Not connected", status?.scopeStatus || "Metadata-read-only only", status?.connected ? "green" : "yellow"],
+          ["Drive Writes", "Disabled", "No create/upload/move/rename/delete/edit/copy/trash/permissions", "green"],
+          ["Last Listing Result", status?.connected ? "Metadata listed" : "Not checked", status?.reason || "Safe status endpoint", status?.connected ? "green" : "yellow"]
         ].map(([label, value, helper, tone]) => (
           <article className={`kpi-card status-strip ${tone}`} key={label}>
             <span>{label}</span>
@@ -236,6 +261,34 @@ export function DriveReadonlyView() {
             <small>{helper}</small>
           </article>
         ))}
+      </section>
+
+      <section className="section-block">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Drive Listing Summary</p>
+            <h2>Target folder metadata status</h2>
+          </div>
+          <StatusBadge label="Metadata only" />
+        </div>
+        <div className="settings-lines">
+          {[
+            ["Target folder name", DRIVE_READONLY_TARGET_FOLDER_NAME],
+            ["Target folder ID", DRIVE_READONLY_TARGET_FOLDER_ID],
+            ["Items listed", String(status?.items.length || 0)],
+            ["Listing mode", "Metadata only"],
+            ["File contents read", "No"],
+            ["Drive writes performed", "No"],
+            ["Last local listing status", status?.reason || "Not checked"],
+            ["Token location", status?.tokenPathSafe ? "Outside repo" : "Unsafe / blocked"],
+            ["Scope", status?.scopeStatus || "metadata-read-only only"]
+          ].map(([label, value]) => (
+            <div className="mode-status-list" key={label}>
+              <span>{label}: <strong>{value}</strong></span>
+              <StatusBadge label={value} />
+            </div>
+          ))}
+        </div>
       </section>
 
       <section className="remaining-health-panel">
@@ -255,7 +308,7 @@ export function DriveReadonlyView() {
           <p>Expected proof-folder structure. Preview only; no folders are created.</p>
           <div className="calendar-mini-list">
             <div><strong>{DRIVE_READONLY_TARGET_FOLDER_NAME}/</strong></div>
-            {expectedFolders.map((folder) => <div key={folder}><strong>{folder}</strong></div>)}
+            {EXPECTED_DRIVE_PROOF_FOLDERS.map((folder) => <div key={folder}><strong>{folder}</strong></div>)}
           </div>
         </article>
         <article className="remaining-queue-card queue-red">
@@ -293,11 +346,26 @@ export function DriveReadonlyView() {
       <section className="section-block">
         <div className="section-heading">
           <div>
-            <p className="eyebrow">Folder Health Checklist</p>
-            <h2>Proof folder status</h2>
+            <p className="eyebrow">Drive Folder Health Mapping</p>
+            <h2>Expected folders vs actual Drive metadata</h2>
           </div>
         </div>
-        <DataTable rows={healthRows.map((row) => ({ ...row, id: `${row.id}-${row.status}` }))} columns={healthColumns} />
+        <DataTable rows={folderHealth.rows} columns={healthColumns} />
+      </section>
+
+      <section className="section-block">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Future Drive Write Package Preview</p>
+            <h2>Potential future Drive folder actions</h2>
+          </div>
+          <StatusBadge label="Not approved / blocked" />
+        </div>
+        {futureActions.length ? (
+          <DataTable rows={futureActions} columns={futureActionColumns} />
+        ) : (
+          <EmptyState title="No future Drive folder actions suggested" message="Folder health currently has no missing, mismatched, or owner-review rows." />
+        )}
       </section>
 
       <section className="calendar-command-panel">
@@ -309,7 +377,7 @@ export function DriveReadonlyView() {
             <article className="codex-command-card command-tone-yellow" key={command.id}>
               <span>Read-only only</span>
               <strong>{command.actionName}</strong>
-              <p>No Drive writes, no upload, no move, no rename, no delete, no file content read.</p>
+              <p>No Drive writes, no folder creation, no upload, no move, no rename, no delete, no file content read.</p>
               <button type="button" onClick={() => setActiveCommand(command)}>
                 <Copy size={15} />
                 Generate Command
@@ -327,7 +395,7 @@ export function DriveReadonlyView() {
               <button type="button" onClick={() => setActiveCommand(null)}>Close</button>
             </div>
             <div className="command-preview-labels">
-              {["Read-only only", "Owner approval required", "No Drive writes", "No upload", "No move", "No rename", "No delete", "No file content read", "Token outside repo"].map((label) => <span key={label}>{label}</span>)}
+              {["Read-only only", "Owner approval required", "No Drive writes", "No folder creation", "No rename", "No move", "No delete", "No file content read"].map((label) => <span key={label}>{label}</span>)}
             </div>
             <pre>{activeCommand.prompt}</pre>
             <div className="command-preview-actions">
