@@ -1,52 +1,41 @@
 export const LOGIN_PATH = "/login";
 export const ACCESS_DENIED_PATH = "/access-denied";
+export const LOGOUT_PATH = "/logout";
+export const DASHBOARD_SESSION_COOKIE = "property_dashboard_session";
 
-export function getAllowedOwnerEmails(): string[] {
-  return (process.env.ALLOWED_OWNER_EMAILS ?? "")
-    .split(",")
-    .map((email) => email.trim().toLowerCase())
-    .filter(Boolean);
+function hasEnv(value: string | undefined): boolean {
+  return Boolean(value && value.trim().length > 0);
 }
 
-export function getAuthSecret(): string | undefined {
-  return process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET;
+export function getDashboardOwnerPassword(): string | undefined {
+  return process.env.DASHBOARD_OWNER_PASSWORD;
 }
 
-export function getAuthUrl(): string | undefined {
-  return process.env.NEXTAUTH_URL || process.env.AUTH_URL;
+export function getDashboardSessionSecret(): string | undefined {
+  return process.env.DASHBOARD_SESSION_SECRET || process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET;
 }
 
-export function isOwnerAllowlistConfigured(): boolean {
-  return getAllowedOwnerEmails().length > 0;
+export function isDashboardPasswordConfigured(): boolean {
+  return hasEnv(getDashboardOwnerPassword());
 }
 
-export function isApprovedOwnerEmail(email?: string | null): boolean {
-  if (!email) return false;
-  const allowedEmails = getAllowedOwnerEmails();
-  if (!allowedEmails.length) return false;
-  return allowedEmails.includes(email.trim().toLowerCase());
+export function isDashboardSessionSecretConfigured(): boolean {
+  return hasEnv(getDashboardSessionSecret());
 }
 
 export function getAuthSetupStatus() {
-  const allowedOwnerEmailCount = getAllowedOwnerEmails().length;
+  const dashboardOwnerPasswordConfigured = isDashboardPasswordConfigured();
+  const dashboardSessionSecretConfigured = isDashboardSessionSecretConfigured();
 
   return {
-    authSecretConfigured: Boolean(getAuthSecret()),
-    authUrlConfigured: Boolean(getAuthUrl()),
-    googleClientIdConfigured: Boolean(process.env.GOOGLE_CLIENT_ID),
-    googleClientSecretConfigured: Boolean(process.env.GOOGLE_CLIENT_SECRET),
-    allowedOwnerEmailsConfigured: allowedOwnerEmailCount > 0,
-    allowedOwnerEmailCount
+    dashboardOwnerPasswordConfigured,
+    dashboardSessionSecretConfigured,
+    dashboardAccessConfigured: dashboardOwnerPasswordConfigured && dashboardSessionSecretConfigured,
+    loginMethod: "Owner Password" as const
   };
 }
 
-export function isGoogleAuthConfigured(): boolean {
+export function isDashboardPasswordAuthConfigured(): boolean {
   const status = getAuthSetupStatus();
-  return Boolean(
-    status.authSecretConfigured &&
-      status.authUrlConfigured &&
-      status.googleClientIdConfigured &&
-      status.googleClientSecretConfigured &&
-      status.allowedOwnerEmailsConfigured
-  );
+  return status.dashboardAccessConfigured;
 }

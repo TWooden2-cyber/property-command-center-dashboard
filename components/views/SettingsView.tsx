@@ -42,11 +42,8 @@ export function SettingsView() {
     ["GOOGLE_SERVICE_ACCOUNT_EMAIL", system.env.googleServiceAccountEmail],
     ["GOOGLE_PRIVATE_KEY", system.env.googlePrivateKey],
     ["GOOGLE_SHEET_ID", system.env.googleSheetId],
-    ["GOOGLE_CLIENT_ID", system.env.googleClientId],
-    ["GOOGLE_CLIENT_SECRET", system.env.googleClientSecret],
-    ["AUTH_SECRET / NEXTAUTH_SECRET", system.env.nextAuthSecret],
-    ["AUTH_URL / NEXTAUTH_URL", system.env.nextAuthUrl],
-    ["ALLOWED_OWNER_EMAILS", system.env.allowedOwnerEmails]
+    ["DASHBOARD_OWNER_PASSWORD", system.env.dashboardOwnerPassword],
+    ["Session Signing Secret", system.env.dashboardSessionSecret]
   ] as const;
 
   return (
@@ -61,7 +58,7 @@ export function SettingsView() {
         </div>
         <div className="settings-lines">
           <p>{system.connectionMessage}</p>
-          <p>This dashboard is using local sample records only. Auth environment variables are required in production and fail closed when missing.</p>
+          <p>This dashboard is using local sample records only. Owner password environment variables are required in production and fail closed when missing.</p>
           <div className="mode-status-list">
             <span>Mode: <strong>Local Sample Mode</strong></span>
             <StatusBadge label="Stable" />
@@ -83,12 +80,8 @@ export function SettingsView() {
             <StatusBadge label="Enabled" />
           </div>
           <div className="mode-status-list">
-            <span>Login Provider: <strong>Google</strong></span>
-            <StatusBadge label="Google" />
-          </div>
-          <div className="mode-status-list">
-            <span>Allowed Owner Emails: <strong>{system.env.allowedOwnerEmails ? `${system.auth.allowedOwnerEmailCount ?? 0} configured` : "Missing"}</strong></span>
-            <StatusBadge label={system.env.allowedOwnerEmails ? "Configured" : "Missing"} />
+            <span>Login Method: <strong>Owner Password</strong></span>
+            <StatusBadge label="Password" />
           </div>
           <div className="mode-status-list">
             <span>Public Access: <strong>Disabled</strong></span>
@@ -146,7 +139,7 @@ export function SettingsView() {
           </div>
         </div>
         <p className="muted-line">
-          These values show configured/missing status only. Secret values and allowed email addresses are never displayed.
+          These values show configured/missing status only. Secret values are never displayed.
         </p>
         <div className="config-grid">
           {envEntries.map(([label, configured]) => (

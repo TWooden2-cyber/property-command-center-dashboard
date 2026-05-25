@@ -1,74 +1,42 @@
-import type { NextAuthOptions, Session } from "next-auth";
-import { getServerSession } from "next-auth";
-import GoogleProvider from "next-auth/providers/google";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { ACCESS_DENIED_PATH, LOGIN_PATH, getAuthSecret, isApprovedOwnerEmail } from "@/lib/authConfig";
+import { DASHBOARD_SESSION_COOKIE, LOGIN_PATH } from "@/lib/authConfig";
+import { verifyDashboardSession } from "@/lib/dashboardSession";
 
-export type OwnerSession = Session & {
-  user: NonNullable<Session["user"]> & {
-    email: string;
+export type OwnerSession = {
+  authenticated: true;
+  approved: true;
+  method: "owner-password";
+  expiresAt: number;
+  user: {
+    role: "owner";
+    email: null;
   };
 };
 
-export const authOptions: NextAuthOptions = {
-  providers: [
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID ?? "",
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? ""
-    })
-  ],
-  pages: {
-    signIn: LOGIN_PATH,
-    error: ACCESS_DENIED_PATH
-  },
-  session: {
-    strategy: "jwt"
-  },
-  secret: getAuthSecret(),
-  callbacks: {
-    async signIn({ user }) {
-      if (!isApprovedOwnerEmail(user.email)) {
-        return ACCESS_DENIED_PATH;
-      }
-
-      return true;
-    },
-    async session({ session, token }) {
-      if (session.user && token.email) {
-        session.user.email = token.email;
-      }
-
-      return session;
-    }
-  }
-};
-
-export function isApprovedEmail(email?: string | null): boolean {
-  return isApprovedOwnerEmail(email);
-}
-
 export async function getServerAuthSession(): Promise<OwnerSession | null> {
-  const session = await getServerSession(authOptions);
-  const email = session?.user?.email;
+  const cookieValue = cookies().get(DASHBOARD_SESSION_COOKIE)?.value;
+  const session = await verifyDashboardSession(cookieValue);
 
-  if (!session || !email || !isApprovedOwnerEmail(email)) {
+  if (!session.valid || !session.expiresAt) {
     return null;
   }
 
-  return session as OwnerSession;
+  return {
+    authenticated: true,
+    approved: true,
+    method: "owner-password",
+    expiresAt: session.expiresAt,
+    user: {
+      role: "owner",
+      email: null
+    }
+  };
 }
 
 export async function requireOwnerSession(): Promise<OwnerSession> {
-  const session = await getServerSession(authOptions);
-  const email = session?.user?.email;
+  const session = await getServerAuthSession();
+  if (!session) redirect(LOGIN_PATH);
 
-  if (!session || !email) {
-    redirect(LOGIN_PATH);
-  }
-
-  if (!isApprovedOwnerEmail(email)) {
-    redirect(ACCESS_DENIED_PATH);
-  }
-
-  return session as OwnerSession;
+  return session;
 }

@@ -9,17 +9,17 @@ This reset build runs without live Google services. The dashboard uses a local s
 
 Current behavior:
 
-- Google OAuth: Disabled
-- No Google OAuth required
+- Dashboard login: Owner password
+- Required dashboard env var: `DASHBOARD_OWNER_PASSWORD`
+- Optional dashboard env var: `DASHBOARD_SESSION_SECRET`
 - Google Sheets: Disabled
 - Live Google APIs: Disabled
-- Vercel environment variables: Not required for the current reset build
-- No Vercel environment variables required
+- Public dashboard access: Disabled
 - Local sample workbook data: Active
 - Dashboard write-back actions: Disabled
 - Tenant emails, notices, filings, Drive actions, Calendar actions, Tasks actions, and Sheets writes: Disabled
 
-Do not add OAuth or Google variables until the dashboard is stable on Vercel in Local Sample Mode.
+Do not add external login provider variables until the dashboard is stable on Vercel in Local Sample Mode.
 
 ## What The Dashboard Shows
 
@@ -107,7 +107,7 @@ The reset build is read-only and local-sample-only.
 
 It does not:
 
-- Sign in with Google
+- Use an external OAuth provider for dashboard login
 - Read Google Sheets
 - Write Google Sheets
 - Read Gmail
@@ -120,20 +120,27 @@ It does not:
 - File eviction cases
 - Perform mortgage, legal, financial, or tenant live actions
 
-## Future Re-Enable: Google OAuth and Google Sheets Read-Only
+## Owner Password Login
 
-These variables are not required right now. Add them only in a future re-enable batch after the dashboard is stable on Vercel in Local Sample Mode.
-
-Placeholder variables for the future OAuth step:
+The dashboard is protected by an owner password stored outside the repository. Add these values in Vercel or local `.env.local` only:
 
 ```env
-GOOGLE_CLIENT_ID=
-GOOGLE_CLIENT_SECRET=
-NEXTAUTH_URL=
-NEXTAUTH_SECRET=
+DASHBOARD_OWNER_PASSWORD=
+DASHBOARD_SESSION_SECRET=
 ```
 
-Future Google Sheets read-only re-enable work must be handled separately and deliberately. Do not add real client IDs, client secrets, service account keys, private keys, or owner credentials to this repository.
+If `DASHBOARD_SESSION_SECRET` is not set, the app can use `NEXTAUTH_SECRET` or `AUTH_SECRET` for session signing only. If `DASHBOARD_OWNER_PASSWORD` is missing, the dashboard fails closed.
+
+## Future Re-Enable: Google Sheets Read-Only
+
+Google Sheets read-only re-enable work must be handled separately and deliberately. Do not add real client IDs, client secrets, service account keys, private keys, or owner credentials to this repository.
+
+Placeholder variables for future session signing compatibility:
+
+```env
+NEXTAUTH_SECRET=
+AUTH_SECRET=
+```
 
 ## Git And Deployment Guardrails
 

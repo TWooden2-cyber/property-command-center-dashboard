@@ -235,11 +235,8 @@ export const sampleWorkbookSnapshot: WorkbookSnapshot = {
       googleServiceAccountEmail: false,
       googlePrivateKey: false,
       googleSheetId: false,
-      nextAuthSecret: false,
-      nextAuthUrl: false,
-      allowedOwnerEmails: false,
-      googleClientId: false,
-      googleClientSecret: false
+      dashboardOwnerPassword: false,
+      dashboardSessionSecret: false
     }
   }
 };

@@ -1027,6 +1027,41 @@ tbody tr:hover {
   color: var(--cream);
 }
 
+.login-form {
+  display: grid;
+  gap: 14px;
+  margin: 20px 0;
+}
+
+.login-field {
+  display: grid;
+  gap: 8px;
+}
+
+.login-field span {
+  color: var(--gold-soft);
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.login-field input {
+  width: 100%;
+  min-height: 46px;
+  border: 1px solid rgba(201, 164, 81, 0.38);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: rgba(8, 7, 6, 0.5);
+  color: var(--cream);
+  font: inherit;
+}
+
+.login-field input:focus {
+  border-color: var(--gold-soft);
+  outline: 2px solid rgba(201, 164, 81, 0.22);
+}
+
 .login-button {
   width: 100%;
 }

@@ -60,9 +60,9 @@ export async function GET(request: NextRequest) {
       auth: {
         authenticated: true,
         approved: true,
-        email: auth.session.user.email,
-        accessControlEnabled: true,
-        allowedOwnerEmailCount: authSetup.allowedOwnerEmailCount
+        email: null,
+        method: auth.session.method,
+        accessControlEnabled: authSetup.dashboardAccessConfigured
       }
     };
 

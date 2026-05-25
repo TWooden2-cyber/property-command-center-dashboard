@@ -35,11 +35,8 @@ export function getEnvironmentStatus(): EnvStatus {
     googleServiceAccountEmail: hasEnv(process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL),
     googlePrivateKey: hasEnv(process.env.GOOGLE_PRIVATE_KEY),
     googleSheetId: hasEnv(process.env.GOOGLE_SHEET_ID),
-    nextAuthSecret: authStatus.authSecretConfigured,
-    nextAuthUrl: authStatus.authUrlConfigured,
-    allowedOwnerEmails: authStatus.allowedOwnerEmailsConfigured,
-    googleClientId: authStatus.googleClientIdConfigured,
-    googleClientSecret: authStatus.googleClientSecretConfigured
+    dashboardOwnerPassword: authStatus.dashboardOwnerPasswordConfigured,
+    dashboardSessionSecret: authStatus.dashboardSessionSecretConfigured
   };
 }
 
