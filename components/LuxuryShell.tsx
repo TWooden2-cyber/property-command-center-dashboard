@@ -23,7 +23,8 @@ import {
   ShieldCheck,
   Route as RouteIcon,
   Database,
-  ListChecks
+  ListChecks,
+  HardDrive
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -46,6 +47,7 @@ const navigation = [
   { href: "/lease-violations", label: "Lease Violations", icon: FileWarning },
   { href: "/draft-status", label: "Draft Status", icon: FileText },
   { href: "/drive-update-center", label: "Drive Update Center", icon: FolderUp },
+  { href: "/drive-readonly", label: "Drive Read-Only", icon: HardDrive },
   { href: "/gmail-follow-ups", label: "Gmail Follow-Ups", icon: Mail },
   { href: "/reports", label: "Reports", icon: BarChart3 },
   { href: "/data-accuracy", label: "Data Accuracy", icon: ShieldCheck },

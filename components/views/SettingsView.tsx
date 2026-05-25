@@ -96,6 +96,39 @@ export function SettingsView() {
         </div>
       </section>
 
+      <section className="section-block">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Google Drive Read-Only</p>
+            <h2>Planned / Local read-only</h2>
+          </div>
+          <ShieldCheck size={20} aria-hidden />
+        </div>
+        <div className="settings-lines">
+          <div className="mode-status-list">
+            <span>Status: <strong>Planned / Local read-only</strong></span>
+            <StatusBadge label="Read-only" />
+          </div>
+          <div className="mode-status-list">
+            <span>Writes: <strong>Disabled</strong></span>
+            <StatusBadge label="Disabled" />
+          </div>
+          <div className="mode-status-list">
+            <span>Scope: <strong>metadata/read-only only</strong></span>
+            <StatusBadge label="Owner gated" />
+          </div>
+          <div className="mode-status-list">
+            <span>Token: <strong>outside repo</strong></span>
+            <StatusBadge label="Required" />
+          </div>
+          <div className="mode-status-list">
+            <span>Folder ID: <strong>configured</strong></span>
+            <StatusBadge label="Configured" />
+          </div>
+          <p>Owner approval is required before any future Drive write action. This does not enable Drive uploads, moves, renames, deletes, or file edits.</p>
+        </div>
+      </section>
+
       <section className="section-block wide">
         <div className="section-heading">
           <div>

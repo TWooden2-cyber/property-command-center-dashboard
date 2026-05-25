@@ -400,6 +400,14 @@ function ExecutiveSummaryCards() {
       href: "/operations-readiness",
       action: "Open Operations Readiness tab",
       tone: "yellow"
+    },
+    {
+      title: "Drive Read-Only",
+      value: "Metadata only",
+      detail: "Folder listing only, proof folder visibility, no Drive writes, token outside repo.",
+      href: "/drive-readonly",
+      action: "Open Drive Read-Only tab",
+      tone: "green"
     }
   ];
 

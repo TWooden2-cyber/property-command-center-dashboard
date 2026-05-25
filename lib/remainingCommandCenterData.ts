@@ -356,7 +356,16 @@ export const commandPages: Record<string, CommandPageConfig> = {
       { id: "drive-package", title: "Codex Command - Drive Package Prep", actionName: "Generate Codex Command: Drive Package Prep", controls: "Preview package contents only.", tone: "green", prompt: commandPrompt("Prepare Google Drive update package previews.", "- Report what would be updated and stop before any Drive write.") },
       { id: "drive-proof", title: "Codex Command - Drive Proof Gap Review", actionName: "Generate Codex Command: Drive Proof Gap Review", controls: "Proof missing queue grouped by module.", tone: "red", prompt: commandPrompt("Prepare a Drive proof gap review.", "- Identify missing proof files and blocked packages. Do not upload or move files.") }
     ],
-    safetyFooter: "No Google Drive files were uploaded, moved, renamed, deleted, updated, read, or created by this dashboard."
+    safetyFooter: "No Google Drive files were uploaded, moved, renamed, deleted, updated, read, or created by this dashboard.",
+    relatedLinks: [
+      {
+        title: "Read-Only First: Drive Metadata Listing",
+        detail: "Open the controlled Drive Read-Only page to check folder metadata status before any future proof package writes are considered.",
+        href: "/drive-readonly",
+        action: "Open Drive Read-Only",
+        tone: "green"
+      }
+    ]
   }
 };
 
@@ -635,7 +644,7 @@ commandPages["live-readiness"] = {
       title: "Safe Live Integration Roadmap",
       detail: "Lowest-risk order for future integrations after owner approval.",
       items: [
-        "Phase 1: Google Drive read-only/listing - low risk",
+        "Phase 1: Google Drive read-only/listing - low risk; preflight ready",
         "Phase 2: Google Drive preview upload package - medium risk",
         "Phase 3: Google Calendar preview-to-create - medium risk",
         "Phase 4: Google Tasks preview-to-create - medium risk",
@@ -797,6 +806,13 @@ Rules:
       detail: "Roll live-site review, data cleanup, source packaging, proof folders, and Drive read-only planning into one controlled readiness plan.",
       href: "/operations-readiness",
       action: "Open Operations Readiness",
+      tone: "green"
+    },
+    {
+      title: "First Live Scope: Drive Read-Only",
+      detail: "Open the read-only/listing status page for metadata-only folder visibility with no uploads, moves, renames, deletes, or file-content reads.",
+      href: "/drive-readonly",
+      action: "Open Drive Read-Only",
       tone: "green"
     }
   ],
@@ -1066,6 +1082,13 @@ commandPages["real-data-cleanup"].relatedLinks = [
     href: "/operations-readiness",
     action: "Open Operations Readiness",
     tone: "green"
+  },
+  {
+    title: "Read-Only Proof Folder Visibility",
+    detail: "Use the Drive Read-Only page to confirm proof-folder metadata later without importing data or writing to Drive.",
+    href: "/drive-readonly",
+    action: "Open Drive Read-Only",
+    tone: "green"
   }
 ];
 
@@ -1103,7 +1126,9 @@ commandPages["operations-readiness"] = {
     { id: "ops-4", tone: "red", values: { phase: "Phase 3", task: "Proof gaps identified", status: "Pending Proof", risk: "High", ownerAction: "List missing proof by module", blocked: "Proof references identified", ready: "No" } },
     { id: "ops-5", tone: "red", values: { phase: "Phase 2", task: "Conflicts resolved", status: "Blocked", risk: "High", ownerAction: "Resolve Unit 2, Unit 4, Unit A, mortgage, and sample/export conflicts", blocked: "Conflicts resolved", ready: "No" } },
     { id: "ops-6", tone: "yellow", values: { phase: "Phase 4", task: "Drive folder plan reviewed", status: "In Review", risk: "Low", ownerAction: "Review folder purpose/proof map", blocked: "Owner folder plan approval", ready: "No" } },
-    { id: "ops-7", tone: "yellow", values: { phase: "Phase 5", task: "Drive read-only preflight approved", status: "Not Started", risk: "Low", ownerAction: "Approve read-only/listing scope later", blocked: "Owner preflight approval", ready: "No" } },
+    { id: "ops-7", tone: "green", values: { phase: "Phase 5", task: "Drive Read-Only Preflight", status: "Ready", risk: "Low", ownerAction: "Run local preflight; no OAuth exchange without approval", blocked: "Token/scope safety check", ready: "Yes" } },
+    { id: "ops-7b", tone: "yellow", values: { phase: "Phase 5", task: "Drive Read-Only Listing", status: "Ready after token/preflight", risk: "Low", ownerAction: "List metadata only after safe token is confirmed", blocked: "Read-only token and preflight", ready: "No" } },
+    { id: "ops-7c", tone: "red", values: { phase: "Phase 5", task: "Drive Writes", status: "Blocked / Not approved", risk: "High", ownerAction: "Do not upload, move, rename, delete, create, or edit Drive files", blocked: "Separate owner write approval", ready: "No" } },
     { id: "ops-8", tone: "green", values: { phase: "Phase 5", task: "No write integrations approved yet", status: "Passed", risk: "Low", ownerAction: "Keep write integrations disabled", blocked: "Separate owner approval", ready: "Yes" } },
     { id: "ops-9", tone: "yellow", values: { phase: "Phase 1", task: "Weekly review dry run completed", status: "Not Started", risk: "Low", ownerAction: "Run Reports dry run", blocked: "Owner review", ready: "No" } },
     { id: "ops-10", tone: "yellow", values: { phase: "Phase 5", task: "Owner approves next phase", status: "Not Started", risk: "Medium", ownerAction: "Approve specific integration type and scope", blocked: "All earlier phases reviewed", ready: "No" } }
@@ -1192,7 +1217,7 @@ commandPages["operations-readiness"] = {
       title: "Phase 5: Safe Live Integration Roadmap",
       detail: "Safest order starts with Drive read-only/listing.",
       items: [
-        "1. Google Drive read-only/listing - view folder and proof structure without changing files - low risk if read-only",
+        "1. Google Drive read-only/listing - view folder and proof structure without changing files - low risk if read-only; preflight ready",
         "2. Google Drive preview upload package - prepare owner-approved package before write - medium risk",
         "3. Google Sheets read-only source data - use verified Sheets as source data - medium risk",
         "4. Google Calendar preview-to-create - create events only after owner approval - medium risk",
@@ -1347,7 +1372,8 @@ Rules:
   ],
   relatedLinks: [
     { title: "Supporting Worksheet: Real Data Cleanup", detail: "Open the worksheet that tracks sample values, proof gaps, conflicts, and import readiness.", href: "/real-data-cleanup", action: "Open Real Data Cleanup", tone: "yellow" },
-    { title: "Supporting Plan: Live Readiness", detail: "Open the live-readiness page for source cleanup, proof folder planning, and Drive read-only recommendations.", href: "/live-readiness", action: "Open Live Readiness", tone: "green" }
+    { title: "Supporting Plan: Live Readiness", detail: "Open the live-readiness page for source cleanup, proof folder planning, and Drive read-only recommendations.", href: "/live-readiness", action: "Open Live Readiness", tone: "green" },
+    { title: "First Integration: Drive Read-Only", detail: "Open the metadata-only Drive listing status page. Drive writes and file-content reads remain blocked.", href: "/drive-readonly", action: "Open Drive Read-Only", tone: "green" }
   ],
   safetyFooter:
     "Operations Readiness is planning-only. No OAuth, Google Drive, Gmail, Calendar, Tasks, Sheets, RentRedi, tenant, legal, lender, vendor, bank, court, payment, import, or live record action is connected or performed."
