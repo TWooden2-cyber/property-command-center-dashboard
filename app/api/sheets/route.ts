@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { protectedCacheHeaders, requireApiOwner } from "@/lib/apiAuth";
 import { getAuthSetupStatus } from "@/lib/authConfig";
-import { getDashboardDataMode, getEnvironmentStatus, getWorkbookSnapshot, isLiveSheetsConfigured } from "@/lib/googleSheets";
+import { getDashboardDataMode, getEnvironmentStatus, getLiveDiagnostics, getWorkbookSnapshot, isLiveSheetsConfigured } from "@/lib/googleSheets";
 import { sampleWorkbookSnapshot } from "@/lib/sampleWorkbook";
 import { parseWorkbook } from "@/lib/sheetParsers";
 import type { SheetsView, SystemStatus } from "@/types/sheets";
@@ -50,6 +50,11 @@ function selectView(data: ReturnType<typeof parseWorkbook>, view: SheetsView) {
 function liveSetupErrors(system: SystemStatus, fallbackWarning: string | null): string[] {
   const errors: string[] = [];
 
+  if (system.setupErrors.length > 0) {
+    errors.push(...system.setupErrors);
+    return errors;
+  }
+
   if (fallbackWarning) {
     errors.push("Live Google Sheets mode was requested, but required Sheets environment variables are missing.");
   }
@@ -77,26 +82,32 @@ export async function GET(request: NextRequest) {
     const liveSheetsConfigured = isLiveSheetsConfigured();
     const env = getEnvironmentStatus();
     const view = (request.nextUrl.searchParams.get("view") || "overview") as SheetsView;
+    const liveAttempted = requestedDataMode === "live";
     const fallbackWarning =
       requestedDataMode === "live" && !liveSheetsConfigured
-        ? "Live Google Sheets mode was requested, but required Sheets environment variables are missing. Returning Local Sample Mode."
+        ? "Live Google Sheets mode was requested, but setup errors prevented live mode. Returning Local Sample Mode."
         : null;
-    const snapshot = requestedDataMode === "live" && liveSheetsConfigured ? await getWorkbookSnapshot() : sampleWorkbookSnapshot;
+    const snapshot = requestedDataMode === "live" ? await getWorkbookSnapshot() : sampleWorkbookSnapshot;
     const parsed = parseWorkbook(snapshot);
     const authSetup = getAuthSetupStatus();
-    const dataMode = requestedDataMode === "live" && liveSheetsConfigured ? "live" : "sample";
+    const dataMode = requestedDataMode === "live" ? parsed.system.resolvedDataMode : "sample";
     const refreshTimestamp = dataMode === "live" ? parsed.system.lastSuccessfulRefresh : new Date().toISOString();
+    const diagnostics = requestedDataMode === "live" ? getLiveDiagnostics(parsed.system) : getLiveDiagnostics({ setupErrors: ["DASHBOARD_DATA_MODE missing or not live."], resolvedDataMode: "sample" });
     const system: SystemStatus = {
       ...parsed.system,
-      connectionOk: dataMode === "sample" ? true : parsed.system.connectionOk,
+      connectionOk: dataMode === "sample" && !liveAttempted ? true : parsed.system.connectionOk,
       connectionMessage:
-        dataMode === "sample"
+        dataMode === "sample" && !liveAttempted
           ? fallbackWarning || "Local sample data mode. Live Google Sheets reads are disabled until configured."
           : parsed.system.connectionMessage,
       lastSuccessfulRefresh: refreshTimestamp,
       dataMode,
+      resolvedDataMode: dataMode,
       requestedDataMode,
       liveSheetsConfigured,
+      liveAttempted,
+      source: diagnostics.source,
+      setupErrors: diagnostics.setupErrors,
       env,
       auth: {
         authenticated: true,
@@ -107,17 +118,30 @@ export async function GET(request: NextRequest) {
       }
     };
     const warnings = fallbackWarning ? [...parsed.overview.warnings, fallbackWarning] : parsed.overview.warnings;
-    const errors = liveSetupErrors(system, fallbackWarning);
-    const source = dataMode === "live" ? "google-sheets-readonly" : "local-sample";
+    const errors = Array.from(new Set(liveSetupErrors(system, fallbackWarning)));
+    const source = diagnostics.source;
 
     return NextResponse.json(
       {
         ok: true,
         view,
         dataMode,
+        requestedDataMode,
+        resolvedDataMode: dataMode,
         source,
         lastRefreshedAt: system.lastSuccessfulRefresh,
         liveConfigured: liveSheetsConfigured,
+        liveAttempted,
+        setupErrors: errors,
+        envDetected: {
+          dashboardDataMode: env.dashboardDataMode,
+          spreadsheetId: env.googleSheetsSpreadsheetId,
+          clientEmail: env.googleSheetsClientEmail,
+          privateKey: env.googleSheetsPrivateKey,
+          usingAliasSpreadsheetId: env.usingAliasSpreadsheetId,
+          usingAliasClientEmail: env.usingAliasClientEmail,
+          usingAliasPrivateKey: env.usingAliasPrivateKey
+        },
         data: view === "settings" ? { system } : selectView(parsed, view),
         system,
         warnings,

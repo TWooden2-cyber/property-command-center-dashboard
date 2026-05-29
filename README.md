@@ -141,6 +141,14 @@ GOOGLE_SHEETS_CLIENT_EMAIL=
 GOOGLE_SHEETS_PRIVATE_KEY=
 ```
 
+The app also supports the older Vercel variable names below. If both names are present, the `GOOGLE_SHEETS_*` value wins.
+
+```env
+GOOGLE_SHEET_ID=
+GOOGLE_SERVICE_ACCOUNT_EMAIL=
+GOOGLE_PRIVATE_KEY=
+```
+
 Use `DASHBOARD_DATA_MODE=live` only when all three Google Sheets variables are configured. If live mode is requested without the required variables, the API falls back to Local Sample Mode.
 
 Switch modes in Vercel by changing only environment variables:
@@ -163,7 +171,9 @@ Pragma: no-cache
 Expires: 0
 ```
 
-The service account must have read access to the workbook. Store `GOOGLE_SHEETS_PRIVATE_KEY` only in Vercel or local `.env.local`. If the private key uses escaped line breaks, keep them as `\n`; the app converts them at runtime.
+The service account must have read access to the workbook. Store `GOOGLE_SHEETS_PRIVATE_KEY` or `GOOGLE_PRIVATE_KEY` only in Vercel or local `.env.local`. The app accepts multiline keys, escaped `\n` keys, and accidentally quoted key values, then normalizes them at runtime without displaying the key.
+
+Authenticated `/api/sheets` responses include safe diagnostic booleans only: requested mode, resolved mode, whether live was attempted, whether each required variable was detected, whether aliases are being used, and owner-safe setup errors. Secret values are never returned.
 
 ## Google Sheets Workbook Structure
 

@@ -5,6 +5,7 @@ import {
   type DashboardRawBlock,
   type DashboardDataMode,
   type EnvStatus,
+  type LiveDiagnostics,
   type LiveSourceTabStatus,
   type RawSheetTab,
   type RawSheetRow,
@@ -26,39 +27,95 @@ export function getDashboardDataMode(): DashboardDataMode {
   return process.env.DASHBOARD_DATA_MODE?.trim().toLowerCase() === "live" ? "live" : "sample";
 }
 
+function cleanEnvValue(value: string | undefined): string {
+  const trimmed = (value ?? "").trim();
+  if ((trimmed.startsWith('"') && trimmed.endsWith('"')) || (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
+    return trimmed.slice(1, -1).trim();
+  }
+
+  return trimmed;
+}
+
+function resolveEnvValue(primary: string, alias: string) {
+  const primaryValue = cleanEnvValue(process.env[primary]);
+  const aliasValue = cleanEnvValue(process.env[alias]);
+
+  return {
+    value: primaryValue || aliasValue,
+    detected: Boolean(primaryValue || aliasValue),
+    usingAlias: !primaryValue && Boolean(aliasValue)
+  };
+}
+
+export function getLiveSheetsEnv() {
+  return {
+    spreadsheetId: resolveEnvValue("GOOGLE_SHEETS_SPREADSHEET_ID", "GOOGLE_SHEET_ID"),
+    clientEmail: resolveEnvValue("GOOGLE_SHEETS_CLIENT_EMAIL", "GOOGLE_SERVICE_ACCOUNT_EMAIL"),
+    privateKey: resolveEnvValue("GOOGLE_SHEETS_PRIVATE_KEY", "GOOGLE_PRIVATE_KEY")
+  };
+}
+
+export function normalizePrivateKey(value: string): string {
+  return cleanEnvValue(value).replace(/\\n/g, "\n").trim();
+}
+
+function hasValidPrivateKeyFormat(privateKey: string): boolean {
+  return privateKey.includes("-----BEGIN PRIVATE KEY-----") && privateKey.includes("-----END PRIVATE KEY-----");
+}
+
+function baseSetupErrors(requestedDataMode = getDashboardDataMode(), env = getEnvironmentStatus()): string[] {
+  const errors: string[] = [];
+
+  if (requestedDataMode !== "live") {
+    errors.push("DASHBOARD_DATA_MODE missing or not live.");
+  }
+
+  if (!env.googleSheetsSpreadsheetId) {
+    errors.push("spreadsheet ID missing.");
+  }
+
+  if (!env.googleSheetsClientEmail) {
+    errors.push("service account email missing.");
+  }
+
+  if (!env.googleSheetsPrivateKey) {
+    errors.push("private key missing.");
+  } else if (!hasValidPrivateKeyFormat(normalizePrivateKey(getLiveSheetsEnv().privateKey.value))) {
+    errors.push("private key format invalid.");
+  }
+
+  return errors;
+}
+
 export function isLiveSheetsConfigured(): boolean {
-  return Boolean(
-    hasEnv(process.env.GOOGLE_SHEETS_SPREADSHEET_ID) &&
-      hasEnv(process.env.GOOGLE_SHEETS_CLIENT_EMAIL) &&
-      hasEnv(process.env.GOOGLE_SHEETS_PRIVATE_KEY)
-  );
+  return baseSetupErrors("live").length === 0;
 }
 
 export function getEnvironmentStatus(): EnvStatus {
   const authStatus = getAuthSetupStatus();
+  const liveEnv = getLiveSheetsEnv();
 
   return {
-    googleSheetsSpreadsheetId: hasEnv(process.env.GOOGLE_SHEETS_SPREADSHEET_ID),
-    googleSheetsClientEmail: hasEnv(process.env.GOOGLE_SHEETS_CLIENT_EMAIL),
-    googleSheetsPrivateKey: hasEnv(process.env.GOOGLE_SHEETS_PRIVATE_KEY),
+    dashboardDataMode: hasEnv(process.env.DASHBOARD_DATA_MODE),
+    googleSheetsSpreadsheetId: liveEnv.spreadsheetId.detected,
+    googleSheetsClientEmail: liveEnv.clientEmail.detected,
+    googleSheetsPrivateKey: liveEnv.privateKey.detected,
+    usingAliasSpreadsheetId: liveEnv.spreadsheetId.usingAlias,
+    usingAliasClientEmail: liveEnv.clientEmail.usingAlias,
+    usingAliasPrivateKey: liveEnv.privateKey.usingAlias,
     dashboardOwnerPassword: authStatus.dashboardOwnerPasswordConfigured,
     dashboardSessionSecret: authStatus.dashboardSessionSecretConfigured
   };
 }
 
-function missingEnvironmentKeys(env = getEnvironmentStatus()): string[] {
-  return Object.entries(env)
-    .filter(([, value]) => !value)
-    .map(([key]) => key);
-}
-
 function getPrivateKey(): string {
-  return (process.env.GOOGLE_SHEETS_PRIVATE_KEY ?? "").replace(/\\n/g, "\n");
+  return normalizePrivateKey(getLiveSheetsEnv().privateKey.value);
 }
 
 function getSheetsClient() {
+  const liveEnv = getLiveSheetsEnv();
   const auth = new google.auth.JWT({
-    email: process.env.GOOGLE_SHEETS_CLIENT_EMAIL,
+    email: liveEnv.clientEmail.value,
     key: getPrivateKey(),
     scopes: [SHEETS_SCOPE]
   });
@@ -99,7 +156,7 @@ function rowsFromValues(tab: string, values: string[][] | null | undefined): Liv
 }
 
 async function readLiveTab(sheets: ReturnType<typeof getSheetsClient>, tab: string): Promise<LiveSheetRead> {
-  const spreadsheetId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID;
+  const spreadsheetId = getLiveSheetsEnv().spreadsheetId.value;
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId,
     range: `${quoteTab(tab)}!A:ZZ`,
@@ -107,6 +164,41 @@ async function readLiveTab(sheets: ReturnType<typeof getSheetsClient>, tab: stri
   });
 
   return rowsFromValues(tab, response.data.values as string[][] | undefined);
+}
+
+function classifySheetsError(error: unknown): string {
+  const message = error instanceof Error ? error.message.toLowerCase() : "";
+
+  if (message.includes("invalid") && (message.includes("key") || message.includes("pem") || message.includes("grant"))) {
+    return "private key format invalid.";
+  }
+
+  if (message.includes("permission") || message.includes("forbidden") || message.includes("403")) {
+    return "sheet not shared with service account.";
+  }
+
+  if (message.includes("not found") || message.includes("404")) {
+    return "spreadsheet not reachable.";
+  }
+
+  return "spreadsheet not reachable.";
+}
+
+export function getLiveDiagnostics(snapshotSystem?: Partial<LiveDiagnostics & { lastSuccessfulRefresh: string | null }>): LiveDiagnostics {
+  const requestedDataMode = getDashboardDataMode();
+  const envDetected = getEnvironmentStatus();
+  const setupErrors = snapshotSystem?.setupErrors ?? baseSetupErrors(requestedDataMode, envDetected);
+  const resolvedDataMode = requestedDataMode === "live" && setupErrors.length === 0 && snapshotSystem?.resolvedDataMode === "live" ? "live" : "sample";
+
+  return {
+    requestedDataMode,
+    resolvedDataMode,
+    liveConfigured: baseSetupErrors("live", envDetected).length === 0,
+    liveAttempted: requestedDataMode === "live",
+    source: resolvedDataMode === "live" ? "google-sheets-readonly" : "local-sample",
+    setupErrors,
+    envDetected
+  };
 }
 
 function legacyTab(tab: SourceTabName, rows: RawSheetRow[], warning?: string): RawSheetTab {
@@ -449,11 +541,9 @@ export async function getWorkbookSnapshot(): Promise<WorkbookSnapshot> {
   const env = getEnvironmentStatus();
   const requestedDataMode = getDashboardDataMode();
   const liveSheetsConfigured = isLiveSheetsConfigured();
-  const missing = missingEnvironmentKeys(env).filter((key) =>
-    ["googleSheetsSpreadsheetId", "googleSheetsClientEmail", "googleSheetsPrivateKey"].includes(key)
-  );
+  const setupErrors = baseSetupErrors(requestedDataMode, env);
 
-  if (missing.length > 0) {
+  if (setupErrors.length > 0) {
     const checklist = buildLiveSourceChecklist({});
 
     return {
@@ -461,11 +551,15 @@ export async function getWorkbookSnapshot(): Promise<WorkbookSnapshot> {
       dashboardBlocks: buildDashboardBlocksFromLive({}, checklist),
       system: {
         connectionOk: false,
-        connectionMessage: "Google Sheets credentials are not fully configured.",
+        connectionMessage: setupErrors.join(" "),
         lastSuccessfulRefresh: null,
-        dataMode: "live",
+        dataMode: "sample",
         requestedDataMode,
+        resolvedDataMode: "sample",
         liveSheetsConfigured,
+        liveAttempted: requestedDataMode === "live",
+        source: "local-sample",
+        setupErrors,
         liveSourceChecklist: checklist,
         tabsDetected: [],
         missingTabs: checklist.map((item) => item.tab),
@@ -479,22 +573,27 @@ export async function getWorkbookSnapshot(): Promise<WorkbookSnapshot> {
 
   try {
     metadata = await sheets.spreadsheets.get({
-      spreadsheetId: process.env.GOOGLE_SHEETS_SPREADSHEET_ID,
+      spreadsheetId: getLiveSheetsEnv().spreadsheetId.value,
       fields: "sheets.properties.title"
     });
   } catch (error) {
     const checklist = buildLiveSourceChecklist({});
+    const errorMessage = classifySheetsError(error);
 
     return {
       tabs: buildLegacyTabsFromLive({}),
       dashboardBlocks: buildDashboardBlocksFromLive({}, checklist),
       system: {
         connectionOk: false,
-        connectionMessage: "Unable to connect to the configured Google Sheet. Check the spreadsheet ID, service account viewer access, and private key formatting.",
+        connectionMessage: errorMessage,
         lastSuccessfulRefresh: null,
-        dataMode: "live",
+        dataMode: "sample",
         requestedDataMode,
+        resolvedDataMode: "sample",
         liveSheetsConfigured,
+        liveAttempted: true,
+        source: "local-sample",
+        setupErrors: [errorMessage],
         liveSourceChecklist: checklist,
         tabsDetected: [],
         missingTabs: checklist.map((item) => item.tab),
@@ -541,6 +640,17 @@ export async function getWorkbookSnapshot(): Promise<WorkbookSnapshot> {
   const checklist = buildLiveSourceChecklist(liveTabs);
   const warnings = liveSourceWarnings(checklist);
   const missingTabs = checklist.filter((item) => !item.present).map((item) => item.tab);
+  const schemaErrors = checklist.flatMap((item) => {
+    if (!item.present) {
+      return [`missing required tab: ${item.tab}.`];
+    }
+
+    if (item.missingColumns.length > 0) {
+      return [`missing required column in ${item.tab}: ${item.missingColumns.join(", ")}.`];
+    }
+
+    return [];
+  });
 
   return {
     tabs: buildLegacyTabsFromLive(liveTabs),
@@ -551,9 +661,13 @@ export async function getWorkbookSnapshot(): Promise<WorkbookSnapshot> {
         ? "Live Google Sheets read-only connection is active, but workbook tabs or columns need owner review."
         : "Connected to live Google Sheets read-only data.",
       lastSuccessfulRefresh: new Date().toISOString(),
-      dataMode: "live",
+      dataMode: warnings.length === 0 ? "live" : "sample",
       requestedDataMode,
+      resolvedDataMode: warnings.length === 0 ? "live" : "sample",
       liveSheetsConfigured,
+      liveAttempted: true,
+      source: warnings.length === 0 ? "google-sheets-readonly" : "local-sample",
+      setupErrors: schemaErrors,
       liveSourceChecklist: checklist,
       tabsDetected: Array.from(detected).sort(),
       missingTabs,

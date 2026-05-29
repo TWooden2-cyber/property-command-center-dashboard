@@ -21,11 +21,25 @@ export type RiskLevel = "Stable" | "Normal" | "Watch" | "High" | "Critical";
 export type DashboardDataMode = "sample" | "live";
 
 export type EnvStatus = {
+  dashboardDataMode: boolean;
   googleSheetsSpreadsheetId: boolean;
   googleSheetsClientEmail: boolean;
   googleSheetsPrivateKey: boolean;
+  usingAliasSpreadsheetId: boolean;
+  usingAliasClientEmail: boolean;
+  usingAliasPrivateKey: boolean;
   dashboardOwnerPassword: boolean;
   dashboardSessionSecret: boolean;
+};
+
+export type LiveDiagnostics = {
+  requestedDataMode: DashboardDataMode;
+  resolvedDataMode: DashboardDataMode;
+  liveConfigured: boolean;
+  liveAttempted: boolean;
+  source: "local-sample" | "google-sheets-readonly";
+  setupErrors: string[];
+  envDetected: EnvStatus;
 };
 
 export type LiveSourceTabStatus = {
@@ -51,7 +65,11 @@ export type SystemStatus = {
   lastSuccessfulRefresh: string | null;
   dataMode: DashboardDataMode;
   requestedDataMode: DashboardDataMode;
+  resolvedDataMode: DashboardDataMode;
   liveSheetsConfigured: boolean;
+  liveAttempted: boolean;
+  source: "local-sample" | "google-sheets-readonly";
+  setupErrors: string[];
   liveSourceChecklist: LiveSourceTabStatus[];
   tabsDetected: string[];
   missingTabs: string[];

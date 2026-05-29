@@ -39,12 +39,15 @@ export function SettingsView() {
 
   const { system } = data;
   const dataModeLabel = system.dataMode === "live" ? "Live Google Sheets" : "Local Sample";
+  const requestedModeLabel = system.requestedDataMode === "live" ? "Live Google Sheets" : "Local Sample";
+  const sourceLabel = system.source === "google-sheets-readonly" ? "Google Sheets Read-Only" : "Local Sample";
   const liveIssueCount = system.liveSourceChecklist.filter((item) => !item.present || item.missingColumns.length > 0).length;
   const liveConfiguredLabel = !system.liveSheetsConfigured ? "No" : liveIssueCount > 0 ? "Invalid" : "Yes";
   const envEntries = [
-    ["GOOGLE_SHEETS_SPREADSHEET_ID", system.env.googleSheetsSpreadsheetId],
-    ["GOOGLE_SHEETS_CLIENT_EMAIL", system.env.googleSheetsClientEmail],
-    ["GOOGLE_SHEETS_PRIVATE_KEY", system.env.googleSheetsPrivateKey],
+    ["DASHBOARD_DATA_MODE", system.env.dashboardDataMode],
+    ["Spreadsheet ID", system.env.googleSheetsSpreadsheetId],
+    ["Client Email", system.env.googleSheetsClientEmail],
+    ["Private Key", system.env.googleSheetsPrivateKey],
     ["DASHBOARD_OWNER_PASSWORD", system.env.dashboardOwnerPassword],
     ["Session Signing Secret", system.env.dashboardSessionSecret]
   ] as const;
@@ -63,8 +66,32 @@ export function SettingsView() {
           <p>{system.connectionMessage}</p>
           <p>Owner password environment variables are required in production and fail closed when missing. Live Google Sheets reads are read-only only.</p>
           <div className="mode-status-list">
-            <span>Data Mode: <strong>{dataModeLabel}</strong></span>
+            <span>Requested Data Mode: <strong>{requestedModeLabel}</strong></span>
+            <StatusBadge label={system.requestedDataMode === "live" ? "Live requested" : "Sample requested"} />
+          </div>
+          <div className="mode-status-list">
+            <span>Resolved Data Mode: <strong>{dataModeLabel}</strong></span>
             <StatusBadge label={system.dataMode === "live" ? "Live read-only" : "Sample"} />
+          </div>
+          <div className="mode-status-list">
+            <span>Current Source: <strong>{sourceLabel}</strong></span>
+            <StatusBadge label={sourceLabel} />
+          </div>
+          <div className="mode-status-list">
+            <span>Live Attempted: <strong>{system.liveAttempted ? "Yes" : "No"}</strong></span>
+            <StatusBadge label={system.liveAttempted ? "Attempted" : "Not attempted"} />
+          </div>
+          <div className="mode-status-list">
+            <span>Spreadsheet ID Detected: <strong>{system.env.googleSheetsSpreadsheetId ? "Yes" : "No"}</strong></span>
+            <StatusBadge label={system.env.usingAliasSpreadsheetId ? "Alias" : system.env.googleSheetsSpreadsheetId ? "Primary" : "Missing"} />
+          </div>
+          <div className="mode-status-list">
+            <span>Client Email Detected: <strong>{system.env.googleSheetsClientEmail ? "Yes" : "No"}</strong></span>
+            <StatusBadge label={system.env.usingAliasClientEmail ? "Alias" : system.env.googleSheetsClientEmail ? "Primary" : "Missing"} />
+          </div>
+          <div className="mode-status-list">
+            <span>Private Key Detected: <strong>{system.env.googleSheetsPrivateKey ? "Yes" : "No"}</strong></span>
+            <StatusBadge label={system.env.usingAliasPrivateKey ? "Alias" : system.env.googleSheetsPrivateKey ? "Primary" : "Missing"} />
           </div>
           <div className="mode-status-list">
             <span>Live Sheets Configured: <strong>{liveConfiguredLabel}</strong></span>
@@ -77,6 +104,10 @@ export function SettingsView() {
           <div className="mode-status-list">
             <span>Last Data Refresh: <strong>{system.lastSuccessfulRefresh ? new Date(system.lastSuccessfulRefresh).toLocaleString() : "Not available"}</strong></span>
             <StatusBadge label="No cache" />
+          </div>
+          <div className="mode-status-list">
+            <span>Setup Errors: <strong>{system.setupErrors.length ? system.setupErrors.join(" ") : "None"}</strong></span>
+            <StatusBadge label={system.setupErrors.length ? "Needs Fix" : "Ready"} />
           </div>
         </div>
       </section>

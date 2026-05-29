@@ -231,14 +231,22 @@ export const sampleWorkbookSnapshot: WorkbookSnapshot = {
     lastSuccessfulRefresh: "2026-05-21T00:00:00.000Z",
     dataMode: "sample",
     requestedDataMode: "sample",
+    resolvedDataMode: "sample",
     liveSheetsConfigured: false,
+    liveAttempted: false,
+    source: "local-sample",
+    setupErrors: ["DASHBOARD_DATA_MODE missing or not live."],
     liveSourceChecklist: [],
     tabsDetected: [...SOURCE_TABS],
     missingTabs: [],
     env: {
+      dashboardDataMode: false,
       googleSheetsSpreadsheetId: false,
       googleSheetsClientEmail: false,
       googleSheetsPrivateKey: false,
+      usingAliasSpreadsheetId: false,
+      usingAliasClientEmail: false,
+      usingAliasPrivateKey: false,
       dashboardOwnerPassword: false,
       dashboardSessionSecret: false
     }

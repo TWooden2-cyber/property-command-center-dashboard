@@ -8,7 +8,7 @@ type SheetsRefreshStatusProps = {
 
 export function SheetsRefreshStatus({ system }: SheetsRefreshStatusProps) {
   const refreshLabel = system?.lastSuccessfulRefresh ? new Date(system.lastSuccessfulRefresh).toLocaleString() : "Not connected";
-  const sourceLabel = system?.dataMode === "live" ? "Live Google Sheets" : "Local sample data";
+  const sourceLabel = system?.source === "google-sheets-readonly" ? "Live Google Sheets" : "Local sample data";
   const statusLabel = system?.dataMode === "live" ? "Live Sheets read-only" : "Local sample active";
 
   return (
@@ -26,6 +26,7 @@ export function SheetsRefreshStatus({ system }: SheetsRefreshStatusProps) {
       </div>
       <p className="muted-line">{refreshLabel}</p>
       {system?.connectionMessage ? <p className="muted-line">{system.connectionMessage}</p> : null}
+      {system?.setupErrors?.length ? <p className="muted-line">Setup errors: {system.setupErrors.join(" ")}</p> : null}
       <p className="muted-line">Refresh page to pull latest Google Sheets data.</p>
     </section>
   );
