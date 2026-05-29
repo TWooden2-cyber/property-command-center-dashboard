@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { protectedCacheHeaders, requireApiOwner } from "@/lib/apiAuth";
 import { getAuthSetupStatus } from "@/lib/authConfig";
 import { getDashboardDataMode, getEnvironmentStatus, getLiveDiagnostics, getWorkbookSnapshot, isLiveSheetsConfigured } from "@/lib/googleSheets";
+import { getLiveOperationsStatus } from "@/lib/liveOperations";
 import { sampleWorkbookSnapshot } from "@/lib/sampleWorkbook";
 import { parseWorkbook } from "@/lib/sheetParsers";
 import type { SheetsView, SystemStatus } from "@/types/sheets";
@@ -115,7 +116,8 @@ export async function GET(request: NextRequest) {
         email: null,
         method: auth.session.method,
         accessControlEnabled: authSetup.dashboardAccessConfigured
-      }
+      },
+      liveOperations: getLiveOperationsStatus()
     };
     const warnings = fallbackWarning ? [...parsed.overview.warnings, fallbackWarning] : parsed.overview.warnings;
     const errors = Array.from(new Set(liveSetupErrors(system, fallbackWarning)));

@@ -51,6 +51,8 @@ export function SettingsView() {
     ["DASHBOARD_OWNER_PASSWORD", system.env.dashboardOwnerPassword],
     ["Session Signing Secret", system.env.dashboardSessionSecret]
   ] as const;
+  const liveOperations = system.liveOperations;
+  const operationServices = Object.values(liveOperations.services);
 
   return (
     <div className="settings-grid">
@@ -142,17 +144,43 @@ export function SettingsView() {
             <StatusBadge label="Read-only" />
           </div>
           <div className="mode-status-list">
-            <span>Live Writes: <strong>Disabled</strong></span>
-            <StatusBadge label="Disabled" />
+            <span>Live Operations: <strong>{liveOperations.liveOperationsEnabled ? "Enabled" : "Disabled"}</strong></span>
+            <StatusBadge label={liveOperations.liveOperationsEnabled ? "Enabled" : "Disabled"} />
           </div>
           <div className="mode-status-list">
             <span>Drive Folder Health: <strong>Complete</strong></span>
             <StatusBadge label="13 found" />
           </div>
           <div className="mode-status-list">
-            <span>Live Actions: <strong>Disabled</strong></span>
-            <StatusBadge label="Disabled" />
+            <span>Owner Approval Required: <strong>{liveOperations.ownerApprovalRequired ? "Enabled" : "Disabled"}</strong></span>
+            <StatusBadge label={liveOperations.ownerApprovalRequired ? "Enabled" : "Disabled"} />
           </div>
+          <div className="mode-status-list">
+            <span>Dry-Run Required: <strong>{liveOperations.dryRunRequired ? "Enabled" : "Disabled"}</strong></span>
+            <StatusBadge label={liveOperations.dryRunRequired ? "Enabled" : "Disabled"} />
+          </div>
+          <div className="mode-status-list">
+            <span>Live Operations Audit: <strong>{liveOperations.auditLoggingEnabled ? "Enabled" : "Blocked"}</strong></span>
+            <StatusBadge label={liveOperations.auditLoggingEnabled ? "Enabled" : "Blocked"} />
+          </div>
+        </div>
+      </section>
+
+      <section className="section-block wide">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Controlled Live Operations</p>
+            <h2>Service flags</h2>
+          </div>
+        </div>
+        <div className="config-grid">
+          {operationServices.map((service) => (
+            <div className="config-row" key={service.key}>
+              {service.enabled && !service.blocked ? <CheckCircle2 size={17} aria-hidden /> : <CircleSlash size={17} aria-hidden />}
+              <span>{service.label}</span>
+              <StatusBadge label={service.enabled && !service.blocked ? "Enabled" : service.enabled ? "Blocked" : "Disabled"} />
+            </div>
+          ))}
         </div>
       </section>
 

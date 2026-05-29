@@ -15,9 +15,11 @@ import {
 import { getAuthSetupStatus } from "@/lib/authConfig";
 import { toNumber } from "@/lib/formatters";
 import { buildLiveSourceChecklist, LIVE_SHEET_SCHEMA, liveSourceWarnings, type LiveSheetRead } from "@/lib/liveSheetsSchema";
+import { LIVE_OPERATIONS_AUDIT_HEADERS, LIVE_OPERATIONS_AUDIT_TAB } from "@/lib/liveOperationsAudit";
 import { sampleWorkbookSnapshot } from "@/lib/sampleWorkbook";
 
 const SHEETS_SCOPE = "https://www.googleapis.com/auth/spreadsheets.readonly";
+const SHEETS_WRITE_SCOPE = "https://www.googleapis.com/auth/spreadsheets";
 
 function hasEnv(value: string | undefined): boolean {
   return Boolean(value && value.trim().length > 0);
@@ -112,12 +114,12 @@ function getPrivateKey(): string {
   return normalizePrivateKey(getLiveSheetsEnv().privateKey.value);
 }
 
-function getSheetsClient() {
+function getSheetsClient(scopes = [SHEETS_SCOPE]) {
   const liveEnv = getLiveSheetsEnv();
   const auth = new google.auth.JWT({
     email: liveEnv.clientEmail.value,
     key: getPrivateKey(),
-    scopes: [SHEETS_SCOPE]
+    scopes
   });
 
   return google.sheets({ version: "v4", auth });
@@ -125,6 +127,44 @@ function getSheetsClient() {
 
 function quoteTab(tab: string): string {
   return `'${tab.replace(/'/g, "''")}'`;
+}
+
+export type LiveOperationsAuditEntry = {
+  auditId: string;
+  timestamp: string;
+  service: string;
+  actionType: string;
+  dryRunOrExecuted: "dry-run" | "executed" | "blocked" | "approved" | "cancelled";
+  requestedBy: string;
+  approvalStatus: string;
+  targetName: string;
+  targetId: string;
+  oldValue: string;
+  newValue: string;
+  reason: string;
+  result: string;
+  error: string;
+  riskLevel: string;
+};
+
+export async function appendLiveOperationsAudit(entry: LiveOperationsAuditEntry): Promise<void> {
+  if (!isLiveSheetsConfigured()) {
+    throw new Error("Google Sheets write configuration is missing.");
+  }
+
+  const sheets = getSheetsClient([SHEETS_WRITE_SCOPE]);
+  const spreadsheetId = getLiveSheetsEnv().spreadsheetId.value;
+  const row = LIVE_OPERATIONS_AUDIT_HEADERS.map((header) => entry[header as keyof LiveOperationsAuditEntry] ?? "");
+
+  await sheets.spreadsheets.values.append({
+    spreadsheetId,
+    range: `${quoteTab(LIVE_OPERATIONS_AUDIT_TAB)}!A:O`,
+    valueInputOption: "USER_ENTERED",
+    insertDataOption: "INSERT_ROWS",
+    requestBody: {
+      values: [row]
+    }
+  });
 }
 
 function rowsFromValues(tab: string, values: string[][] | null | undefined): LiveSheetRead {

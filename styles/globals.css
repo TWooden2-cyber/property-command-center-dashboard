@@ -965,6 +965,83 @@ tbody tr:hover {
   font-size: 0.82rem;
 }
 
+.operation-summary-grid,
+.operation-service-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.operation-summary-grid {
+  grid-template-columns: repeat(4, minmax(160px, 1fr));
+}
+
+.operation-summary-grid span {
+  display: grid;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+  background: rgba(8, 7, 6, 0.22);
+}
+
+.operation-service-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.operation-card {
+  display: grid;
+  gap: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 16px;
+  background: rgba(8, 7, 6, 0.2);
+}
+
+.operation-card header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.operation-card h3,
+.operation-card p {
+  margin: 0;
+}
+
+.operation-card p {
+  color: var(--muted);
+}
+
+.operation-tags,
+.operation-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.operation-tags span {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 7px 10px;
+  color: var(--cream-muted);
+  font-size: 0.78rem;
+}
+
+.operation-actions .icon-text-button {
+  min-height: 36px;
+  padding: 8px 10px;
+}
+
+.operation-result {
+  border-left: 3px solid var(--success);
+  padding-left: 10px;
+}
+
+.operation-result.blocked {
+  border-left-color: var(--danger);
+}
+
 .state-panel {
   min-height: 220px;
   display: grid;
@@ -3865,7 +3942,9 @@ tbody tr:hover {
   .remaining-related-grid,
   .remaining-queue-grid,
   .remaining-command-button-grid,
-  .automation-panel-grid {
+  .automation-panel-grid,
+  .operation-summary-grid,
+  .operation-service-grid {
     grid-template-columns: 1fr;
   }
 
@@ -3894,6 +3973,8 @@ tbody tr:hover {
   .checklist-grid,
   .settings-grid,
   .config-grid,
+  .operation-summary-grid,
+  .operation-service-grid,
   .filter-panel {
     grid-template-columns: 1fr;
   }

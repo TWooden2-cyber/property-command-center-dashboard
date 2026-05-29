@@ -24,6 +24,7 @@ import {
   Route as RouteIcon,
   Database,
   ListChecks,
+  RadioTower,
   HardDrive
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -53,6 +54,7 @@ const navigation = [
   { href: "/reports", label: "Reports", icon: BarChart3 },
   { href: "/data-accuracy", label: "Data Accuracy", icon: ShieldCheck },
   { href: "/live-readiness", label: "Live Readiness", icon: RouteIcon },
+  { href: "/live-operations", label: "Live Operations", icon: RadioTower },
   { href: "/real-data-cleanup", label: "Real Data Cleanup", icon: Database },
   { href: "/operations-readiness", label: "Operations Readiness", icon: ListChecks },
   { href: "/settings", label: "Settings", icon: Settings }

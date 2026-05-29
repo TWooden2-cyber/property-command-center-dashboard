@@ -42,6 +42,27 @@ export type LiveDiagnostics = {
   envDetected: EnvStatus;
 };
 
+export type LiveOperationServiceKey = "sheets" | "gmail" | "calendar" | "tasks" | "drive";
+
+export type LiveOperationServiceStatus = {
+  key: LiveOperationServiceKey;
+  label: string;
+  enabled: boolean;
+  blocked: boolean;
+  missing: string[];
+  allowedActions: string[];
+  forbiddenActions: string[];
+};
+
+export type LiveOperationsStatus = {
+  liveOperationsEnabled: boolean;
+  dryRunRequired: boolean;
+  ownerApprovalRequired: boolean;
+  auditLoggingEnabled: boolean;
+  auditTab: string;
+  services: Record<LiveOperationServiceKey, LiveOperationServiceStatus>;
+};
+
 export type LiveSourceTabStatus = {
   tab: string;
   present: boolean;
@@ -75,6 +96,7 @@ export type SystemStatus = {
   missingTabs: string[];
   env: EnvStatus;
   auth: AuthStatus;
+  liveOperations: LiveOperationsStatus;
 };
 
 export type RawSheetRow = Record<string, string>;
@@ -132,7 +154,7 @@ export type DashboardBlock = {
 export type WorkbookSnapshot = {
   tabs: Record<SourceTabName, RawSheetTab>;
   dashboardBlocks: Record<DashboardRangeKey, DashboardRawBlock>;
-  system: Omit<SystemStatus, "auth">;
+  system: Omit<SystemStatus, "auth" | "liveOperations">;
 };
 
 export type KpiMetric = {
@@ -321,7 +343,7 @@ export type CommandCenterData = {
   adminTasks: AdminTaskRecord[];
   calendarFollowUps: Record<CalendarFollowUpRecord["group"], CalendarFollowUpRecord[]>;
   utilities: UtilityRecord[];
-  system: Omit<SystemStatus, "auth">;
+  system: Omit<SystemStatus, "auth" | "liveOperations">;
 };
 
 export type SheetsView =

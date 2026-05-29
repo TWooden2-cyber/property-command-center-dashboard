@@ -86,6 +86,8 @@ Confirmed reset expectation:
 
 Deploy Local Sample Mode first. Enable live Google Sheets read-only only after owner approval and Vercel environment setup.
 
+Controlled live operations are separate from live data reads. The live operations center requires owner password session protection, dry-run first, explicit owner approval, and audit logging before an execution endpoint can proceed.
+
 ## Verification
 
 Run:
@@ -103,17 +105,19 @@ The build should pass without `.env.local` and without Vercel environment variab
 
 ## Safety Boundaries
 
-The dashboard is read-only. Sample mode uses local data; live mode reads Google Sheets only.
+Sample mode uses local data; live data mode reads Google Sheets. Controlled live operation APIs are disabled unless the explicit production flags are set and the matching service authorization is available.
 
 It does not:
 
 - Use an external OAuth provider for dashboard login
-- Write Google Sheets
-- Read Gmail
+- Execute any live action without owner password session protection
+- Execute any live action without dry-run first
+- Execute any live action without explicit owner approval confirmation
 - Send email
-- Read or write Google Calendar
-- Read or write Google Drive
-- Read or write Google Tasks
+- Delete Gmail, Calendar, Tasks, Sheets, or Drive records
+- Delete Sheet rows, columns, or tabs
+- Clear ranges or overwrite full tabs
+- Change Drive permissions
 - Contact tenants
 - Send notices
 - File eviction cases
@@ -148,6 +152,21 @@ GOOGLE_SHEET_ID=
 GOOGLE_SERVICE_ACCOUNT_EMAIL=
 GOOGLE_PRIVATE_KEY=
 ```
+
+## Controlled Live Operations
+
+Live operations use separate flags and remain blocked service-by-service when the needed authorization is missing. Do not commit tokens or secrets.
+
+```env
+LIVE_OPERATIONS_ENABLED=false
+GOOGLE_SHEETS_WRITE_ENABLED=false
+GMAIL_READ_ENABLED=false
+GOOGLE_CALENDAR_WRITE_ENABLED=false
+GOOGLE_TASKS_WRITE_ENABLED=false
+GOOGLE_DRIVE_WRITE_ENABLED=false
+```
+
+The audit worksheet is `Live Operations Audit` with the headers listed in the live operations center. Every dry-run and execution is logged when Sheets write is enabled. Gmail read, Calendar create, Tasks write, and Drive create/move require their own least-privilege authorization before they move from blocked to executable.
 
 Use `DASHBOARD_DATA_MODE=live` only when all three Google Sheets variables are configured. If live mode is requested without the required variables, the API falls back to Local Sample Mode.
 
