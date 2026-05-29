@@ -3,7 +3,9 @@ import { getServerAuthSession } from "@/lib/auth";
 import { isDashboardPasswordAuthConfigured } from "@/lib/authConfig";
 
 export const protectedCacheHeaders = {
-  "Cache-Control": "no-store, max-age=0"
+  "Cache-Control": "no-store, no-cache, must-revalidate",
+  Pragma: "no-cache",
+  Expires: "0"
 };
 
 export async function requireApiOwner() {

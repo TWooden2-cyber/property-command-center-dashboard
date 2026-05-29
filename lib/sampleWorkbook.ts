@@ -229,12 +229,16 @@ export const sampleWorkbookSnapshot: WorkbookSnapshot = {
     connectionOk: true,
     connectionMessage: "Local sample data mode. Live Google APIs are disabled.",
     lastSuccessfulRefresh: "2026-05-21T00:00:00.000Z",
+    dataMode: "sample",
+    requestedDataMode: "sample",
+    liveSheetsConfigured: false,
+    liveSourceChecklist: [],
     tabsDetected: [...SOURCE_TABS],
     missingTabs: [],
     env: {
-      googleServiceAccountEmail: false,
-      googlePrivateKey: false,
-      googleSheetId: false,
+      googleSheetsSpreadsheetId: false,
+      googleSheetsClientEmail: false,
+      googleSheetsPrivateKey: false,
       dashboardOwnerPassword: false,
       dashboardSessionSecret: false
     }

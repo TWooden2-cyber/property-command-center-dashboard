@@ -16,7 +16,10 @@ function isPublicPath(pathname: string) {
 }
 
 function unauthorizedApi(message: string, status: 401 | 403) {
-  return NextResponse.json({ ok: false, error: message }, { status, headers: { "Cache-Control": "no-store, max-age=0" } });
+  return NextResponse.json(
+    { ok: false, error: message },
+    { status, headers: { "Cache-Control": "no-store, no-cache, must-revalidate", Pragma: "no-cache", Expires: "0" } }
+  );
 }
 
 export async function middleware(request: NextRequest) {

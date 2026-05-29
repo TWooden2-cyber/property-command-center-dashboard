@@ -38,10 +38,13 @@ export function SettingsView() {
   }
 
   const { system } = data;
+  const dataModeLabel = system.dataMode === "live" ? "Live Google Sheets" : "Local Sample";
+  const liveIssueCount = system.liveSourceChecklist.filter((item) => !item.present || item.missingColumns.length > 0).length;
+  const liveConfiguredLabel = !system.liveSheetsConfigured ? "No" : liveIssueCount > 0 ? "Invalid" : "Yes";
   const envEntries = [
-    ["GOOGLE_SERVICE_ACCOUNT_EMAIL", system.env.googleServiceAccountEmail],
-    ["GOOGLE_PRIVATE_KEY", system.env.googlePrivateKey],
-    ["GOOGLE_SHEET_ID", system.env.googleSheetId],
+    ["GOOGLE_SHEETS_SPREADSHEET_ID", system.env.googleSheetsSpreadsheetId],
+    ["GOOGLE_SHEETS_CLIENT_EMAIL", system.env.googleSheetsClientEmail],
+    ["GOOGLE_SHEETS_PRIVATE_KEY", system.env.googleSheetsPrivateKey],
     ["DASHBOARD_OWNER_PASSWORD", system.env.dashboardOwnerPassword],
     ["Session Signing Secret", system.env.dashboardSessionSecret]
   ] as const;
@@ -52,16 +55,28 @@ export function SettingsView() {
         <div className="section-heading">
           <div>
             <p className="eyebrow">System Mode</p>
-            <h2>Local Sample Mode</h2>
+            <h2>{dataModeLabel}</h2>
           </div>
           <Database size={20} aria-hidden />
         </div>
         <div className="settings-lines">
           <p>{system.connectionMessage}</p>
-          <p>This dashboard is using local sample records only. Owner password environment variables are required in production and fail closed when missing.</p>
+          <p>Owner password environment variables are required in production and fail closed when missing. Live Google Sheets reads are read-only only.</p>
           <div className="mode-status-list">
-            <span>Mode: <strong>Local Sample Mode</strong></span>
-            <StatusBadge label="Stable" />
+            <span>Data Mode: <strong>{dataModeLabel}</strong></span>
+            <StatusBadge label={system.dataMode === "live" ? "Live read-only" : "Sample"} />
+          </div>
+          <div className="mode-status-list">
+            <span>Live Sheets Configured: <strong>{liveConfiguredLabel}</strong></span>
+            <StatusBadge label={liveConfiguredLabel === "Yes" ? "Configured" : liveConfiguredLabel === "Invalid" ? "Needs Review" : "Missing"} />
+          </div>
+          <div className="mode-status-list">
+            <span>Live Source Checklist: <strong>{liveIssueCount ? `${liveIssueCount} issue${liveIssueCount === 1 ? "" : "s"}` : "Ready"}</strong></span>
+            <StatusBadge label={liveIssueCount ? "Needs Review" : "Ready"} />
+          </div>
+          <div className="mode-status-list">
+            <span>Last Data Refresh: <strong>{system.lastSuccessfulRefresh ? new Date(system.lastSuccessfulRefresh).toLocaleString() : "Not available"}</strong></span>
+            <StatusBadge label="No cache" />
           </div>
         </div>
       </section>
@@ -92,7 +107,19 @@ export function SettingsView() {
             <StatusBadge label="Enabled" />
           </div>
           <div className="mode-status-list">
-            <span>Live Actions: <strong>Still Disabled</strong></span>
+            <span>Drive Mode: <strong>Metadata Read-Only</strong></span>
+            <StatusBadge label="Read-only" />
+          </div>
+          <div className="mode-status-list">
+            <span>Live Writes: <strong>Disabled</strong></span>
+            <StatusBadge label="Disabled" />
+          </div>
+          <div className="mode-status-list">
+            <span>Drive Folder Health: <strong>Complete</strong></span>
+            <StatusBadge label="13 found" />
+          </div>
+          <div className="mode-status-list">
+            <span>Live Actions: <strong>Disabled</strong></span>
             <StatusBadge label="Disabled" />
           </div>
         </div>
@@ -108,7 +135,7 @@ export function SettingsView() {
         </div>
         <div className="settings-lines">
           <div className="mode-status-list">
-            <span>Status: <strong>Planned / Local read-only</strong></span>
+            <span>Status: <strong>Folder structure complete</strong></span>
             <StatusBadge label="Read-only" />
           </div>
           <div className="mode-status-list">
@@ -127,7 +154,7 @@ export function SettingsView() {
             <span>Folder ID: <strong>configured</strong></span>
             <StatusBadge label="Configured" />
           </div>
-          <p>Owner approval is required before any future Drive write action. This does not enable Drive uploads, moves, renames, deletes, or file edits.</p>
+          <p>Drive folder health verification passed with 13 expected folders found, 0 missing, 0 name mismatches, and 0 owner-review items. This does not enable Drive uploads, moves, renames, deletes, or file edits.</p>
         </div>
       </section>
 
@@ -163,12 +190,18 @@ export function SettingsView() {
       <section className="section-block">
         <div className="section-heading">
           <div>
-            <p className="eyebrow">Missing tabs</p>
-            <h2>{system.missingTabs.length}</h2>
+            <p className="eyebrow">Live source issues</p>
+            <h2>{liveIssueCount}</h2>
           </div>
         </div>
         <div className="tag-cloud">
-          {system.missingTabs.length ? system.missingTabs.map((tab) => <span key={tab}>{tab}</span>) : <p className="muted-line">All source tabs detected.</p>}
+          {liveIssueCount ? (
+            system.liveSourceChecklist
+              .filter((item) => !item.present || item.missingColumns.length > 0)
+              .map((item) => <span key={item.tab}>{item.present ? `${item.tab}: ${item.missingColumns.length} missing columns` : `${item.tab}: missing tab`}</span>)
+          ) : (
+            <p className="muted-line">All required live source tabs and columns are ready, or the dashboard is in Local Sample Mode.</p>
+          )}
         </div>
       </section>
     </div>

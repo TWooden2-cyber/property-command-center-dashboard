@@ -16,6 +16,8 @@ import {
   TrendingUp
 } from "lucide-react";
 import { EmptyState } from "@/components/DataState";
+import { OperationalAutomationPanels } from "@/components/OperationalAutomationPanels";
+import { SheetsRefreshStatus } from "@/components/SheetsRefreshStatus";
 import { StatusBadge } from "@/components/StatusBadge";
 import { copyTextToClipboard } from "@/lib/clipboard";
 import {
@@ -53,6 +55,12 @@ import {
   type HealthStatus,
   type SignalTone
 } from "@/lib/propertyCommandCenterData";
+import { useSheetsView } from "@/components/views/useSheetsView";
+import type { SystemStatus } from "@/types/sheets";
+
+type SettingsPayload = {
+  system: SystemStatus;
+};
 
 type CommandKpi = {
   label: string;
@@ -729,13 +737,17 @@ function MonthlyCashflowTrendChart() {
 export function OverviewView() {
   const [selectedMonth, setSelectedMonth] = useState(commandCenterPeriod.monthName);
   const [selectedYear, setSelectedYear] = useState(commandCenterPeriod.year);
+  const { system } = useSheetsView<SettingsPayload>("settings");
   const health = useMemo(() => computeDashboardHealth(), []);
   const kpis = useMemo(() => commandKpis(), []);
   const hasPeriodData = selectedMonth === commandCenterPeriod.monthName && selectedYear === commandCenterPeriod.year;
+  const dataSourceLabel = system?.dataMode === "live" ? "Live Google Sheets" : "Local Sample";
+  const lastRefreshLabel = system?.lastSuccessfulRefresh ? new Date(system.lastSuccessfulRefresh).toLocaleString() : "Not available";
 
   return (
     <div className="view-stack command-dashboard">
       <FilterBar month={selectedMonth} year={selectedYear} onMonthChange={setSelectedMonth} onYearChange={setSelectedYear} />
+      <SheetsRefreshStatus system={system} />
       <NotificationStrip />
 
       {!hasPeriodData ? (
@@ -751,8 +763,9 @@ export function OverviewView() {
                 50% but still has ledger and verification risk.
               </p>
               <div className="hero-source-strip">
-                <span>Local Sample Mode</span>
-                <span>No live Google data</span>
+                <span>{dataSourceLabel}</span>
+                <span>Last refreshed: {lastRefreshLabel}</span>
+                <span>Refresh page to pull latest Google Sheets data</span>
                 <span>No live actions</span>
               </div>
             </div>
@@ -787,6 +800,7 @@ export function OverviewView() {
           </Section>
 
           <IntegrationSafetySummary />
+          <OperationalAutomationPanels />
           <CommandAutomationTracker />
           <DailyCommandQueues />
           <ExecutiveSummaryCards />

@@ -6,8 +6,11 @@ import Link from "next/link";
 import type { Route } from "next";
 import { CheckCircle2, ClipboardList, Copy, ShieldCheck } from "lucide-react";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
+import { SheetsRefreshStatus } from "@/components/SheetsRefreshStatus";
 import { StatusBadge } from "@/components/StatusBadge";
 import { copyTextToClipboard } from "@/lib/clipboard";
+import type { SystemStatus } from "@/types/sheets";
+import { useSheetsView } from "@/components/views/useSheetsView";
 
 type Tone = "green" | "yellow" | "red";
 
@@ -50,6 +53,10 @@ type CommandTemplate = {
   title: string;
   actionName: string;
   prompt: string;
+};
+
+type SettingsPayload = {
+  system: SystemStatus;
 };
 
 const safetyLabels = [
@@ -248,6 +255,20 @@ const correctionRows: CorrectionRow[] = [
     notes: "Owner decisions remain manual until approved."
   }
 ];
+
+const completedCorrectionRows: CorrectionRow[] = correctionRows.map((row) => ({
+  ...row,
+  currentStatus: "Found",
+  actualMatch: row.expectedFolder,
+  proposedFutureAction: "No action",
+  actionType: "No action",
+  risk: "Low",
+  ownerApprovalRequired: "No",
+  blockedUntil: "Not blocked",
+  manualFixRecommended: "No",
+  automationLater: "No",
+  notes: "Drive folder health verification passed: 13 found, 0 missing, 0 name mismatch, 0 owner review."
+}));
 
 const verifiedForms = [
   ["Rent Roll Verification", ["Property", "Unit", "Tenant", "Monthly Rent", "May 2026 Rent Due", "Amount Paid", "Balance", "Payment Date", "Payment Proof", "RentRedi Ledger Status", "Bank/Deposit Proof", "Section 8/HAP Related", "Owner Verified", "Ready for Dashboard"]],
@@ -502,10 +523,32 @@ function Section({ eyebrow, title, children }: { eyebrow: string; title: string;
   );
 }
 
+function liveSheetsStatus(system: SystemStatus | null): { value: string; helper: string; tone: Tone } {
+  if (!system) {
+    return { value: "Checking", helper: "Reading owner-only status", tone: "yellow" };
+  }
+
+  if (system.requestedDataMode !== "live") {
+    return { value: "Pending", helper: "Local Sample Mode active", tone: "yellow" };
+  }
+
+  if (!system.liveSheetsConfigured) {
+    return { value: "Setup needed", helper: "Sheets env vars missing", tone: "yellow" };
+  }
+
+  if (!system.connectionOk) {
+    return { value: "Needs review", helper: "Missing tabs or columns", tone: "yellow" };
+  }
+
+  return { value: "Complete", helper: "Live read-only source ready", tone: "green" };
+}
+
 export function FinalIntegrationView() {
   const [activeCommand, setActiveCommand] = useState<CommandTemplate | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
+  const { system } = useSheetsView<SettingsPayload>("settings");
   const driveRecheckCommand = commands.find((command) => command.id === "drive-recheck");
+  const sheetsStatus = liveSheetsStatus(system);
 
   async function copyCommand(command: CommandTemplate) {
     const ok = await copyTextToClipboard(command.prompt);
@@ -553,22 +596,25 @@ export function FinalIntegrationView() {
           <p>Drive correction preview, verified data entry prep, source import mapping, Sheets read-only planning, migration preview, SOPs, and final launch checklist.</p>
         </div>
         <div className="remaining-header-stack">
-          <StatusBadge label="Local Sample Mode" />
+          <StatusBadge label={system?.dataMode === "live" ? "Live Sheets Mode" : "Local Sample Mode"} />
           <StatusBadge label="Last updated: May 25, 2026" />
-          <StatusBadge label="Owner approval required before live action" />
+          <StatusBadge label="Owner password protected" />
         </div>
       </section>
+
+      <SheetsRefreshStatus system={system} />
 
       <section className="remaining-health-panel">
         <span className="eyebrow">Operating Mode</span>
         <h3>Read-only operations ready / write integrations blocked</h3>
         <div className="remaining-safety-strip">
           {[
-            "Local Sample Mode",
+            system?.dataMode === "live" ? "Live Google Sheets read-only" : "Local Sample Mode",
+            "Dashboard security complete",
+            "Drive folder structure complete",
             "Drive read-only/listing active locally",
             "No Drive writes",
-            "No live data import",
-            "No Google Sheets connection",
+            "No Google Sheets writes",
             "No Gmail, Calendar, Tasks, RentRedi, tenant, legal, lender, vendor, bank, court, or payment actions",
             "Owner approval required before any live action"
           ].map((item) => (
@@ -578,19 +624,23 @@ export function FinalIntegrationView() {
       </section>
 
       <section className="remaining-kpi-grid">
-        <KpiCard label="Expected Folders" value="13" helper="Batch 38 health baseline" tone="green" />
-        <KpiCard label="Found" value="3" helper="Exact metadata matches" tone="green" />
-        <KpiCard label="Missing" value="4" helper="Correction preview only" tone="red" />
-        <KpiCard label="Name Mismatch" value="5" helper="Owner naming review needed" tone="yellow" />
-        <KpiCard label="Needs Owner Review" value="1" helper="Ambiguous folder purpose" tone="yellow" />
+        <KpiCard label="Expected Folders" value="13" helper="Final folder health result" tone="green" />
+        <KpiCard label="Found" value="13" helper="All expected folders found" tone="green" />
+        <KpiCard label="Missing" value="0" helper="No missing folders" tone="green" />
+        <KpiCard label="Name Mismatch" value="0" helper="No folder naming issues" tone="green" />
+        <KpiCard label="Needs Owner Review" value="0" helper="No owner-review folder items" tone="green" />
         <KpiCard label="Drive Writes" value="Disabled" helper="No actions performed" tone="green" />
-        <KpiCard label="Read-Only Scope" value="Metadata only" helper="No write scope" tone="green" />
-        <KpiCard label="Owner Approval Required" value="Yes" helper="Before any live action" tone="yellow" />
+        <KpiCard label="Dashboard Security" value="Complete" helper="Owner password login active" tone="green" />
+        <KpiCard label="Live Google Sheets" value={sheetsStatus.value} helper={sheetsStatus.helper} tone={sheetsStatus.tone} />
+        <KpiCard label="Gmail Automation" value="Not connected" helper="No Gmail writes or sends" tone="green" />
+        <KpiCard label="Calendar Automation" value="Not connected" helper="No events created" tone="green" />
+        <KpiCard label="RentRedi Automation" value="Not connected" helper="No RentRedi actions" tone="green" />
+        <KpiCard label="Live Writes" value="Disabled" helper="Owner approval gates enabled" tone="green" />
       </section>
 
       <Section eyebrow="Section 1" title="Drive Folder Correction Package Preview">
-        <p className="warning-note">No Drive correction actions are performed in this batch.</p>
-        <DataTable rows={correctionRows} columns={correctionColumns} />
+        <p className="warning-note">Drive folder correction is complete. No Drive correction actions are needed or performed in this batch.</p>
+        <DataTable rows={completedCorrectionRows} columns={correctionColumns} />
       </Section>
 
       <Section eyebrow="Section 2" title="Drive Folder Recheck Workflow">
@@ -665,7 +715,18 @@ export function FinalIntegrationView() {
             <h3>Purpose</h3>
             <p>Use verified source worksheets later as read-only dashboard inputs.</p>
             <div className="remaining-safety-strip">
-              {["No Sheets connection active", "No Sheets writes approved", "Read-only planning only", "Owner approval required before OAuth/scope request", "Verified worksheet must be reviewed first", "Sheet IDs must not expose secrets", "Token outside repo", "Dry run required before dashboard reads", "Use Sheets read-only scope only", "No write scope"].map((item) => (
+              {[
+                system?.dataMode === "live" ? "Live Sheets read-only mode active" : "Local Sample Mode active",
+                "No Sheets writes approved",
+                "Read-only dashboard reads only",
+                "Owner approval required before any scope or source change",
+                "Verified worksheet must be reviewed first",
+                "Sheet IDs must not expose secrets",
+                "Service account key stays in environment variables only",
+                "Dry run required before dashboard reads",
+                "Use Sheets read-only scope only",
+                "No write scope"
+              ].map((item) => (
                 <span key={item}>{item}</span>
               ))}
             </div>

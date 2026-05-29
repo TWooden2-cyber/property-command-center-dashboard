@@ -18,13 +18,23 @@ export const SOURCE_TABS = [
 export type SourceTabName = (typeof SOURCE_TABS)[number];
 
 export type RiskLevel = "Stable" | "Normal" | "Watch" | "High" | "Critical";
+export type DashboardDataMode = "sample" | "live";
 
 export type EnvStatus = {
-  googleServiceAccountEmail: boolean;
-  googlePrivateKey: boolean;
-  googleSheetId: boolean;
+  googleSheetsSpreadsheetId: boolean;
+  googleSheetsClientEmail: boolean;
+  googleSheetsPrivateKey: boolean;
   dashboardOwnerPassword: boolean;
   dashboardSessionSecret: boolean;
+};
+
+export type LiveSourceTabStatus = {
+  tab: string;
+  present: boolean;
+  rowCount: number;
+  requiredColumns: string[];
+  presentColumns: string[];
+  missingColumns: string[];
 };
 
 export type AuthStatus = {
@@ -39,6 +49,10 @@ export type SystemStatus = {
   connectionOk: boolean;
   connectionMessage: string;
   lastSuccessfulRefresh: string | null;
+  dataMode: DashboardDataMode;
+  requestedDataMode: DashboardDataMode;
+  liveSheetsConfigured: boolean;
+  liveSourceChecklist: LiveSourceTabStatus[];
   tabsDetected: string[];
   missingTabs: string[];
   env: EnvStatus;
