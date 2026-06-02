@@ -4131,6 +4131,514 @@ tbody tr:hover {
   line-height: 1.65;
 }
 
+.mockup-live-shell {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  min-height: calc(100vh - 142px);
+  overflow: hidden;
+  border: 1px solid rgba(201, 164, 81, 0.2);
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 80% 4%, rgba(201, 164, 81, 0.08), transparent 24%),
+    linear-gradient(135deg, #0b0c0e 0%, #121214 52%, #0a0a0c 100%);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.38);
+}
+
+.mockup-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 18px 14px;
+  border-right: 1px solid rgba(201, 164, 81, 0.18);
+  background: linear-gradient(180deg, rgba(23, 24, 27, 0.98), rgba(12, 13, 15, 0.98));
+}
+
+.mockup-sidebar-title,
+.mockup-owner-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+}
+
+.mockup-sidebar-title {
+  min-height: 56px;
+  padding: 6px 4px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.mockup-sidebar-title svg {
+  color: var(--gold);
+}
+
+.mockup-sidebar-title strong,
+.mockup-owner-card strong,
+.mockup-card-heading h3,
+.mockup-detected-card strong,
+.mockup-recommendation-grid strong,
+.mockup-task-list strong {
+  display: block;
+  margin: 0;
+  color: var(--cream);
+}
+
+.mockup-sidebar-title span,
+.mockup-owner-card span,
+.mockup-card-heading p,
+.mockup-detected-meta,
+.mockup-task-message,
+.mockup-workflow-message,
+.mockup-safety-footer,
+.mockup-card > p,
+.mockup-recommendation-grid p,
+.mockup-detected-card p,
+.mockup-task-list p,
+.mockup-plan-status span,
+.mockup-audit-grid span,
+.mockup-form-grid label {
+  color: var(--muted);
+}
+
+.mockup-sidebar nav {
+  display: grid;
+  gap: 4px;
+}
+
+.mockup-sidebar a {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 36px;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 0.86rem;
+  text-decoration: none;
+}
+
+.mockup-sidebar a:hover,
+.mockup-sidebar a.active {
+  border-color: rgba(201, 164, 81, 0.28);
+  background: rgba(201, 164, 81, 0.12);
+  color: var(--cream);
+}
+
+.mockup-nav-heading {
+  margin: 8px 4px 4px;
+  color: var(--gold-soft);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.mockup-owner-card {
+  margin-top: auto;
+  padding: 14px 6px 4px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.mockup-owner-card svg {
+  color: #c6a8ff;
+}
+
+.mockup-main {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+}
+
+.mockup-top-header {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto;
+  gap: 16px;
+  align-items: start;
+}
+
+.mockup-top-header h2 {
+  margin: 0;
+  color: var(--cream);
+  font-size: clamp(1.45rem, 2vw, 2rem);
+}
+
+.mockup-top-header p {
+  margin: 4px 0 0;
+  color: var(--cream-muted);
+}
+
+.mockup-status-pills {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.mockup-status-pills span,
+.mockup-status-pills a {
+  display: grid;
+  gap: 3px;
+  min-width: 132px;
+  min-height: 48px;
+  align-content: center;
+  padding: 8px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--cream-muted);
+  font-size: 0.78rem;
+  text-align: center;
+  text-decoration: none;
+}
+
+.mockup-status-pills strong {
+  color: var(--success);
+  font-size: 0.78rem;
+}
+
+.mockup-status-pills span:nth-child(2) strong,
+.mockup-status-pills span:nth-child(3) strong {
+  color: var(--gold-soft);
+}
+
+.mockup-status-pills a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 180px;
+  color: var(--cream);
+}
+
+.mockup-card {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(28, 29, 31, 0.96), rgba(18, 19, 21, 0.96));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.mockup-card-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.mockup-card-heading > span:first-child {
+  display: grid;
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 1px solid rgba(201, 164, 81, 0.28);
+  border-radius: 8px;
+  background: rgba(201, 164, 81, 0.15);
+  color: var(--gold-soft);
+  font-weight: 800;
+}
+
+.mockup-card-heading p {
+  margin: 0 0 2px;
+  color: var(--gold-soft);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.mockup-template-grid,
+.mockup-detected-grid,
+.mockup-recommendation-grid,
+.mockup-form-grid,
+.mockup-code-grid,
+.mockup-audit-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.mockup-template-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.mockup-detected-grid,
+.mockup-recommendation-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.mockup-form-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.mockup-code-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.mockup-audit-grid {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  margin-bottom: 12px;
+}
+
+.mockup-two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.mockup-template-grid button,
+.mockup-filter-row button,
+.mockup-action-row button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 8px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--cream);
+  font: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.mockup-template-grid button.active,
+.mockup-template-grid button:hover,
+.mockup-filter-row button.active,
+.mockup-action-row button:hover {
+  border-color: rgba(201, 164, 81, 0.38);
+  background: rgba(201, 164, 81, 0.16);
+}
+
+.mockup-filter-row,
+.mockup-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.mockup-detected-card,
+.mockup-recommendation-grid article,
+.mockup-task-list article {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(5, 6, 8, 0.28);
+}
+
+.mockup-detected-top,
+.mockup-recommendation-grid article {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.mockup-detected-top svg,
+.mockup-recommendation-grid svg {
+  padding: 6px;
+  border-radius: 8px;
+  background: rgba(32, 176, 97, 0.13);
+  color: var(--success);
+}
+
+.mockup-detected-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  font-size: 0.78rem;
+}
+
+.mockup-include-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--cream-muted);
+  font-size: 0.8rem;
+}
+
+.mockup-form-grid label {
+  display: grid;
+  gap: 6px;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.mockup-form-grid input,
+.mockup-form-grid select,
+.mockup-form-grid textarea,
+.mockup-detected-card textarea,
+.mockup-command-box {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: rgba(2, 3, 5, 0.42);
+  color: var(--cream);
+  font: inherit;
+  padding: 9px 10px;
+}
+
+.mockup-form-grid textarea,
+.mockup-detected-card textarea {
+  min-height: 70px;
+  resize: vertical;
+}
+
+.mockup-task-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.mockup-task-list article {
+  grid-template-columns: 1fr;
+}
+
+.mockup-plan-card {
+  border-color: rgba(201, 164, 81, 0.22);
+}
+
+.mockup-code-grid pre {
+  min-height: 172px;
+  max-height: 260px;
+  overflow: auto;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background: #050607;
+  color: #d8d0c0;
+  font-size: 0.76rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.mockup-plan-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.mockup-command-box {
+  min-height: 210px;
+  resize: vertical;
+  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  font-size: 0.8rem;
+  line-height: 1.55;
+}
+
+.mockup-action-row button.primary,
+.mockup-action-row button.approve {
+  border-color: rgba(32, 176, 97, 0.42);
+  background: rgba(32, 176, 97, 0.14);
+  color: #b5f4cd;
+}
+
+.mockup-action-row button.danger,
+.mockup-action-row button.reject {
+  border-color: rgba(255, 107, 107, 0.42);
+  background: rgba(255, 107, 107, 0.12);
+  color: #ffb8b8;
+}
+
+.mockup-action-row button:disabled {
+  cursor: not-allowed;
+  opacity: 0.52;
+}
+
+.execution-card {
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.mockup-workflow-message {
+  margin-top: 10px;
+  font-size: 0.82rem;
+}
+
+.mockup-workflow-message.blocked {
+  color: var(--danger);
+}
+
+.mockup-audit-grid span {
+  padding: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.035);
+  font-size: 0.78rem;
+}
+
+.mockup-safety-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.035);
+  font-size: 0.8rem;
+}
+
+.mockup-safety-footer strong {
+  color: var(--cream);
+}
+
+.service-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  padding: 5px 8px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--cream-muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.service-badge.sheets {
+  border-color: rgba(79, 156, 255, 0.42);
+  background: rgba(79, 156, 255, 0.15);
+  color: #9dccff;
+}
+
+.service-badge.tasks,
+.service-badge.success {
+  border-color: rgba(32, 176, 97, 0.42);
+  background: rgba(32, 176, 97, 0.16);
+  color: #aef0ca;
+}
+
+.service-badge.calendar {
+  border-color: rgba(181, 126, 255, 0.42);
+  background: rgba(181, 126, 255, 0.16);
+  color: #d6bbff;
+}
+
+.service-badge.drive,
+.service-badge.warning {
+  border-color: rgba(201, 164, 81, 0.42);
+  background: rgba(201, 164, 81, 0.16);
+  color: var(--gold-soft);
+}
+
+.service-badge.gmail,
+.service-badge.reject {
+  border-color: rgba(255, 107, 107, 0.42);
+  background: rgba(255, 107, 107, 0.14);
+  color: #ffb7b7;
+}
+
 @media (max-width: 900px) {
   .app-shell {
     grid-template-columns: 1fr;
@@ -4258,7 +4766,16 @@ tbody tr:hover {
   .owner-form-grid,
   .mass-plan-grid,
   .audit-preview-grid,
-  .updated-item {
+  .updated-item,
+  .mockup-live-shell,
+  .mockup-top-header,
+  .mockup-template-grid,
+  .mockup-detected-grid,
+  .mockup-recommendation-grid,
+  .mockup-form-grid,
+  .mockup-code-grid,
+  .mockup-audit-grid,
+  .mockup-two-col {
     grid-template-columns: 1fr;
   }
 
@@ -4298,6 +4815,15 @@ tbody tr:hover {
   .mass-plan-grid,
   .audit-preview-grid,
   .updated-item,
+  .mockup-live-shell,
+  .mockup-top-header,
+  .mockup-template-grid,
+  .mockup-detected-grid,
+  .mockup-recommendation-grid,
+  .mockup-form-grid,
+  .mockup-code-grid,
+  .mockup-audit-grid,
+  .mockup-two-col,
   .filter-panel {
     grid-template-columns: 1fr;
   }
