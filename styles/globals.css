@@ -1020,6 +1020,80 @@ tbody tr:hover {
   gap: 8px;
 }
 
+.operation-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.operation-field {
+  display: grid;
+  gap: 7px;
+  color: var(--cream-muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.operation-field.wide {
+  grid-column: 1 / -1;
+}
+
+.operation-field input,
+.operation-field textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 11px;
+  color: var(--text);
+  background: rgba(8, 7, 6, 0.34);
+  outline: none;
+}
+
+.operation-field textarea {
+  min-height: 84px;
+  resize: vertical;
+}
+
+.operation-field input:focus,
+.operation-field textarea:focus {
+  border-color: rgba(201, 164, 81, 0.58);
+}
+
+.operation-plan {
+  display: grid;
+  gap: 10px;
+  border: 1px solid rgba(124, 165, 170, 0.38);
+  border-radius: 8px;
+  padding: 12px;
+  background: rgba(124, 165, 170, 0.08);
+}
+
+.operation-plan dl {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.operation-plan div {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 10px;
+}
+
+.operation-plan dt,
+.operation-plan dd {
+  margin: 0;
+}
+
+.operation-plan dt {
+  color: var(--muted);
+}
+
+.operation-plan dd {
+  color: var(--cream);
+  overflow-wrap: anywhere;
+}
+
 .operation-tags span {
   border: 1px solid var(--line);
   border-radius: 999px;
@@ -1031,6 +1105,11 @@ tbody tr:hover {
 .operation-actions .icon-text-button {
   min-height: 36px;
   padding: 8px 10px;
+}
+
+.operation-actions .icon-text-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
 }
 
 .operation-result {
@@ -3944,7 +4023,8 @@ tbody tr:hover {
   .remaining-command-button-grid,
   .automation-panel-grid,
   .operation-summary-grid,
-  .operation-service-grid {
+  .operation-service-grid,
+  .operation-form-grid {
     grid-template-columns: 1fr;
   }
 
@@ -3975,6 +4055,7 @@ tbody tr:hover {
   .config-grid,
   .operation-summary-grid,
   .operation-service-grid,
+  .operation-form-grid,
   .filter-panel {
     grid-template-columns: 1fr;
   }
