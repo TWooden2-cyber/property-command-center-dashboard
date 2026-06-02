@@ -8,14 +8,12 @@ import {
   Copy,
   Database,
   FileText,
-  Home,
   ListChecks,
   ListTodo,
   Lock,
   PlayCircle,
   RefreshCw,
   ShieldCheck,
-  UserCircle,
   XCircle
 } from "lucide-react";
 import { EmptyState, ErrorState, LoadingState } from "@/components/DataState";
@@ -93,10 +91,6 @@ type WorkflowResult = {
   blocked?: boolean;
   rejected?: boolean;
 };
-
-const primaryNav = ["Dashboard", "Properties", "Units", "Rent Collection", "Maintenance", "Tasks", "Calendar", "Documents", "Communications", "Reports"];
-const liveNav = ["Live Operations Center", "Pending Approvals", "Owner Approvals", "Live Operations Audit"];
-const systemNav = ["Settings", "Integrations", "Audit Logs", "Help & Support"];
 
 const templates = [
   "Daily Operations Sync",
@@ -512,29 +506,6 @@ export function LiveOperationsView() {
 
   return (
     <div className="mockup-live-shell">
-      <aside className="mockup-sidebar">
-        <div className="mockup-sidebar-title">
-          <strong>PROPERTY COMMAND CENTER</strong>
-          <span>Live Operations Center</span>
-        </div>
-        <nav>
-          {primaryNav.map((item) => <a href="#" key={item}><Home size={15} />{item}</a>)}
-        </nav>
-        <p className="mockup-nav-heading">Live Operations</p>
-        <nav>
-          {liveNav.map((item) => <a href="#" className={item === "Live Operations Center" ? "active" : ""} key={item}><ShieldCheck size={15} />{item}</a>)}
-        </nav>
-        <p className="mockup-nav-heading">System</p>
-        <nav>
-          {systemNav.map((item) => <a href="#" key={item}><FileText size={15} />{item}</a>)}
-        </nav>
-        <div className="mockup-owner-card">
-          <UserCircle size={22} />
-          <strong>Property Owner</strong>
-          <span>Owner Access</span>
-        </div>
-      </aside>
-
       <main className="mockup-main">
         <header className="mockup-top-header">
           <div>

@@ -4132,8 +4132,7 @@ tbody tr:hover {
 }
 
 .mockup-live-shell {
-  display: grid;
-  grid-template-columns: 280px minmax(0, 1fr);
+  width: 100%;
   min-height: calc(100vh - 142px);
   overflow: hidden;
   border: 1px solid rgba(201, 164, 81, 0.2);
@@ -4144,35 +4143,6 @@ tbody tr:hover {
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.38);
 }
 
-.mockup-sidebar {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  padding: 18px 14px;
-  border-right: 1px solid rgba(201, 164, 81, 0.18);
-  background: linear-gradient(180deg, rgba(23, 24, 27, 0.98), rgba(12, 13, 15, 0.98));
-}
-
-.mockup-sidebar-title,
-.mockup-owner-card {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 10px;
-  align-items: center;
-}
-
-.mockup-sidebar-title {
-  min-height: 56px;
-  padding: 6px 4px 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.mockup-sidebar-title svg {
-  color: var(--gold);
-}
-
-.mockup-sidebar-title strong,
-.mockup-owner-card strong,
 .mockup-card-heading h3,
 .mockup-detected-card strong,
 .mockup-recommendation-grid strong,
@@ -4182,8 +4152,6 @@ tbody tr:hover {
   color: var(--cream);
 }
 
-.mockup-sidebar-title span,
-.mockup-owner-card span,
 .mockup-card-heading p,
 .mockup-detected-meta,
 .mockup-task-message,
@@ -4199,53 +4167,11 @@ tbody tr:hover {
   color: var(--muted);
 }
 
-.mockup-sidebar nav {
-  display: grid;
-  gap: 4px;
-}
-
-.mockup-sidebar a {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  min-height: 36px;
-  padding: 8px 10px;
-  border: 1px solid transparent;
-  border-radius: 8px;
-  color: var(--muted);
-  font-size: 0.86rem;
-  text-decoration: none;
-}
-
-.mockup-sidebar a:hover,
-.mockup-sidebar a.active {
-  border-color: rgba(201, 164, 81, 0.28);
-  background: rgba(201, 164, 81, 0.12);
-  color: var(--cream);
-}
-
-.mockup-nav-heading {
-  margin: 8px 4px 4px;
-  color: var(--gold-soft);
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0;
-  text-transform: uppercase;
-}
-
-.mockup-owner-card {
-  margin-top: auto;
-  padding: 14px 6px 4px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.mockup-owner-card svg {
-  color: #c6a8ff;
-}
-
 .mockup-main {
   display: grid;
   gap: 14px;
+  width: min(100%, 1720px);
+  margin: 0 auto;
   padding: 16px;
 }
 
