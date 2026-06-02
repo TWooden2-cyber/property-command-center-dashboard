@@ -56,7 +56,12 @@ const serviceDefinitions: ServiceDefinition[] = [
     key: "drive",
     label: "Google Drive Create/Move",
     flag: "GOOGLE_DRIVE_WRITE_ENABLED",
-    missingWhenEnabled: () => (hasEnv("GOOGLE_DRIVE_WRITE_TOKEN") || hasEnv("GOOGLE_DRIVE_FOLDER_ID") ? [] : ["Google Drive file/folder write authorization and approved parent folder ID"]),
+    missingWhenEnabled: () => {
+      const missing: string[] = [];
+      if (!hasEnv("GOOGLE_DRIVE_WRITE_TOKEN")) missing.push("Google Drive file/folder write authorization");
+      if (!hasEnv("GOOGLE_DRIVE_FOLDER_ID")) missing.push("approved parent folder ID");
+      return missing;
+    },
     allowedActions: ["Create folders inside approved parent", "Move files into approved folders", "Route documents to approved folders"],
     forbiddenActions: ["Delete", "Trash", "Permission changes", "Sharing changes", "File content reads without approval", "Moving files outside approved parent"]
   }
