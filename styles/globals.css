@@ -4416,6 +4416,21 @@ tbody tr:hover {
   resize: vertical;
 }
 
+.mockup-form-grid .wide {
+  grid-column: 1 / -1;
+}
+
+.mockup-validation-note {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(201, 164, 81, 0.34);
+  border-radius: 8px;
+  background: rgba(201, 164, 81, 0.1);
+  color: var(--gold-soft);
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+
 .mockup-task-list {
   display: grid;
   gap: 8px;

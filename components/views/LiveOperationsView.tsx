@@ -43,11 +43,27 @@ type OwnerUpdateForm = {
   property: string;
   unit: string;
   category: string;
+  sheetTab: string;
+  sheetTargetProperty: string;
+  sheetTargetUnit: string;
+  trackerTitle: string;
+  updateMode: string;
+  sheetFieldName: string;
   currentStatus: string;
   newStatus: string;
   ownerRemarks: string;
   nextAction: string;
   followUpDate: string;
+  calendarDate: string;
+  calendarTime: string;
+  calendarTimeZone: string;
+  calendarDuration: string;
+  driveFileName: string;
+  driveFileId: string;
+  driveCurrentFolder: string;
+  driveDestinationFolderPath: string;
+  driveDestinationFolderId: string;
+  driveCreateDestinationFolder: string;
   proofStatus: string;
   vendorCompleted: string;
   tenantFollowUpNeeded: string;
@@ -67,7 +83,24 @@ type CommandItem = {
   timestamp: string;
   includeInMassPrompt: boolean;
   nextAction: string;
+  followUpDate?: string;
   proofStatus: string;
+  sheetTab?: string;
+  sheetTargetProperty?: string;
+  sheetTargetUnit?: string;
+  trackerTitle?: string;
+  updateMode?: string;
+  sheetFieldName?: string;
+  calendarDate?: string;
+  calendarTime?: string;
+  calendarTimeZone?: string;
+  calendarDuration?: string;
+  driveFileName?: string;
+  driveFileId?: string;
+  driveCurrentFolder?: string;
+  driveDestinationFolderPath?: string;
+  driveDestinationFolderId?: string;
+  driveCreateDestinationFolder?: string;
   ownerApproved?: boolean;
 };
 
@@ -81,6 +114,10 @@ type Plan = {
   riskLevel: "Normal" | "Watch" | "High";
   actionCount: number;
   approvalCount: number;
+  executable: string[];
+  needsInfo: string[];
+  blocked: string[];
+  missingInformation: string[];
 };
 
 type WorkflowResult = {
@@ -109,11 +146,27 @@ const initialForm: OwnerUpdateForm = {
   property: "",
   unit: "",
   category: "Maintenance",
+  sheetTab: "Maintenance",
+  sheetTargetProperty: "",
+  sheetTargetUnit: "",
+  trackerTitle: "",
+  updateMode: "update-or-create",
+  sheetFieldName: "status",
   currentStatus: "",
   newStatus: "",
   ownerRemarks: "",
   nextAction: "",
   followUpDate: "",
+  calendarDate: "",
+  calendarTime: "",
+  calendarTimeZone: "America/New_York",
+  calendarDuration: "30",
+  driveFileName: "",
+  driveFileId: "",
+  driveCurrentFolder: "",
+  driveDestinationFolderPath: "",
+  driveDestinationFolderId: "",
+  driveCreateDestinationFolder: "yes",
   proofStatus: "",
   vendorCompleted: "no",
   tenantFollowUpNeeded: "no",
@@ -230,6 +283,36 @@ function serviceBadgeClass(source: string) {
   return "service-badge";
 }
 
+function nextBusinessDayIso() {
+  const date = new Date();
+  date.setDate(date.getDate() + 1);
+
+  while (date.getDay() === 0 || date.getDay() === 6) {
+    date.setDate(date.getDate() + 1);
+  }
+
+  return date.toISOString().slice(0, 10);
+}
+
+function defaultCalendarTime(item: CommandItem) {
+  const text = `${item.category} ${item.title} ${item.ownerRemarks} ${item.proofStatus}`.toLowerCase();
+  if (text.includes("rent")) return "12:30";
+  if (text.includes("proof") || text.includes("maintenance")) return "08:30";
+  return "08:30";
+}
+
+function sheetTabFor(item: CommandItem) {
+  return item.sheetTab || (item.category === "Rent" ? "Rent Collection" : item.category === "Documents" ? "Proof Archive" : item.category || "Maintenance");
+}
+
+function isMissingExactUnit(value: string) {
+  return !value.trim() || /multiple|all|unknown|n\/a/i.test(value);
+}
+
+function statusPrefix(status: "Executable" | "Needs More Info" | "Blocked") {
+  return `[${status}]`;
+}
+
 function detectRecommendedActions(item: CommandItem) {
   const text = `${item.category} ${item.title} ${item.newStatus} ${item.ownerRemarks} ${item.nextAction} ${item.proofStatus}`.toLowerCase();
   const actions: Array<{ title: string; reason: string; service: string }> = [];
@@ -274,17 +357,70 @@ function buildPlan(items: CommandItem[]): Plan {
   const drive: string[] = [];
   const gmail: string[] = [];
   const audit: string[] = [];
+  const executable: string[] = [];
+  const needsInfo: string[] = [];
+  const blocked: string[] = [];
+  const missingInformation = new Set<string>();
 
   items.forEach((item) => {
-    sheets.push(`tab=${item.category || "Operations"} | row/item=${item.property || "property"} ${item.unit || ""} | field=status/notes | old=${item.currentStatus || "not set"} | new=${item.newStatus || "review"} | reason=${item.ownerRemarks || item.nextAction || "owner update"}`);
+    const sheetTab = sheetTabFor(item);
+    const sheetProperty = item.sheetTargetProperty || item.property;
+    const sheetUnit = item.sheetTargetUnit || item.unit;
+    const trackerTitle = item.trackerTitle || item.title;
+    const sheetField = item.sheetFieldName || "status/notes";
+    const updateMode = item.updateMode || "update-or-create";
+    const exactSheetTarget = Boolean(sheetTab && sheetProperty && trackerTitle && !isMissingExactUnit(sheetUnit || "N/A"));
+    const sheetLine = `tab=${sheetTab} | property=${sheetProperty || "MISSING_PROPERTY"} | unit=${sheetUnit || "N/A"} | tracker/item title=${trackerTitle || "MISSING_TRACKER_TITLE"} | row match fields=property+unit+tracker/item title | update mode=${updateMode === "create" ? "create new row" : "update existing row; Create new row if no matching row exists."} | field name=${sheetField} | old value=${item.currentStatus || "not set"} | new value=${item.newStatus || "review"} | reason=${item.ownerRemarks || item.nextAction || "owner update"}`;
+    sheets.push(`${statusPrefix(exactSheetTarget ? "Executable" : "Needs More Info")} ${sheetLine}`);
+    if (exactSheetTarget) executable.push(`Sheet update: ${sheetLine}`);
+    else {
+      needsInfo.push(`Sheet update needs exact target fields: ${sheetLine}`);
+      if (!sheetProperty) missingInformation.add("Sheet target property");
+      if (isMissingExactUnit(sheetUnit || "")) missingInformation.add("Sheet target unit");
+      if (!sheetTab) missingInformation.add("Sheet tab");
+      if (!trackerTitle) missingInformation.add("Tracker/item title");
+    }
+
     audit.push(`timestamp=now | service=${item.source} | action=${item.title} | approval=${item.ownerApproved ? "owner-approved keyword detected" : "pending owner approval"} | risk=Normal`);
 
     detectRecommendedActions(item).forEach((action) => {
-      if (action.service === "Google Tasks") tasks.push(`create/update task | title=${action.title} - ${item.title} | due=${item.nextAction ? "next follow-up" : "owner selected"} | notes=${action.reason} | reason=${item.ownerRemarks || action.reason}`);
-      else if (action.service === "Google Calendar") calendar.push(`create event | date/time=${item.nextAction || "owner selected"} | title=${action.title} | duration=30 minutes | reason=${action.reason}`);
-      else if (action.service === "Google Drive") drive.push(`move file/create folder | current folder=review queue | proposed folder=approved ${item.category} folder | reason=${action.reason}`);
-      else if (action.service === "Gmail Read") gmail.push(`read selected email only | link selected email to queue | reason=${action.reason} | no sending/replying/deleting`);
-      else sheets.push(`${action.title}: ${action.reason}`);
+      if (action.service === "Google Tasks") {
+        const taskLine = `create/update task | title=${action.title} - ${item.title} | due=next follow-up | notes=${action.reason} | property=${item.property || "N/A"} | unit=${item.unit || "N/A"} | reason=${item.ownerRemarks || action.reason}`;
+        tasks.push(`${statusPrefix("Executable")} ${taskLine}`);
+        executable.push(`Google Task: ${taskLine}`);
+      } else if (action.service === "Google Calendar") {
+        const date = item.calendarDate || item.followUpDate || nextBusinessDayIso();
+        const time = item.calendarTime || defaultCalendarTime(item);
+        const timezone = item.calendarTimeZone || "America/New_York";
+        const duration = item.calendarDuration || "30";
+        const calendarLine = `create event | exact date=${date} | exact time=${time} | time zone=${timezone} | title=${action.title} - ${item.title} | duration=${duration} minutes | description=${action.reason}. ${item.ownerRemarks || ""} | property/unit=${item.property || "N/A"} ${item.unit || "N/A"} | reason=${action.reason}`;
+        calendar.push(`${statusPrefix("Executable")} ${calendarLine}`);
+        executable.push(`Calendar event: ${calendarLine}`);
+      } else if (action.service === "Google Drive") {
+        const hasExactFile = Boolean(item.driveFileId || item.driveFileName);
+        const hasDestination = Boolean(item.driveDestinationFolderPath || item.driveDestinationFolderId);
+        if (hasExactFile && hasDestination) {
+          const driveLine = `move file/create folder | exact file name=${item.driveFileName || "provided by file ID"} | exact file ID=${item.driveFileId || "not provided"} | current folder name/ID=${item.driveCurrentFolder || "not provided"} | exact destination folder path=${item.driveDestinationFolderPath || "provided by folder ID"} | destination folder ID=${item.driveDestinationFolderId || "not provided"} | create destination folder if missing=${item.driveCreateDestinationFolder || "yes"} | reason=${action.reason}`;
+          drive.push(`${statusPrefix("Executable")} ${driveLine}`);
+          executable.push(`Drive routing: ${driveLine}`);
+        } else {
+          const driveLine = `Drive review only - owner must select exact file before move. | file name=${item.driveFileName || "MISSING_FILE_NAME"} | file ID=${item.driveFileId || "MISSING_FILE_ID"} | destination folder path=${item.driveDestinationFolderPath || "MISSING_DESTINATION_FOLDER"} | destination folder ID=${item.driveDestinationFolderId || "not provided"} | reason=${action.reason}`;
+          drive.push(`${statusPrefix("Needs More Info")} ${driveLine}`);
+          needsInfo.push(`Drive routing needs exact file/folder: ${driveLine}`);
+          if (!hasExactFile) missingInformation.add("Drive file name or file ID");
+          if (!hasDestination) missingInformation.add("Drive destination folder");
+        }
+      } else if (action.service === "Gmail Read") {
+        const gmailLine = `read selected email only | link selected email to queue | reason=${action.reason} | no sending/replying/deleting`;
+        gmail.push(`${statusPrefix("Needs More Info")} ${gmailLine}`);
+        needsInfo.push(`Gmail read needs selected email ID/thread: ${gmailLine}`);
+        missingInformation.add("Selected Gmail email/thread");
+      } else {
+        const secondarySheetLine = `${action.title}: exact tab=${sheetTab} | property=${sheetProperty || "MISSING_PROPERTY"} | unit=${sheetUnit || "N/A"} | tracker/item title=${trackerTitle || "MISSING_TRACKER_TITLE"} | field name=${sheetField} | reason=${action.reason} | Create new row if no matching row exists.`;
+        sheets.push(`${statusPrefix(exactSheetTarget ? "Executable" : "Needs More Info")} ${secondarySheetLine}`);
+        if (exactSheetTarget) executable.push(`Sheet update: ${secondarySheetLine}`);
+        else needsInfo.push(`Sheet recommendation needs exact target fields: ${secondarySheetLine}`);
+      }
     });
   });
 
@@ -300,7 +436,11 @@ function buildPlan(items: CommandItem[]): Plan {
     audit,
     riskLevel,
     actionCount,
-    approvalCount: items.filter((item) => !item.ownerApproved).length
+    approvalCount: items.filter((item) => !item.ownerApproved).length,
+    executable,
+    needsInfo,
+    blocked,
+    missingInformation: Array.from(missingInformation)
   };
 }
 
@@ -316,13 +456,23 @@ Template: ${template}
 Selected completed/updated items:
 ${itemLines.join("\n") || "None selected."}
 
-Proposed Sheet updates:
+SECTION A - Execute these exact approved actions:
+${plan.executable.map((item) => `- ${item}`).join("\n") || "- None. Do not execute incomplete items."}
+
+SECTION B - Do not execute these incomplete items:
+${plan.needsInfo.map((item) => `- ${item}`).join("\n") || "- None."}
+${plan.blocked.map((item) => `- ${item}`).join("\n")}
+
+SECTION C - Missing information needed:
+${plan.missingInformation.map((item) => `- ${item}`).join("\n") || "- None."}
+
+Proposed Sheet updates with executable validation:
 ${plan.sheets.map((item) => `- ${item}`).join("\n") || "- None"}
 
-Proposed Calendar actions:
+Proposed Calendar actions with executable validation:
 ${plan.calendar.map((item) => `- ${item}`).join("\n") || "- None"}
 
-Proposed Drive routing actions:
+Proposed Drive routing actions with executable validation:
 ${plan.drive.map((item) => `- ${item}`).join("\n") || "- None"}
 
 Proposed Gmail read actions:
@@ -418,7 +568,24 @@ export function LiveOperationsView() {
       timestamp: nowLabel(),
       includeInMassPrompt: form.includeInMassPrompt === "yes",
       nextAction: form.nextAction,
+      followUpDate: form.followUpDate,
       proofStatus: form.proofStatus,
+      sheetTab: form.sheetTab,
+      sheetTargetProperty: form.sheetTargetProperty || form.property,
+      sheetTargetUnit: form.sheetTargetUnit || form.unit,
+      trackerTitle: form.trackerTitle || `${form.category} Status Update`,
+      updateMode: form.updateMode,
+      sheetFieldName: form.sheetFieldName,
+      calendarDate: form.calendarDate || form.followUpDate,
+      calendarTime: form.calendarTime,
+      calendarTimeZone: form.calendarTimeZone,
+      calendarDuration: form.calendarDuration,
+      driveFileName: form.driveFileName,
+      driveFileId: form.driveFileId,
+      driveCurrentFolder: form.driveCurrentFolder,
+      driveDestinationFolderPath: form.driveDestinationFolderPath,
+      driveDestinationFolderId: form.driveDestinationFolderId,
+      driveCreateDestinationFolder: form.driveCreateDestinationFolder,
       ownerApproved: false
     };
 
@@ -456,7 +623,19 @@ export function LiveOperationsView() {
         timestamp: task.completed || task.updated || nowLabel(),
         includeInMassPrompt: true,
         nextAction: task.matchedKeywords.includes("PROOF MISSING") ? "Create proof follow-up" : "Review task update",
+        followUpDate: "",
         proofStatus: task.matchedKeywords.includes("PROOF RECEIVED") ? "Received" : task.matchedKeywords.includes("PROOF MISSING") ? "Missing" : "",
+        sheetTab: task.suggestedCategory === "Rent" ? "Rent Collection" : task.suggestedCategory,
+        sheetTargetProperty: task.relatedProperty,
+        sheetTargetUnit: task.relatedUnit,
+        trackerTitle: task.title,
+        updateMode: "update-or-create",
+        sheetFieldName: "status/notes",
+        calendarDate: "",
+        calendarTime: "",
+        calendarTimeZone: "America/New_York",
+        calendarDuration: "30",
+        driveCreateDestinationFolder: "yes",
         ownerApproved: task.recommendationApproved
       };
     });
@@ -567,12 +746,22 @@ export function LiveOperationsView() {
             <div className="mockup-form-grid">
               {[
                 ["property", "Property"], ["unit", "Unit"], ["category", "Category"], ["currentStatus", "Current Status"],
-                ["newStatus", "New Status"], ["nextAction", "Next Action"], ["followUpDate", "Follow-Up Date"], ["proofStatus", "Proof Status"]
+                ["newStatus", "New Status"], ["nextAction", "Next Action"], ["followUpDate", "Follow-Up Date"], ["proofStatus", "Proof Status"],
+                ["sheetTab", "Sheet Tab"], ["sheetTargetProperty", "Sheet Target Property"], ["sheetTargetUnit", "Sheet Target Unit"],
+                ["trackerTitle", "Tracker / Item Title"], ["sheetFieldName", "Sheet Field Name"], ["calendarDate", "Calendar Follow-Up Date"],
+                ["calendarTime", "Calendar Follow-Up Time"], ["calendarTimeZone", "Calendar Time Zone"], ["calendarDuration", "Calendar Duration Minutes"],
+                ["driveFileName", "Drive File Name"], ["driveFileId", "Drive File ID"], ["driveCurrentFolder", "Current Folder Name/ID"],
+                ["driveDestinationFolderPath", "Drive Destination Folder"], ["driveDestinationFolderId", "Destination Folder ID"]
               ].map(([key, label]) => <label key={key}><span>{label}</span><input value={form[key as keyof OwnerUpdateForm]} onChange={(event) => setForm((previous) => ({ ...previous, [key]: event.target.value }))} /></label>)}
+              <label><span>Sheet Update Mode</span><select value={form.updateMode} onChange={(event) => setForm((previous) => ({ ...previous, updateMode: event.target.value }))}><option value="update-or-create">Update existing; create new row if no match</option><option value="update-only">Update existing only</option><option value="create">Create new row</option></select></label>
+              <label><span>Create Drive Folder If Missing</span><select value={form.driveCreateDestinationFolder} onChange={(event) => setForm((previous) => ({ ...previous, driveCreateDestinationFolder: event.target.value }))}><option value="yes">Yes</option><option value="no">No</option></select></label>
               <label><span>Vendor Completed</span><select value={form.vendorCompleted} onChange={(event) => setForm((previous) => ({ ...previous, vendorCompleted: event.target.value }))}><option value="no">No</option><option value="yes">Yes</option></select></label>
               <label><span>Tenant Follow-Up Needed</span><select value={form.tenantFollowUpNeeded} onChange={(event) => setForm((previous) => ({ ...previous, tenantFollowUpNeeded: event.target.value }))}><option value="no">No</option><option value="yes">Yes</option></select></label>
               <label><span>Include in Mass Prompt</span><select value={form.includeInMassPrompt} onChange={(event) => setForm((previous) => ({ ...previous, includeInMassPrompt: event.target.value }))}><option value="yes">Yes</option><option value="no">No</option></select></label>
               <label className="wide"><span>Owner Remarks</span><textarea value={form.ownerRemarks} onChange={(event) => setForm((previous) => ({ ...previous, ownerRemarks: event.target.value }))} /></label>
+            </div>
+            <div className="mockup-validation-note">
+              Required for executable prompts: Sheet tab, exact property/unit, tracker title, Calendar date/time, and Drive file name or ID plus destination folder. Missing proof defaults to next business day at 8:30 AM; rent defaults to next business day at 12:30 PM.
             </div>
             <div className="mockup-action-row">
               <button type="button" onClick={addFormItem}><CheckCircle2 size={16} />Add to Mass Prompt</button>
@@ -624,13 +813,18 @@ export function LiveOperationsView() {
               ["GOOGLE CALENDAR ACTIONS", plan?.calendar],
               ["GOOGLE DRIVE ACTIONS", plan?.drive],
               ["GMAIL ACTIONS", plan?.gmail],
-              ["AUDIT LOG ACTIONS", plan?.audit]
+              ["AUDIT LOG ACTIONS", plan?.audit],
+              ["APPROVED EXECUTABLE ACTIONS", plan?.executable],
+              ["NEEDS MORE INFO - DO NOT EXECUTE", plan?.needsInfo],
+              ["MISSING INFORMATION NEEDED", plan?.missingInformation]
             ].map(([title, values]) => <pre key={String(title)}><strong>{String(title)}</strong>{`\n${(values as string[] | undefined)?.length ? (values as string[]).map((value) => `- ${value}`).join("\n") : "- None proposed."}`}</pre>)}
           </div>
           <div className="mockup-plan-status">
             <span>Risk Level: <strong>{plan?.riskLevel || "Normal"}</strong></span>
             <span>Total Proposed Actions: <strong>{plan?.actionCount || 0}</strong></span>
             <span>Items Requiring Approval: <strong>{plan?.approvalCount || 0}</strong></span>
+            <span>Executable: <strong>{plan?.executable.length || 0}</strong></span>
+            <span>Needs More Info: <strong>{plan?.needsInfo.length || 0}</strong></span>
           </div>
         </section>
 
