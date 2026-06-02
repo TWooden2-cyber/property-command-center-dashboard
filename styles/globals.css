@@ -4356,6 +4356,28 @@ tbody tr:hover {
   background: rgba(5, 6, 8, 0.28);
 }
 
+.mockup-drive-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.mockup-drive-card {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid rgba(201, 164, 81, 0.18);
+  border-radius: 8px;
+  background: rgba(5, 6, 8, 0.28);
+}
+
+.mockup-drive-card-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+
 .mockup-detected-top,
 .mockup-recommendation-grid article {
   display: grid;

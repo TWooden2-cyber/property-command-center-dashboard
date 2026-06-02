@@ -39,6 +39,26 @@ type SyncedTask = {
   matchedKeywords: string[];
 };
 
+type DriveFileCandidate = {
+  id: string;
+  fileName: string;
+  fileId: string;
+  currentFolderName: string;
+  currentFolderId: string;
+  modifiedDate: string;
+  suggestedCategory: string;
+  suggestedProperty: string;
+  suggestedUnit: string;
+  proofType: string;
+  vendorOrServiceType: string;
+  sourceName: string;
+  confidence: "High" | "Medium" | "Low";
+  ownerConfirmed: boolean;
+  destinationFolderPath: string;
+  destinationFolderId: string;
+  createDestinationFolder: string;
+};
+
 type OwnerUpdateForm = {
   property: string;
   unit: string;
@@ -64,6 +84,9 @@ type OwnerUpdateForm = {
   driveDestinationFolderPath: string;
   driveDestinationFolderId: string;
   driveCreateDestinationFolder: string;
+  proofType: string;
+  vendorOrServiceType: string;
+  sourceName: string;
   proofStatus: string;
   vendorCompleted: string;
   tenantFollowUpNeeded: string;
@@ -101,6 +124,9 @@ type CommandItem = {
   driveDestinationFolderPath?: string;
   driveDestinationFolderId?: string;
   driveCreateDestinationFolder?: string;
+  proofType?: string;
+  vendorOrServiceType?: string;
+  sourceName?: string;
   ownerApproved?: boolean;
 };
 
@@ -167,6 +193,9 @@ const initialForm: OwnerUpdateForm = {
   driveDestinationFolderPath: "",
   driveDestinationFolderId: "",
   driveCreateDestinationFolder: "yes",
+  proofType: "Proof",
+  vendorOrServiceType: "",
+  sourceName: "",
   proofStatus: "",
   vendorCompleted: "no",
   tenantFollowUpNeeded: "no",
@@ -267,6 +296,86 @@ const seededItems: CommandItem[] = [
   }
 ];
 
+function buildDriveDestination({
+  category,
+  property,
+  unit,
+  proofType,
+  vendorOrServiceType,
+  sourceName
+}: {
+  category: string;
+  property: string;
+  unit: string;
+  proofType?: string;
+  vendorOrServiceType?: string;
+  sourceName?: string;
+}) {
+  const safeProperty = property?.trim() || "{property}";
+  const safeUnit = unit?.trim() || "{unit}";
+  const safeProofType = proofType?.trim() || "Proof";
+  const safeVendor = vendorOrServiceType?.trim() || "Vendor or Service Type";
+  const safeSource = sourceName?.trim() || "Source";
+
+  switch (category) {
+    case "Maintenance":
+      return `02 Maintenance / ${safeProperty} / ${safeUnit} / Proof`;
+    case "Rent Collection":
+    case "Rent":
+      return `01 Rent Collection / ${safeProperty} / ${safeUnit} / Proof`;
+    case "Mortgage and Arrears":
+      return `03 Mortgage and Arrears / ${safeProperty}`;
+    case "Notices and Legal Holds":
+      return `04 Notices and Legal Holds / ${safeProperty} / ${safeUnit}`;
+    case "Utilities":
+      return `05 Utilities / ${safeProperty}`;
+    case "Lease Violations":
+      return `06 Lease Violations / ${safeProperty} / ${safeUnit}`;
+    case "Tenant Communications":
+      return `07 Tenant Communications / ${safeProperty} / ${safeUnit}`;
+    case "Vendor Communications":
+      return `08 Vendor Communications / ${safeVendor}`;
+    case "Weekly Command Reviews":
+      return "09 Weekly Command Reviews";
+    case "Proof Archive":
+    case "Documents":
+      return `10 Proof Archive / ${safeProperty} / ${safeUnit} / ${safeProofType}`;
+    case "Source Data Exports":
+      return `11 Source Data Exports / ${safeSource}`;
+    case "Owner Approvals":
+      return "12 Owner Approvals";
+    default:
+      return `10 Proof Archive / ${safeProperty} / ${safeUnit} / ${safeProofType}`;
+  }
+}
+
+const seededDriveFiles: DriveFileCandidate[] = [
+  {
+    id: "drive-detected-maintenance-proof",
+    fileName: "Invoice_228Reifert_KitchenSink.pdf",
+    fileId: "",
+    currentFolderName: "Review Queue",
+    currentFolderId: "",
+    modifiedDate: "2026-06-02",
+    suggestedCategory: "Maintenance",
+    suggestedProperty: "228 Reifert St",
+    suggestedUnit: "Unit 4",
+    proofType: "Proof",
+    vendorOrServiceType: "Plumbing",
+    sourceName: "Drive",
+    confidence: "Medium",
+    ownerConfirmed: false,
+    destinationFolderPath: buildDriveDestination({
+      category: "Maintenance",
+      property: "228 Reifert St",
+      unit: "Unit 4",
+      proofType: "Proof"
+    }),
+    destinationFolderId: "",
+    createDestinationFolder: "yes"
+  }
+];
+
 function nowLabel() {
   return new Date().toLocaleString();
 }
@@ -311,6 +420,10 @@ function isMissingExactUnit(value: string) {
 
 function statusPrefix(status: "Executable" | "Needs More Info" | "Blocked") {
   return `[${status}]`;
+}
+
+function hasDestinationPlaceholders(destination: string) {
+  return /{property}|{unit}|Vendor or Service Type|Source/i.test(destination);
 }
 
 function detectRecommendedActions(item: CommandItem) {
@@ -397,17 +510,26 @@ function buildPlan(items: CommandItem[]): Plan {
         calendar.push(`${statusPrefix("Executable")} ${calendarLine}`);
         executable.push(`Calendar event: ${calendarLine}`);
       } else if (action.service === "Google Drive") {
-        const hasExactFile = Boolean(item.driveFileId || item.driveFileName);
-        const hasDestination = Boolean(item.driveDestinationFolderPath || item.driveDestinationFolderId);
+        const hasExactFile = Boolean(item.driveFileId || item.driveFileName) && Boolean(item.ownerApproved);
+        const autoDestination = item.driveDestinationFolderPath || buildDriveDestination({
+          category: item.category,
+          property: item.property,
+          unit: item.unit,
+          proofType: item.proofType || item.proofStatus,
+          vendorOrServiceType: item.vendorOrServiceType,
+          sourceName: item.sourceName
+        });
+        const hasDestination = Boolean(item.driveDestinationFolderId || (autoDestination && !hasDestinationPlaceholders(autoDestination)));
         if (hasExactFile && hasDestination) {
-          const driveLine = `move file/create folder | exact file name=${item.driveFileName || "provided by file ID"} | exact file ID=${item.driveFileId || "not provided"} | current folder name/ID=${item.driveCurrentFolder || "not provided"} | exact destination folder path=${item.driveDestinationFolderPath || "provided by folder ID"} | destination folder ID=${item.driveDestinationFolderId || "not provided"} | create destination folder if missing=${item.driveCreateDestinationFolder || "yes"} | reason=${action.reason}`;
+          const driveLine = `move file/create folder | exact file name=${item.driveFileName || "provided by file ID"} | exact file ID=${item.driveFileId || "not provided"} | current folder name/ID=${item.driveCurrentFolder || "not provided"} | exact destination folder path=${autoDestination} | destination folder ID=${item.driveDestinationFolderId || "not provided"} | create destination folder if missing=${item.driveCreateDestinationFolder || "yes"} | reason=${action.reason}`;
           drive.push(`${statusPrefix("Executable")} ${driveLine}`);
           executable.push(`Drive routing: ${driveLine}`);
         } else {
-          const driveLine = `Drive review only - owner must select exact file before move. | file name=${item.driveFileName || "MISSING_FILE_NAME"} | file ID=${item.driveFileId || "MISSING_FILE_ID"} | destination folder path=${item.driveDestinationFolderPath || "MISSING_DESTINATION_FOLDER"} | destination folder ID=${item.driveDestinationFolderId || "not provided"} | reason=${action.reason}`;
+          const driveLine = `Drive review only - owner must select exact file before move. | file name=${item.driveFileName || "MISSING_FILE_NAME"} | file ID=${item.driveFileId || "MISSING_FILE_ID"} | auto-selected destination folder path=${autoDestination} | destination folder ID=${item.driveDestinationFolderId || "not provided"} | reason=${action.reason}`;
           drive.push(`${statusPrefix("Needs More Info")} ${driveLine}`);
           needsInfo.push(`Drive routing needs exact file/folder: ${driveLine}`);
           if (!hasExactFile) missingInformation.add("Drive file name or file ID");
+          if (!hasExactFile) missingInformation.add("Owner confirmation of exact Drive file");
           if (!hasDestination) missingInformation.add("Drive destination folder");
         }
       } else if (action.service === "Gmail Read") {
@@ -513,6 +635,9 @@ export function LiveOperationsView() {
   const [selected, setSelected] = useState<Record<string, boolean>>(Object.fromEntries(seededItems.map((item) => [item.id, item.includeInMassPrompt])));
   const [tasks, setTasks] = useState<SyncedTask[]>([]);
   const [taskMessage, setTaskMessage] = useState("No task sync run yet.");
+  const [driveFiles, setDriveFiles] = useState<DriveFileCandidate[]>(seededDriveFiles);
+  const [selectedDriveFiles, setSelectedDriveFiles] = useState<Record<string, boolean>>({});
+  const [driveMessage, setDriveMessage] = useState("Review detected files, confirm the exact file, and let the system auto-fill the destination folder.");
   const [plan, setPlan] = useState<Plan | null>(null);
   const [prompt, setPrompt] = useState("");
   const [workflow, setWorkflow] = useState<WorkflowResult>({ message: "Execution is locked until the plan is approved." });
@@ -644,6 +769,77 @@ export function LiveOperationsView() {
     setSelected((previous) => ({ ...previous, ...Object.fromEntries(taskItems.map((item) => [item.id, true])) }));
   }
 
+  function updateDriveFile(id: string, patch: Partial<DriveFileCandidate>) {
+    setDriveFiles((previous) => previous.map((file) => {
+      if (file.id !== id) return file;
+      const next = { ...file, ...patch };
+      const shouldRemap = ["suggestedCategory", "suggestedProperty", "suggestedUnit", "proofType", "vendorOrServiceType", "sourceName"].some((key) => key in patch);
+      return shouldRemap
+        ? {
+          ...next,
+          destinationFolderPath: buildDriveDestination({
+            category: next.suggestedCategory,
+            property: next.suggestedProperty,
+            unit: next.suggestedUnit,
+            proofType: next.proofType,
+            vendorOrServiceType: next.vendorOrServiceType,
+            sourceName: next.sourceName
+          })
+        }
+        : next;
+    }));
+  }
+
+  function addSelectedDriveFilesToMassPrompt() {
+    const selectedFiles = driveFiles.filter((file) => selectedDriveFiles[file.id]);
+    if (!selectedFiles.length) {
+      setDriveMessage("Select at least one Drive file before adding it to the mass prompt.");
+      return;
+    }
+
+    const driveItems = selectedFiles.map<CommandItem>((file) => {
+      const hasExactFile = Boolean(file.fileId || file.fileName);
+      const id = `drive-${file.id}`;
+      return {
+        id,
+        category: file.suggestedCategory,
+        property: file.suggestedProperty,
+        unit: file.suggestedUnit,
+        title: `Route Drive File - ${file.fileName || "Exact file needed"}`,
+        currentStatus: hasExactFile ? "File Confirmed" : "File Selection Required",
+        newStatus: hasExactFile && file.ownerConfirmed ? "Route Pending" : "Needs Owner File Confirmation",
+        ownerRemarks: hasExactFile
+          ? "Destination auto-selected by category/property/unit. Owner confirmation still required before move."
+          : "Drive review only - owner must select exact file before move.",
+        source: "Drive",
+        timestamp: file.modifiedDate || nowLabel(),
+        includeInMassPrompt: true,
+        nextAction: hasExactFile && file.ownerConfirmed ? "Generate Drive routing dry-run" : "Owner must confirm exact Drive file",
+        proofStatus: file.proofType,
+        sheetTab: "Proof Archive",
+        sheetTargetProperty: file.suggestedProperty,
+        sheetTargetUnit: file.suggestedUnit,
+        trackerTitle: file.fileName || "Drive file review",
+        updateMode: "update-or-create",
+        sheetFieldName: "proofStatus/notes",
+        driveFileName: file.fileName,
+        driveFileId: file.fileId,
+        driveCurrentFolder: [file.currentFolderName, file.currentFolderId].filter(Boolean).join(" / "),
+        driveDestinationFolderPath: file.destinationFolderPath,
+        driveDestinationFolderId: file.destinationFolderId,
+        driveCreateDestinationFolder: file.createDestinationFolder,
+        proofType: file.proofType,
+        vendorOrServiceType: file.vendorOrServiceType,
+        sourceName: file.sourceName,
+        ownerApproved: file.ownerConfirmed
+      };
+    });
+
+    setItems((previous) => [...driveItems, ...previous.filter((item) => !driveItems.some((driveItem) => driveItem.id === item.id))]);
+    setSelected((previous) => ({ ...previous, ...Object.fromEntries(driveItems.map((item) => [item.id, true])) }));
+    setDriveMessage(`${driveItems.length} Drive routing item(s) added with auto-filled destination folders.`);
+  }
+
   function generatePlan() {
     const nextPlan = buildPlan(selectedItems);
     setPlan(nextPlan);
@@ -751,7 +947,8 @@ export function LiveOperationsView() {
                 ["trackerTitle", "Tracker / Item Title"], ["sheetFieldName", "Sheet Field Name"], ["calendarDate", "Calendar Follow-Up Date"],
                 ["calendarTime", "Calendar Follow-Up Time"], ["calendarTimeZone", "Calendar Time Zone"], ["calendarDuration", "Calendar Duration Minutes"],
                 ["driveFileName", "Drive File Name"], ["driveFileId", "Drive File ID"], ["driveCurrentFolder", "Current Folder Name/ID"],
-                ["driveDestinationFolderPath", "Drive Destination Folder"], ["driveDestinationFolderId", "Destination Folder ID"]
+                ["driveDestinationFolderPath", "Drive Destination Folder"], ["driveDestinationFolderId", "Destination Folder ID"],
+                ["proofType", "Proof Type"], ["vendorOrServiceType", "Vendor / Service Type"], ["sourceName", "Source Name"]
               ].map(([key, label]) => <label key={key}><span>{label}</span><input value={form[key as keyof OwnerUpdateForm]} onChange={(event) => setForm((previous) => ({ ...previous, [key]: event.target.value }))} /></label>)}
               <label><span>Sheet Update Mode</span><select value={form.updateMode} onChange={(event) => setForm((previous) => ({ ...previous, updateMode: event.target.value }))}><option value="update-or-create">Update existing; create new row if no match</option><option value="update-only">Update existing only</option><option value="create">Create new row</option></select></label>
               <label><span>Create Drive Folder If Missing</span><select value={form.driveCreateDestinationFolder} onChange={(event) => setForm((previous) => ({ ...previous, driveCreateDestinationFolder: event.target.value }))}><option value="yes">Yes</option><option value="no">No</option></select></label>
@@ -791,7 +988,51 @@ export function LiveOperationsView() {
         </div>
 
         <section className="mockup-card">
-          <div className="mockup-card-heading"><span>5</span><div><p>RECOMMENDED NEXT ACTIONS</p><h3>Auto-Built</h3></div></div>
+          <div className="mockup-card-heading"><span>5</span><div><p>DRIVE FILE SELECTION / DESTINATION AUTO-MAPPING</p><h3>Owner confirms exact file; system fills destination</h3></div></div>
+          <p>Drive routing never guesses the file. Select or confirm the exact file, then review the auto-selected destination folder based on category, property, unit, and proof type.</p>
+          <div className="mockup-drive-grid">
+            {driveFiles.map((file) => (
+              <article className="mockup-drive-card" key={file.id}>
+                <div className="mockup-drive-card-header">
+                  <label className="mockup-include-row">
+                    <input type="checkbox" checked={Boolean(selectedDriveFiles[file.id])} onChange={(event) => setSelectedDriveFiles((previous) => ({ ...previous, [file.id]: event.target.checked }))} />
+                    Select
+                  </label>
+                  <span className={serviceBadgeClass(`drive ${file.confidence}`)}>Confidence: {file.confidence}</span>
+                  <span className={file.ownerConfirmed ? "service-badge success" : "service-badge warning"}>{file.ownerConfirmed ? "Owner Confirmed" : "Confirmation Required"}</span>
+                </div>
+                <div className="mockup-form-grid">
+                  <label><span>File Name</span><input value={file.fileName} onChange={(event) => updateDriveFile(file.id, { fileName: event.target.value })} /></label>
+                  <label><span>File ID</span><input value={file.fileId} onChange={(event) => updateDriveFile(file.id, { fileId: event.target.value })} /></label>
+                  <label><span>Modified Date</span><input value={file.modifiedDate} onChange={(event) => updateDriveFile(file.id, { modifiedDate: event.target.value })} /></label>
+                  <label><span>Current Folder Name</span><input value={file.currentFolderName} onChange={(event) => updateDriveFile(file.id, { currentFolderName: event.target.value })} /></label>
+                  <label><span>Current Folder ID</span><input value={file.currentFolderId} onChange={(event) => updateDriveFile(file.id, { currentFolderId: event.target.value })} /></label>
+                  <label><span>Category</span><input value={file.suggestedCategory} onChange={(event) => updateDriveFile(file.id, { suggestedCategory: event.target.value })} /></label>
+                  <label><span>Property</span><input value={file.suggestedProperty} onChange={(event) => updateDriveFile(file.id, { suggestedProperty: event.target.value })} /></label>
+                  <label><span>Unit</span><input value={file.suggestedUnit} onChange={(event) => updateDriveFile(file.id, { suggestedUnit: event.target.value })} /></label>
+                  <label><span>Proof Type</span><input value={file.proofType} onChange={(event) => updateDriveFile(file.id, { proofType: event.target.value })} /></label>
+                  <label><span>Vendor / Service Type</span><input value={file.vendorOrServiceType} onChange={(event) => updateDriveFile(file.id, { vendorOrServiceType: event.target.value })} /></label>
+                  <label><span>Source</span><input value={file.sourceName} onChange={(event) => updateDriveFile(file.id, { sourceName: event.target.value })} /></label>
+                  <label><span>Create Destination If Missing</span><select value={file.createDestinationFolder} onChange={(event) => updateDriveFile(file.id, { createDestinationFolder: event.target.value })}><option value="yes">Yes</option><option value="no">No</option></select></label>
+                  <label className="wide"><span>Auto-Selected Destination Folder Path</span><input value={file.destinationFolderPath} onChange={(event) => updateDriveFile(file.id, { destinationFolderPath: event.target.value })} /></label>
+                  <label><span>Destination Folder ID</span><input value={file.destinationFolderId} onChange={(event) => updateDriveFile(file.id, { destinationFolderId: event.target.value })} /></label>
+                  <label><span>Owner Confirmation</span><select value={file.ownerConfirmed ? "yes" : "no"} onChange={(event) => updateDriveFile(file.id, { ownerConfirmed: event.target.value === "yes" })}><option value="no">No - review only</option><option value="yes">Yes - exact file confirmed</option></select></label>
+                </div>
+              </article>
+            ))}
+          </div>
+          <div className="mockup-validation-note">
+            Approved parent: PROPERTY MANAGEMENT OPERATING SYSTEM / 1200_qPBmBz6KHjZY59HTPMpvXTCt5bGt. The destination is auto-selected, but the file remains non-executable until the owner confirms an exact file name or file ID.
+          </div>
+          <div className="mockup-action-row">
+            <button type="button" onClick={() => setDriveMessage("Detected Drive files refreshed from the current review list. Live file moves still require owner-confirmed exact file selection.")}><RefreshCw size={16} />Refresh Detected Drive Files</button>
+            <button type="button" onClick={addSelectedDriveFilesToMassPrompt}><CheckCircle2 size={16} />Add Selected Drive Files to Mass Prompt</button>
+          </div>
+          <p className="mockup-task-message">{driveMessage}</p>
+        </section>
+
+        <section className="mockup-card">
+          <div className="mockup-card-heading"><span>6</span><div><p>RECOMMENDED NEXT ACTIONS</p><h3>Auto-Built</h3></div></div>
           <div className="mockup-recommendation-grid">
             {recommendations.length ? recommendations.map((item, index) => (
               <article key={`${item.item.id}-${index}`}>
@@ -805,7 +1046,7 @@ export function LiveOperationsView() {
         </section>
 
         <section className="mockup-card mockup-plan-card">
-          <div className="mockup-card-heading"><span>6</span><div><p>GENERATED MASS UPDATE PLAN</p><h3>Dry-Run</h3></div><span className={plan ? "service-badge success" : "service-badge warning"}>{plan ? "Dry-Run Ready" : "Not Ready"}</span></div>
+          <div className="mockup-card-heading"><span>7</span><div><p>GENERATED MASS UPDATE PLAN</p><h3>Dry-Run</h3></div><span className={plan ? "service-badge success" : "service-badge warning"}>{plan ? "Dry-Run Ready" : "Not Ready"}</span></div>
           <div className="mockup-code-grid">
             {[
               ["GOOGLE SHEETS ACTIONS", plan?.sheets],
@@ -829,7 +1070,7 @@ export function LiveOperationsView() {
         </section>
 
         <section className="mockup-card">
-          <div className="mockup-card-heading"><span>7</span><div><p>OWNER COMMAND PREVIEW</p><h3>Copyable</h3></div></div>
+          <div className="mockup-card-heading"><span>8</span><div><p>OWNER COMMAND PREVIEW</p><h3>Copyable</h3></div></div>
           <textarea className="mockup-command-box" value={prompt} onChange={(event) => setPrompt(event.target.value)} />
           <div className="mockup-action-row">
             <button type="button" onClick={() => navigator.clipboard.writeText(prompt)}><Copy size={16} />Copy Command</button>
@@ -841,7 +1082,7 @@ export function LiveOperationsView() {
 
         <div className="mockup-two-col">
           <section className="mockup-card">
-            <div className="mockup-card-heading"><span>8</span><div><p>APPROVAL CONTROLS</p><h3>Review decision</h3></div></div>
+            <div className="mockup-card-heading"><span>9</span><div><p>APPROVAL CONTROLS</p><h3>Review decision</h3></div></div>
             <p>I have reviewed the dry-run plan and approve these actions.</p>
             <p>I do not approve this plan. Do not execute any actions.</p>
             <div className="mockup-action-row">
@@ -854,7 +1095,7 @@ export function LiveOperationsView() {
           </section>
 
           <section className="mockup-card execution-card">
-            <div className="mockup-card-heading"><span>9</span><div><p>EXECUTION CONTROLS</p><h3>Locked Until Approved</h3></div></div>
+            <div className="mockup-card-heading"><span>10</span><div><p>EXECUTION CONTROLS</p><h3>Locked Until Approved</h3></div></div>
             <p><Lock size={16} /> Execution is locked until the plan is approved.</p>
             <p>Execute only the approved actions in this plan. Portal approval does not auto-run Codex.</p>
             <div className="mockup-action-row">
@@ -866,7 +1107,7 @@ export function LiveOperationsView() {
         </div>
 
         <section className="mockup-card" id="audit-preview">
-          <div className="mockup-card-heading"><span>10</span><div><p>LIVE OPERATIONS AUDIT</p><h3>Preview</h3></div></div>
+          <div className="mockup-card-heading"><span>11</span><div><p>LIVE OPERATIONS AUDIT</p><h3>Preview</h3></div></div>
           <div className="mockup-audit-grid">
             <span>timestamp</span><span>service</span><span>action type</span><span>approval status</span><span>result</span><span>risk level</span>
           </div>
