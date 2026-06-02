@@ -4378,6 +4378,65 @@ tbody tr:hover {
   justify-content: space-between;
 }
 
+.mockup-gmail-grid {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.mockup-gmail-card {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(207, 78, 78, 0.22);
+  border-radius: 8px;
+  background: rgba(5, 6, 8, 0.28);
+}
+
+.mockup-gmail-title {
+  display: grid;
+  gap: 4px;
+}
+
+.mockup-gmail-title small,
+.mockup-gmail-card small,
+.mockup-gmail-card p,
+.mockup-gmail-footer {
+  color: var(--cream-muted);
+}
+
+.mockup-gmail-meta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  font-size: 0.78rem;
+}
+
+.mockup-gmail-meta span {
+  padding: 7px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.mockup-gmail-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.82rem;
+}
+
+.mockup-gmail-footer a {
+  color: var(--gold);
+  text-decoration: none;
+}
+
+.mockup-warning-text {
+  color: var(--gold) !important;
+}
+
 .mockup-detected-top,
 .mockup-recommendation-grid article {
   display: grid;

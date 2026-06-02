@@ -59,6 +59,32 @@ type DriveFileCandidate = {
   createDestinationFolder: string;
 };
 
+type GmailNeedsActionItem = {
+  id: string;
+  selected: boolean;
+  property: string;
+  unit: string;
+  category: string;
+  trackerTab: string;
+  title: string;
+  sender: string;
+  subject: string;
+  emailDate: string;
+  snippet: string;
+  attachmentNames: string[];
+  source: "Gmail";
+  priority: "High" | "Medium" | "Normal";
+  issueClassification: string;
+  recommendedNextAction: string;
+  proofStatus: string;
+  status: "Executable" | "Needs Info" | "Blocked";
+  gmailLink: string;
+  confidence: "High" | "Medium" | "Low";
+  followUpDate: string;
+  followUpTime: string;
+  missing: string[];
+};
+
 type OwnerUpdateForm = {
   property: string;
   unit: string;
@@ -167,6 +193,57 @@ const templates = [
 ];
 
 const filters = ["All", "Maintenance", "Rent", "Tasks", "Documents", "Gmail"];
+
+const propertyProfiles = [
+  {
+    canonical: "228 Reifert St",
+    location: "Pittsburgh, PA 15210",
+    aliases: [
+      "228 Reifert",
+      "228 Reifert St",
+      "228 Reifert Street",
+      "Reifert",
+      "Reifert St",
+      "Pittsburgh",
+      "Pittsburgh PA",
+      "PA 15210",
+      "228 Reifert St Pittsburgh PA",
+      "228 Reifert St, Pittsburgh, PA 15210"
+    ],
+    units: ["1", "2", "3", "4", "5", "6", "7"].map((unit) => ({
+      canonical: `Unit ${unit}`,
+      aliases: [`Unit ${unit}`, `Apt ${unit}`, `Apartment ${unit}`, `#${unit}`]
+    }))
+  },
+  {
+    canonical: "3103 Courtney Ln",
+    location: "Killeen, TX 76542",
+    aliases: [
+      "3103 Courtney",
+      "3103 Courtney Ln",
+      "3103 Courtney Lane",
+      "Courtney Ln",
+      "Courtney Lane",
+      "Courtney",
+      "3103 Courtney A",
+      "3103 Courtney B",
+      "3103 Courtney C",
+      "3103 Courtney D",
+      "Killeen",
+      "Killeen TX",
+      "Killeen, TX 76542"
+    ],
+    units: ["A", "B", "C", "D"].map((unit) => ({
+      canonical: `Unit ${unit}`,
+      aliases: [`Unit ${unit}`, `Apt ${unit}`, `Apartment ${unit}`, `#${unit}`, unit]
+    }))
+  }
+];
+
+const gmailPropertyFilters = ["All", "228 Reifert St", "3103 Courtney Ln"];
+const gmailUnitFilters = ["All", "Unit 1", "Unit 2", "Unit 3", "Unit 4", "Unit 5", "Unit 6", "Unit 7", "Unit A", "Unit B", "Unit C", "Unit D"];
+const gmailCategoryFilters = ["All", "Maintenance", "Rent Collection", "Utilities", "Notices and Legal Holds", "Vendor Communications", "Tenant Communications", "Proof Archive", "Data Missing / Needs Cleanup"];
+const gmailStatusFilters = ["All", "Executable", "Needs Info", "Blocked"];
 
 const initialForm: OwnerUpdateForm = {
   property: "",
@@ -376,6 +453,53 @@ const seededDriveFiles: DriveFileCandidate[] = [
   }
 ];
 
+const seededGmailInputs = [
+  {
+    id: "gmail-reifert-1-maint",
+    sender: "vendor@example.com",
+    subject: "228 Reifert Unit 4 kitchen sink repair completed - invoice attached",
+    snippet: "Vendor marked repair complete. Invoice and photos attached for Apt 4.",
+    bodyPreview: "Maintenance proof needed for 228 Reifert St Pittsburgh PA Unit 4.",
+    threadSubject: "228 Reifert Unit 4 kitchen sink",
+    attachmentNames: ["Invoice_228Reifert_Unit4_KitchenSink.pdf"],
+    emailDate: "2026-06-02",
+    gmailLink: "https://mail.google.com/"
+  },
+  {
+    id: "gmail-reifert-2-rent",
+    sender: "rentredi@example.com",
+    subject: "RentRedi past due balance 228 Reifert Apt 2",
+    snippet: "Tenant portion unpaid and balance remains past due.",
+    bodyPreview: "Rent ledger follow-up needed for 228 Reifert Unit 2.",
+    threadSubject: "RentRedi ledger Unit 2",
+    attachmentNames: [],
+    emailDate: "2026-06-02",
+    gmailLink: "https://mail.google.com/"
+  },
+  {
+    id: "gmail-courtney-d-hvac",
+    sender: "hvac@example.com",
+    subject: "3103 Courtney D A/C condenser disconnect lightning strike",
+    snippet: "A/C service request for Courtney D after lightning strike. Photos attached.",
+    bodyPreview: "Killeen TX 76542 Unit D HVAC no cooling.",
+    threadSubject: "3103 Courtney D HVAC",
+    attachmentNames: ["CourtneyD_AC_Photos.pdf"],
+    emailDate: "2026-06-02",
+    gmailLink: "https://mail.google.com/"
+  },
+  {
+    id: "gmail-courtney-water",
+    sender: "utility@example.com",
+    subject: "Killeen water bill notice 3103 Courtney",
+    snippet: "Utility bill needs review. Unit not listed in email.",
+    bodyPreview: "Courtney Lane Killeen, TX 76542 water utility notice.",
+    threadSubject: "3103 Courtney utility",
+    attachmentNames: ["Killeen_Water_Bill.pdf"],
+    emailDate: "2026-06-02",
+    gmailLink: "https://mail.google.com/"
+  }
+];
+
 function nowLabel() {
   return new Date().toLocaleString();
 }
@@ -426,6 +550,177 @@ function hasDestinationPlaceholders(destination: string) {
   return /{property}|{unit}|Vendor or Service Type|Source/i.test(destination);
 }
 
+function includesAlias(text: string, alias: string) {
+  const escaped = alias.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(^|[^a-z0-9])${escaped}([^a-z0-9]|$)`, "i").test(text);
+}
+
+function includesUnitAlias(text: string, alias: string) {
+  if (/^[A-D]$/i.test(alias)) {
+    const unit = alias.toUpperCase();
+    return new RegExp(`\\b(?:3103\\s+Courtney\\s+${unit}|Courtney\\s+${unit})\\b`, "i").test(text);
+  }
+
+  return includesAlias(text, alias);
+}
+
+function normalizePropertyUnit(text: string) {
+  const matchedProperty = propertyProfiles.find((profile) => profile.aliases.some((alias) => includesAlias(text, alias)));
+  let property = matchedProperty?.canonical || "";
+  let unit = "";
+  let confidence: GmailNeedsActionItem["confidence"] = matchedProperty ? "Medium" : "Low";
+
+  for (const profile of propertyProfiles) {
+    const profileMatched = profile === matchedProperty || profile.aliases.some((alias) => includesAlias(text, alias));
+    if (!profileMatched) continue;
+
+    const matchedUnit = profile.units.find((unitProfile) => unitProfile.aliases.some((alias) => includesUnitAlias(text, alias)));
+    if (matchedUnit) {
+      property = profile.canonical;
+      unit = matchedUnit.canonical;
+      confidence = "High";
+      break;
+    }
+
+    const compactCourtney = text.match(/\b3103\s+Courtney\s+([A-D])\b/i);
+    if (profile.canonical === "3103 Courtney Ln" && compactCourtney) {
+      property = profile.canonical;
+      unit = `Unit ${compactCourtney[1].toUpperCase()}`;
+      confidence = "High";
+      break;
+    }
+  }
+
+  return { property, unit, confidence };
+}
+
+function classifyGmailIssue(text: string, attachmentNames: string[]) {
+  const haystack = `${text} ${attachmentNames.join(" ")}`.toLowerCase();
+  const hasAttachment = attachmentNames.length > 0;
+
+  if (/(notice|10-day|quit|nonpayment|eviction|legal|court|constable|service|posting|lease violation)/i.test(haystack)) {
+    return {
+      category: "Notices and Legal Holds",
+      trackerTab: "Notices and Legal Holds",
+      priority: "High" as const,
+      issueClassification: "Notices / Legal Holds",
+      recommendedNextAction: "Owner review required before any notice/legal action.",
+      proofStatus: hasAttachment ? "Attachment available" : "Proof review required",
+      followUpTime: "08:30"
+    };
+  }
+
+  if (/(maintenance|work order|w\/o|service request|repair|vendor|issue|leak|plumbing|electrical|breaker|hvac|ac|a\/c|condenser|compressor|disconnect|lightning|roof|lock|locksmith|appliance|water heater|furnace)/i.test(haystack)) {
+    const high = /(hvac|ac|a\/c|no cooling|electrical|lightning|water leak|no heat|leak|disconnect)/i.test(haystack);
+    return {
+      category: "Maintenance",
+      trackerTab: "Maintenance",
+      priority: high ? "High" as const : "Normal" as const,
+      issueClassification: "Maintenance",
+      recommendedNextAction: hasAttachment ? "Review proof and update maintenance tracker." : "Request proof or vendor update.",
+      proofStatus: hasAttachment ? "Attachment available" : "Proof needed",
+      followUpTime: "08:30"
+    };
+  }
+
+  if (/(rent|payment|unpaid|late|balance|past due|tenant portion|ledger|rentredi|money order|check)/i.test(haystack)) {
+    const high = /(past due|unpaid|late|tenant portion)/i.test(haystack);
+    return {
+      category: "Rent Collection",
+      trackerTab: "Rent Collection",
+      priority: high ? "High" as const : "Normal" as const,
+      issueClassification: "Rent",
+      recommendedNextAction: "Review rent ledger and schedule owner follow-up.",
+      proofStatus: hasAttachment ? "Attachment available" : "No attachment",
+      followUpTime: "12:30"
+    };
+  }
+
+  if (/(water|sewage|shutoff|cutoff|disconnect|electric|gas|utility|bill|pgh2o|pittsburgh water|pa american water|duquesne|columbia gas)/i.test(haystack)) {
+    const high = /(shutoff|cutoff|disconnect|past due)/i.test(haystack);
+    return {
+      category: "Utilities",
+      trackerTab: "Utilities",
+      priority: high ? "High" as const : "Normal" as const,
+      issueClassification: "Utilities",
+      recommendedNextAction: "Review utility status and follow up with owner.",
+      proofStatus: hasAttachment ? "Attachment available" : "No attachment",
+      followUpTime: "08:30"
+    };
+  }
+
+  if (/(hacp|section 8|rfta|inspection|abatement|housing authority|voucher|tenant portion)/i.test(haystack)) {
+    return {
+      category: "Rent Collection",
+      trackerTab: "Rent Collection",
+      priority: "Medium" as const,
+      issueClassification: "HACP / Section 8",
+      recommendedNextAction: "Owner review required for HACP / Section 8 context.",
+      proofStatus: hasAttachment ? "Attachment available" : "Review required",
+      followUpTime: "12:30"
+    };
+  }
+
+  if (/(invoice|estimate|quote|receipt|photo|photos|completed|proof|attachment|pdf)/i.test(haystack)) {
+    return {
+      category: "Proof Archive",
+      trackerTab: "Proof Archive",
+      priority: "Normal" as const,
+      issueClassification: "Vendor / Proof / Document",
+      recommendedNextAction: "Review attachment and propose Drive routing.",
+      proofStatus: hasAttachment ? "Attachment available" : "Proof mentioned",
+      followUpTime: "08:30"
+    };
+  }
+
+  return {
+    category: "Data Missing / Needs Cleanup",
+    trackerTab: "Owner Approvals",
+    priority: "Normal" as const,
+    issueClassification: "Needs cleanup",
+    recommendedNextAction: "Confirm property, unit, and issue classification.",
+    proofStatus: hasAttachment ? "Attachment available" : "No attachment",
+    followUpTime: "08:30"
+  };
+}
+
+function classifyGmailInput(input: typeof seededGmailInputs[number]): GmailNeedsActionItem {
+  const text = `${input.subject} ${input.sender} ${input.snippet} ${input.bodyPreview} ${input.threadSubject} ${input.attachmentNames.join(" ")}`;
+  const normalized = normalizePropertyUnit(text);
+  const issue = classifyGmailIssue(text, input.attachmentNames);
+  const missing = [
+    !normalized.property ? "property" : "",
+    !normalized.unit ? "unit" : ""
+  ].filter(Boolean);
+  const category = missing.length ? "Data Missing / Needs Cleanup" : issue.category;
+
+  return {
+    id: input.id,
+    selected: true,
+    property: normalized.property || "Missing",
+    unit: normalized.unit || "Missing",
+    category,
+    trackerTab: issue.trackerTab,
+    title: input.subject,
+    sender: input.sender,
+    subject: input.subject,
+    emailDate: input.emailDate,
+    snippet: input.snippet,
+    attachmentNames: input.attachmentNames,
+    source: "Gmail",
+    priority: issue.priority,
+    issueClassification: issue.issueClassification,
+    recommendedNextAction: missing.length ? "Confirm missing property/unit before execution." : issue.recommendedNextAction,
+    proofStatus: issue.proofStatus,
+    status: missing.length ? "Needs Info" : "Executable",
+    gmailLink: input.gmailLink,
+    confidence: missing.length ? "Low" : normalized.confidence,
+    followUpDate: nextBusinessDayIso(),
+    followUpTime: issue.followUpTime,
+    missing
+  };
+}
+
 function detectRecommendedActions(item: CommandItem) {
   const text = `${item.category} ${item.title} ${item.newStatus} ${item.ownerRemarks} ${item.nextAction} ${item.proofStatus}`.toLowerCase();
   const actions: Array<{ title: string; reason: string; service: string }> = [];
@@ -448,7 +743,7 @@ function detectRecommendedActions(item: CommandItem) {
     actions.push({ title: "Update Utility Status", reason: "Utility follow-up was detected.", service: "Google Sheets" });
   }
 
-  if (text.includes("drive") || text.includes("document")) {
+  if (text.includes("drive") || text.includes("document") || text.includes("attachment available") || text.includes("proof archive") || text.includes("invoice") || text.includes("receipt") || text.includes("pdf")) {
     actions.push({ title: "Move Document to Maintenance Folder", reason: "Detected document needs approved routing.", service: "Google Drive" });
   }
 
@@ -638,6 +933,9 @@ export function LiveOperationsView() {
   const [driveFiles, setDriveFiles] = useState<DriveFileCandidate[]>(seededDriveFiles);
   const [selectedDriveFiles, setSelectedDriveFiles] = useState<Record<string, boolean>>({});
   const [driveMessage, setDriveMessage] = useState("Review detected files, confirm the exact file, and let the system auto-fill the destination folder.");
+  const [gmailItems, setGmailItems] = useState<GmailNeedsActionItem[]>([]);
+  const [gmailMessage, setGmailMessage] = useState("No Gmail scan run yet.");
+  const [gmailFilters, setGmailFilters] = useState({ property: "All", unit: "All", category: "All", status: "All" });
   const [plan, setPlan] = useState<Plan | null>(null);
   const [prompt, setPrompt] = useState("");
   const [workflow, setWorkflow] = useState<WorkflowResult>({ message: "Execution is locked until the plan is approved." });
@@ -673,6 +971,13 @@ export function LiveOperationsView() {
   }, [activeFilter, items]);
   const selectedItems = useMemo(() => items.filter((item) => selected[item.id] && item.includeInMassPrompt), [items, selected]);
   const recommendations = useMemo(() => selectedItems.flatMap((item) => detectRecommendedActions(item).map((action) => ({ item, ...action }))), [selectedItems]);
+  const filteredGmailItems = useMemo(() => gmailItems.filter((item) => {
+    const propertyMatches = gmailFilters.property === "All" || item.property === gmailFilters.property;
+    const unitMatches = gmailFilters.unit === "All" || item.unit === gmailFilters.unit;
+    const categoryMatches = gmailFilters.category === "All" || item.category === gmailFilters.category;
+    const statusMatches = gmailFilters.status === "All" || item.status === gmailFilters.status;
+    return propertyMatches && unitMatches && categoryMatches && statusMatches;
+  }), [gmailFilters, gmailItems]);
 
   function updateItemRemarks(id: string, value: string) {
     setItems((previous) => previous.map((item) => item.id === id ? { ...item, ownerRemarks: value } : item));
@@ -767,6 +1072,93 @@ export function LiveOperationsView() {
 
     setItems((previous) => [...taskItems, ...previous.filter((item) => !taskItems.some((taskItem) => taskItem.id === item.id))]);
     setSelected((previous) => ({ ...previous, ...Object.fromEntries(taskItems.map((item) => [item.id, true])) }));
+  }
+
+  function scanGmailNeedsAction(scope: "228" | "3103" | "all") {
+    const scanned = seededGmailInputs
+      .map(classifyGmailInput)
+      .filter((item) => {
+        if (scope === "all") return true;
+        if (scope === "228") return item.property === "228 Reifert St";
+        return item.property === "3103 Courtney Ln";
+      });
+
+    setGmailItems(scanned);
+    setGmailMessage(`${scanned.length} Gmail needs-action item(s) classified from subject, sender, snippet, body preview, thread subject, and attachment names. Gmail remains read-only.`);
+  }
+
+  function updateGmailSelection(id: string, selectedValue: boolean) {
+    setGmailItems((previous) => previous.map((item) => item.id === id ? { ...item, selected: selectedValue } : item));
+  }
+
+  function addSelectedGmailToMassPrompt() {
+    const selectedGmailItems = gmailItems.filter((item) => item.selected);
+    if (!selectedGmailItems.length) {
+      setGmailMessage("Select at least one Gmail item before adding it to the mass prompt.");
+      return;
+    }
+
+    const gmailCommandItems = selectedGmailItems.map<CommandItem>((item) => {
+      const hasAttachment = item.attachmentNames.length > 0;
+      const normalizedProperty = item.property === "Missing" ? "" : item.property;
+      const normalizedUnit = item.unit === "Missing" ? "" : item.unit;
+      const driveDestination = hasAttachment
+        ? buildDriveDestination({
+          category: item.category,
+          property: normalizedProperty || "{property}",
+          unit: normalizedUnit || "{unit}",
+          proofType: item.proofStatus || "Proof"
+        })
+        : "";
+      const id = `gmail-${item.id}`;
+
+      return {
+        id,
+        category: item.category,
+        property: normalizedProperty,
+        unit: normalizedUnit,
+        title: item.issueClassification,
+        currentStatus: "Detected from Gmail",
+        newStatus: item.status === "Executable" ? "Needs Owner Review" : "Needs Unit Confirmation",
+        ownerRemarks: [
+          `Sender: ${item.sender}`,
+          `Subject: ${item.subject}`,
+          `Date: ${item.emailDate}`,
+          `Snippet: ${item.snippet}`,
+          `Attachments: ${item.attachmentNames.join(", ") || "None"}`,
+          `Recommended next action: ${item.recommendedNextAction}`
+        ].join(" | "),
+        source: "Gmail",
+        timestamp: item.emailDate,
+        includeInMassPrompt: true,
+        nextAction: item.recommendedNextAction,
+        followUpDate: item.followUpDate,
+        proofStatus: item.proofStatus,
+        sheetTab: item.trackerTab,
+        sheetTargetProperty: normalizedProperty,
+        sheetTargetUnit: normalizedUnit,
+        trackerTitle: item.subject,
+        updateMode: "update-or-create",
+        sheetFieldName: "status/notes/proofStatus/nextFollowUpDate",
+        calendarDate: item.followUpDate,
+        calendarTime: item.followUpTime,
+        calendarTimeZone: "America/New_York",
+        calendarDuration: "30",
+        driveFileName: hasAttachment ? item.attachmentNames[0] : "",
+        driveFileId: "",
+        driveCurrentFolder: "Gmail attachment review",
+        driveDestinationFolderPath: driveDestination,
+        driveDestinationFolderId: "",
+        driveCreateDestinationFolder: hasAttachment ? "yes" : "no",
+        proofType: item.proofStatus,
+        sourceName: "Gmail",
+        ownerApproved: false
+      };
+    });
+
+    setItems((previous) => [...gmailCommandItems, ...previous.filter((item) => !gmailCommandItems.some((gmailItem) => gmailItem.id === item.id))]);
+    setSelected((previous) => ({ ...previous, ...Object.fromEntries(gmailCommandItems.map((item) => [item.id, true])) }));
+    setGmailMessage(`${gmailCommandItems.length} Gmail needs-action item(s) added to the mass prompt. Incomplete items stay visible under Needs More Info.`);
   }
 
   function updateDriveFile(id: string, patch: Partial<DriveFileCandidate>) {
@@ -988,7 +1380,65 @@ export function LiveOperationsView() {
         </div>
 
         <section className="mockup-card">
-          <div className="mockup-card-heading"><span>5</span><div><p>DRIVE FILE SELECTION / DESTINATION AUTO-MAPPING</p><h3>Owner confirms exact file; system fills destination</h3></div></div>
+          <div className="mockup-card-heading"><span>5</span><div><p>GMAIL NEEDS ACTION INBOX</p><h3>All-unit property email detection</h3></div></div>
+          <p>Scan read, unread, inbox, sent/reply threads, and attachment-bearing property emails. Gmail review is read-only: no sends, archives, deletes, forwards, or labels.</p>
+          <div className="mockup-action-row">
+            <button type="button" onClick={() => scanGmailNeedsAction("228")}><RefreshCw size={16} />Scan 228 Reifert Emails</button>
+            <button type="button" onClick={() => scanGmailNeedsAction("3103")}><RefreshCw size={16} />Scan 3103 Courtney Emails</button>
+            <button type="button" onClick={() => scanGmailNeedsAction("all")}><RefreshCw size={16} />Scan All Property Emails</button>
+            <button type="button" onClick={() => scanGmailNeedsAction("all")}><ListChecks size={16} />Sync Gmail Needs Action Items</button>
+          </div>
+          <div className="mockup-form-grid">
+            <label><span>Property</span><select value={gmailFilters.property} onChange={(event) => setGmailFilters((previous) => ({ ...previous, property: event.target.value }))}>{gmailPropertyFilters.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+            <label><span>Unit</span><select value={gmailFilters.unit} onChange={(event) => setGmailFilters((previous) => ({ ...previous, unit: event.target.value }))}>{gmailUnitFilters.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+            <label><span>Category</span><select value={gmailFilters.category} onChange={(event) => setGmailFilters((previous) => ({ ...previous, category: event.target.value }))}>{gmailCategoryFilters.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+            <label><span>Status</span><select value={gmailFilters.status} onChange={(event) => setGmailFilters((previous) => ({ ...previous, status: event.target.value }))}>{gmailStatusFilters.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+          </div>
+          <div className="mockup-gmail-grid">
+            {filteredGmailItems.length ? filteredGmailItems.map((item) => (
+              <article className="mockup-gmail-card" key={item.id}>
+                <div className="mockup-drive-card-header">
+                  <label className="mockup-include-row">
+                    <input type="checkbox" checked={item.selected} onChange={(event) => updateGmailSelection(item.id, event.target.checked)} />
+                    Include
+                  </label>
+                  <span className={serviceBadgeClass("gmail")}>Gmail</span>
+                  <span className={item.status === "Executable" ? "service-badge success" : item.status === "Blocked" ? "service-badge reject" : "service-badge warning"}>{item.status}</span>
+                  <span className={item.priority === "High" ? "service-badge warning" : item.priority === "Medium" ? "service-badge" : "service-badge success"}>Priority: {item.priority}</span>
+                </div>
+                <div className="mockup-gmail-title">
+                  <strong>{item.title}</strong>
+                  <small>{item.sender} | {item.emailDate}</small>
+                </div>
+                <div className="mockup-gmail-meta">
+                  <span>Property: <strong>{item.property}</strong></span>
+                  <span>Unit: <strong>{item.unit}</strong></span>
+                  <span>Category: <strong>{item.category}</strong></span>
+                  <span>Tracker: <strong>{item.trackerTab}</strong></span>
+                  <span>Classification: <strong>{item.issueClassification}</strong></span>
+                  <span>Proof: <strong>{item.proofStatus}</strong></span>
+                </div>
+                <p>{item.snippet}</p>
+                <small>Attachments: {item.attachmentNames.join(", ") || "None"} | Confidence: {item.confidence}</small>
+                {item.missing.length > 0 ? <small className="mockup-warning-text">Data Missing / Needs Cleanup: {item.missing.join(", ")}</small> : null}
+                <div className="mockup-gmail-footer">
+                  <span>Next action: {item.recommendedNextAction}</span>
+                  <a href={item.gmailLink} target="_blank" rel="noreferrer">Open in Gmail</a>
+                </div>
+              </article>
+            )) : <article className="mockup-gmail-card"><strong>No Gmail items loaded</strong><p>Run a property scan to classify Gmail items for 228 Reifert Units 1-7 and 3103 Courtney Units A-D.</p></article>}
+          </div>
+          <div className="mockup-validation-note">
+            Missing property or unit stays visible under Data Missing / Needs Cleanup and is placed in Section B / Section C of the mass prompt. Attachments are detected, but Drive moves still require owner confirmation of the exact file.
+          </div>
+          <div className="mockup-action-row">
+            <button type="button" onClick={addSelectedGmailToMassPrompt}><CheckCircle2 size={16} />Add Selected Gmail Items to Mass Prompt</button>
+          </div>
+          <p className="mockup-task-message">{gmailMessage}</p>
+        </section>
+
+        <section className="mockup-card">
+          <div className="mockup-card-heading"><span>6</span><div><p>DRIVE FILE SELECTION / DESTINATION AUTO-MAPPING</p><h3>Owner confirms exact file; system fills destination</h3></div></div>
           <p>Drive routing never guesses the file. Select or confirm the exact file, then review the auto-selected destination folder based on category, property, unit, and proof type.</p>
           <div className="mockup-drive-grid">
             {driveFiles.map((file) => (
@@ -1032,7 +1482,7 @@ export function LiveOperationsView() {
         </section>
 
         <section className="mockup-card">
-          <div className="mockup-card-heading"><span>6</span><div><p>RECOMMENDED NEXT ACTIONS</p><h3>Auto-Built</h3></div></div>
+          <div className="mockup-card-heading"><span>7</span><div><p>RECOMMENDED NEXT ACTIONS</p><h3>Auto-Built</h3></div></div>
           <div className="mockup-recommendation-grid">
             {recommendations.length ? recommendations.map((item, index) => (
               <article key={`${item.item.id}-${index}`}>
@@ -1046,7 +1496,7 @@ export function LiveOperationsView() {
         </section>
 
         <section className="mockup-card mockup-plan-card">
-          <div className="mockup-card-heading"><span>7</span><div><p>GENERATED MASS UPDATE PLAN</p><h3>Dry-Run</h3></div><span className={plan ? "service-badge success" : "service-badge warning"}>{plan ? "Dry-Run Ready" : "Not Ready"}</span></div>
+          <div className="mockup-card-heading"><span>8</span><div><p>GENERATED MASS UPDATE PLAN</p><h3>Dry-Run</h3></div><span className={plan ? "service-badge success" : "service-badge warning"}>{plan ? "Dry-Run Ready" : "Not Ready"}</span></div>
           <div className="mockup-code-grid">
             {[
               ["GOOGLE SHEETS ACTIONS", plan?.sheets],
@@ -1070,7 +1520,7 @@ export function LiveOperationsView() {
         </section>
 
         <section className="mockup-card">
-          <div className="mockup-card-heading"><span>8</span><div><p>OWNER COMMAND PREVIEW</p><h3>Copyable</h3></div></div>
+          <div className="mockup-card-heading"><span>9</span><div><p>OWNER COMMAND PREVIEW</p><h3>Copyable</h3></div></div>
           <textarea className="mockup-command-box" value={prompt} onChange={(event) => setPrompt(event.target.value)} />
           <div className="mockup-action-row">
             <button type="button" onClick={() => navigator.clipboard.writeText(prompt)}><Copy size={16} />Copy Command</button>
@@ -1082,7 +1532,7 @@ export function LiveOperationsView() {
 
         <div className="mockup-two-col">
           <section className="mockup-card">
-            <div className="mockup-card-heading"><span>9</span><div><p>APPROVAL CONTROLS</p><h3>Review decision</h3></div></div>
+            <div className="mockup-card-heading"><span>10</span><div><p>APPROVAL CONTROLS</p><h3>Review decision</h3></div></div>
             <p>I have reviewed the dry-run plan and approve these actions.</p>
             <p>I do not approve this plan. Do not execute any actions.</p>
             <div className="mockup-action-row">
@@ -1095,7 +1545,7 @@ export function LiveOperationsView() {
           </section>
 
           <section className="mockup-card execution-card">
-            <div className="mockup-card-heading"><span>10</span><div><p>EXECUTION CONTROLS</p><h3>Locked Until Approved</h3></div></div>
+            <div className="mockup-card-heading"><span>11</span><div><p>EXECUTION CONTROLS</p><h3>Locked Until Approved</h3></div></div>
             <p><Lock size={16} /> Execution is locked until the plan is approved.</p>
             <p>Execute only the approved actions in this plan. Portal approval does not auto-run Codex.</p>
             <div className="mockup-action-row">
@@ -1107,7 +1557,7 @@ export function LiveOperationsView() {
         </div>
 
         <section className="mockup-card" id="audit-preview">
-          <div className="mockup-card-heading"><span>11</span><div><p>LIVE OPERATIONS AUDIT</p><h3>Preview</h3></div></div>
+          <div className="mockup-card-heading"><span>12</span><div><p>LIVE OPERATIONS AUDIT</p><h3>Preview</h3></div></div>
           <div className="mockup-audit-grid">
             <span>timestamp</span><span>service</span><span>action type</span><span>approval status</span><span>result</span><span>risk level</span>
           </div>
