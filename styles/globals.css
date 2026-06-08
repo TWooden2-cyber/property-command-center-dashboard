@@ -69,17 +69,20 @@ button {
   position: sticky;
   top: 0;
   height: 100vh;
+  min-height: 0;
   border-right: 1px solid var(--line);
   background: rgba(8, 7, 6, 0.78);
   backdrop-filter: blur(20px);
   display: flex;
   flex-direction: column;
+  overflow: hidden;
   padding: 24px 18px;
   z-index: 3;
 }
 
 .sidebar-brand {
   display: flex;
+  flex: 0 0 auto;
   gap: 12px;
   align-items: center;
   padding: 8px 8px 22px;
@@ -111,8 +114,32 @@ button {
 
 .nav-list {
   display: grid;
+  flex: 1 1 auto;
   gap: 6px;
-  padding: 20px 0;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 20px 0 28px;
+  scrollbar-color: rgba(201, 164, 81, 0.44) rgba(247, 240, 228, 0.08);
+  scrollbar-width: thin;
+}
+
+.nav-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.nav-list::-webkit-scrollbar-track {
+  background: rgba(247, 240, 228, 0.06);
+  border-radius: 999px;
+}
+
+.nav-list::-webkit-scrollbar-thumb {
+  background: rgba(201, 164, 81, 0.42);
+  border-radius: 999px;
+}
+
+.nav-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(201, 164, 81, 0.62);
 }
 
 .nav-item {
@@ -135,6 +162,7 @@ button {
 
 .sidebar-footer {
   margin-top: auto;
+  flex: 0 0 auto;
   display: grid;
   gap: 12px;
   padding-top: 18px;
@@ -4674,7 +4702,9 @@ tbody tr:hover {
 
   .nav-list {
     display: flex;
+    flex: 0 0 auto;
     overflow-x: auto;
+    overflow-y: hidden;
     padding: 14px 0 6px;
   }
 
