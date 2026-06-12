@@ -1,11 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { AlertTriangle, ClipboardCheck, Copy, FileText, Gavel, Search, ShieldAlert } from "lucide-react";
+import { AlertTriangle, ClipboardCheck, Gavel, Search, ShieldAlert } from "lucide-react";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { EmptyState } from "@/components/DataState";
 import { StatusBadge } from "@/components/StatusBadge";
-import { copyTextToClipboard } from "@/lib/clipboard";
 import {
   commandCenterPeriod,
   documentDraftStatuses,
@@ -30,15 +29,6 @@ type NoticeFilter = {
   proofMissing: boolean;
   ownerApproval: boolean;
   search: string;
-};
-
-type NoticeCommandTemplate = {
-  id: string;
-  title: string;
-  actionName: string;
-  controls: string;
-  tone: SignalTone;
-  prompt: string;
 };
 
 const defaultFilters: NoticeFilter = {
@@ -93,121 +83,6 @@ const approvalGate = [
   "Gmail send/draft requires owner approval.",
   "Drive upload/update requires owner approval.",
   "Calendar/task updates require owner approval."
-];
-
-const commandTemplates: NoticeCommandTemplate[] = [
-  {
-    id: "notice-status",
-    title: "Codex Command - Notice Status Review",
-    actionName: "Generate Codex Command: Notice Status Review",
-    controls: "Notice status, ledger verification, proof status, owner approvals, and blocked items.",
-    tone: "yellow",
-    prompt: `Run a Notices / Evictions status review for the Property Command Center.
-
-Rules:
-- Read-only/local review first.
-- Do not send tenant messages.
-- Do not create, serve, file, upload, or finalize notices.
-- Do not update Google Drive, Gmail, Calendar, Google Tasks, Sheets, RentRedi, or legal records without owner approval.
-- Review notice status, ledger verification, Section 8/HAP verification, draft status, proof status, owner approvals, and blocked-until-verified items.
-- Produce a notice status preview report.
-- Stop before all live actions.`
-  },
-  {
-    id: "ledger-before-notice",
-    title: "Codex Command - Ledger Verification Before Notice",
-    actionName: "Generate Codex Command: Ledger Verification Before Notice",
-    controls: "Ledger conflicts, payment conflicts, Section 8/HAP issues, and unresolved balances.",
-    tone: "red",
-    prompt: `Prepare a ledger verification review before any notice action.
-
-Rules:
-- Do not serve or file notices.
-- Do not contact tenants.
-- Do not update live systems.
-- Identify all notice-related items requiring ledger verification.
-- Flag any payment conflict, Section 8/HAP issue, or unresolved balance.
-- Stop before live actions.`
-  },
-  {
-    id: "draft-review",
-    title: "Codex Command - Draft Notice Review",
-    actionName: "Generate Codex Command: Draft Notice Review",
-    controls: "Draft review only for missing facts, proof, ledger confirmation, and owner approvals.",
-    tone: "yellow",
-    prompt: `Prepare Codex-drafted notice review for owner approval.
-
-Rules:
-- Draft review only.
-- Do not send, serve, file, or upload notices.
-- Do not make legal conclusions.
-- Identify missing facts, proof, ledger confirmation, and owner approvals required before any notice can be used.
-- Stop before live actions.`
-  },
-  {
-    id: "packet-review",
-    title: "Codex Command - Eviction Packet Prep Review",
-    actionName: "Generate Codex Command: Eviction Packet Prep Review",
-    controls: "Packet readiness, missing proof, ledger verification, service proof, and owner decisions.",
-    tone: "red",
-    prompt: `Prepare eviction packet readiness review.
-
-Rules:
-- Do not file anything.
-- Do not contact court, tenants, agencies, or property manager.
-- Do not update Google Drive without approval.
-- Review draft packet readiness, missing proof, ledger verification, service proof, and owner decisions required.
-- Stop before live actions.`
-  },
-  {
-    id: "proof-checklist",
-    title: "Codex Command - Notice Proof Checklist",
-    actionName: "Generate Codex Command: Notice Proof Checklist",
-    controls: "Verified ledger, draft approval, service proof, receipts, communication logs, calendar, and tasks.",
-    tone: "yellow",
-    prompt: `Prepare a notice proof checklist.
-
-Rules:
-- Do not upload or move files.
-- Do not update Google Drive.
-- Identify proof needed for each notice item:
-  1. Verified ledger
-  2. Notice draft approval
-  3. Service proof
-  4. Mailing/tracking receipt
-  5. Communication log
-  6. Calendar follow-up
-  7. Task status
-- Stop before live actions.`
-  },
-  {
-    id: "drive-update",
-    title: "Codex Command - Notices Google Drive Update",
-    actionName: "Generate Codex Command: Notices Google Drive Update",
-    controls: "Drive preview package for notice status, draft status, proof checklist, and legal hold items.",
-    tone: "green",
-    prompt: `Prepare a Google Drive notice/legal update package.
-
-Rules:
-- Do not upload, move, rename, delete, or update Drive files without owner approval.
-- Prepare a preview package only.
-- Include notice status, draft status, proof checklist, blocked-until-verified items, owner approval list, and legal hold items.
-- Stop and ask for owner approval before any Drive write.`
-  },
-  {
-    id: "calendar-task",
-    title: "Codex Command - Notice Calendar / Task Prep",
-    actionName: "Generate Codex Command: Notice Calendar / Task Prep",
-    controls: "Calendar and task preview for ledger verification, draft review, service proof, and owner approval.",
-    tone: "yellow",
-    prompt: `Prepare notice-related calendar and task updates.
-
-Rules:
-- Do not create, update, complete, or delete Calendar events or Google Tasks without owner approval.
-- Prepare preview only.
-- Include follow-ups for ledger verification, draft review, service proof, owner approval, and blocked notice items.
-- Stop before live actions.`
-  }
 ];
 
 function proofStatus(row: NoticeCommandRow) {
@@ -498,66 +373,6 @@ function NoticeOperationalSections() {
   );
 }
 
-function NoticeCommandButtons() {
-  const [selected, setSelected] = useState<NoticeCommandTemplate | null>(null);
-  const [copied, setCopied] = useState(false);
-
-  async function copyPrompt() {
-    if (!selected) return;
-    const copiedCommand = await copyTextToClipboard(selected.prompt);
-    setCopied(copiedCommand);
-    if (copiedCommand) {
-      window.setTimeout(() => setCopied(false), 1800);
-    }
-  }
-
-  return (
-    <section className="notice-command-panel">
-      <div className="section-heading">
-        <div>
-          <p className="eyebrow">Codex command buttons</p>
-          <h3>Notice workflow prompts</h3>
-        </div>
-        <StatusBadge label="Draft command only" />
-      </div>
-      <div className="notice-command-button-grid">
-        {commandTemplates.map((template) => (
-          <button key={template.id} className={`command-action-button ${template.tone}`} type="button" onClick={() => setSelected(template)}>
-            <FileText size={18} />
-            <span>{template.actionName}</span>
-            <small>{template.controls}</small>
-          </button>
-        ))}
-      </div>
-      {selected ? (
-        <div className="notice-command-preview">
-          <div className="section-heading">
-            <div>
-              <p className="eyebrow">Command preview</p>
-              <h3>{selected.title}</h3>
-            </div>
-            <button className="copy-command-button" type="button" onClick={copyPrompt}>
-              <Copy size={16} />
-              {copied ? "Copied" : "Copy Command"}
-            </button>
-          </div>
-          <div className="command-safety-strip">
-            <span>Draft command only</span>
-            <span>Owner approval required</span>
-            <span>Live writes disabled</span>
-            <span>No tenant message sent</span>
-            <span>No notice served</span>
-            <span>No legal filing</span>
-            <span>No Drive upload</span>
-          </div>
-          <pre>{selected.prompt}</pre>
-          <p>This dashboard does not send messages, create notices, serve notices, file cases, or update Google/RentRedi/legal systems.</p>
-        </div>
-      ) : null}
-    </section>
-  );
-}
-
 export function NoticesEvictionsView() {
   const [filters, setFilters] = useState(defaultFilters);
   const filteredRows = useMemo(() => noticeRows.filter((row) => matchesFilters(row, filters)), [filters]);
@@ -590,7 +405,6 @@ export function NoticesEvictionsView() {
       )}
       <DraftStatusSection />
       <NoticeOperationalSections />
-      <NoticeCommandButtons />
     </div>
   );
 }

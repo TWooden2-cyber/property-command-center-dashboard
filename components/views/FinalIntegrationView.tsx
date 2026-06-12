@@ -1,14 +1,12 @@
 "use client";
 
-import { useState } from "react";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import type { Route } from "next";
-import { CheckCircle2, ClipboardList, Copy, ShieldCheck } from "lucide-react";
+import { CheckCircle2, ClipboardList, ShieldCheck } from "lucide-react";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { SheetsRefreshStatus } from "@/components/SheetsRefreshStatus";
 import { StatusBadge } from "@/components/StatusBadge";
-import { copyTextToClipboard } from "@/lib/clipboard";
 import type { SystemStatus } from "@/types/sheets";
 import { useSheetsView } from "@/components/views/useSheetsView";
 
@@ -48,28 +46,9 @@ type ImportTemplateRow = {
   notes: string;
 };
 
-type CommandTemplate = {
-  id: string;
-  title: string;
-  actionName: string;
-  prompt: string;
-};
-
 type SettingsPayload = {
   system: SystemStatus;
 };
-
-const safetyLabels = [
-  "Preview only",
-  "Owner approval required",
-  "No Drive writes",
-  "No data import",
-  "No Sheets connection",
-  "No Gmail read/send",
-  "No Calendar/Task created",
-  "No RentRedi connection",
-  "No tenant/legal/payment action"
-];
 
 const correctionRows: CorrectionRow[] = [
   {
@@ -378,127 +357,6 @@ const launchChecklist = [
   "Owner approves next phase"
 ];
 
-const commands: CommandTemplate[] = [
-  {
-    id: "final-readiness",
-    title: "Codex Command - Final Integration Readiness Review",
-    actionName: "Generate Codex Command: Final Integration Readiness Review",
-    prompt: `Run Final Integration Readiness Review.
-
-Rules:
-- Read-only/local review only.
-- Do not perform Drive writes.
-- Do not connect Google Sheets, Gmail, Calendar, Tasks, RentRedi, tenant, legal, lender, vendor, bank, court, or payment workflows.
-- Review Drive correction package, verified data forms, import mapping, Sheets read-only planning, migration preview, SOPs, and final launch checklist.
-- Produce a readiness report only.
-- Stop before live actions.`
-  },
-  {
-    id: "drive-correction",
-    title: "Codex Command - Drive Correction Package Review",
-    actionName: "Generate Codex Command: Drive Correction Package Review",
-    prompt: `Review Drive Correction Package.
-
-Rules:
-- Use Drive metadata read-only listing only.
-- Do not create, upload, move, rename, delete, edit, copy, trash, or change permissions.
-- Do not read file contents.
-- Review missing folders, name mismatches, owner-review items, and possible future correction actions.
-- Mark all actions preview-only and not approved.
-- Stop before Drive writes.`
-  },
-  {
-    id: "verified-data-entry",
-    title: "Codex Command - Verified Data Entry Prep",
-    actionName: "Generate Codex Command: Verified Data Entry Prep",
-    prompt: `Prepare Verified Data Entry Workflow.
-
-Rules:
-- Do not import data.
-- Do not connect live services.
-- Prepare manual entry worksheets for rent, tenant balances, payment arrangements, HAP/Section 8, mortgage, maintenance, utilities, notices, Drive proof, and weekly review.
-- Mark unverified values blocked.
-- Stop before data migration.`
-  },
-  {
-    id: "source-import",
-    title: "Codex Command - Source Import Mapping Review",
-    actionName: "Generate Codex Command: Source Import Mapping Review",
-    prompt: `Review Source Import Mapping.
-
-Rules:
-- Do not import or overwrite dashboard data.
-- Map expected source exports and worksheets to dashboard modules and fields.
-- Identify proof references, owner verification fields, blocked values, and rollback needs.
-- Stop before live actions.`
-  },
-  {
-    id: "sheets-planning",
-    title: "Codex Command - Sheets Read-Only Planning",
-    actionName: "Generate Codex Command: Sheets Read-Only Planning",
-    prompt: `Prepare Google Sheets Read-Only Plan.
-
-Rules:
-- Do not connect Sheets.
-- Do not request OAuth.
-- Do not write to Sheets.
-- Plan read-only tabs, fields, validation, scope safety, token storage, dry-run steps, and owner approval gates.
-- Stop before live connection.`
-  },
-  {
-    id: "migration-preview",
-    title: "Codex Command - Sample-to-Verified Migration Preview",
-    actionName: "Generate Codex Command: Sample-to-Verified Migration Preview",
-    prompt: `Prepare Sample-to-Verified Migration Preview.
-
-Rules:
-- Do not modify dashboard data.
-- Do not connect live services.
-- Identify which sample values can later be replaced, which must remain estimated, which are blocked, and what proof is required.
-- Include validation, commit, rollback, and owner approval steps.
-- Stop before data migration.`
-  },
-  {
-    id: "sop-review",
-    title: "Codex Command - SOP Review Package",
-    actionName: "Generate Codex Command: SOP Review Package",
-    prompt: `Prepare SOP Review Package.
-
-Rules:
-- Do not perform live actions.
-- Review Daily Command Review, Weekly Command Review, Rent Verification, Maintenance Closeout, Mortgage Proof, Notice/Legal Hold, Drive Update Package, Gmail Follow-Up, and Calendar/Task Approval SOPs.
-- Identify gaps and owner decisions required.
-- Stop before live actions.`
-  },
-  {
-    id: "launch-checklist",
-    title: "Codex Command - Final Launch Checklist Review",
-    actionName: "Generate Codex Command: Final Launch Checklist Review",
-    prompt: `Run Final Launch Checklist Review.
-
-Rules:
-- Do not enable write integrations.
-- Review readiness status for live site, Drive read-only, folder health, correction package, real data worksheet, source-of-truth package, import mapping, SOPs, and owner approvals.
-- Report what is ready, blocked, and next.
-- Stop before live actions.`
-  },
-  {
-    id: "drive-recheck",
-    title: "Codex Command - Drive Folder Recheck",
-    actionName: "Generate Codex Command: Drive Folder Recheck",
-    prompt: `Run Drive Folder Recheck.
-
-Rules:
-- Google Drive metadata read-only only.
-- Do not create, upload, move, rename, delete, edit, copy, trash, or change permissions.
-- Do not read file contents.
-- Run drive:readonly:preflight, drive:readonly:list, and drive:readonly:health.
-- Compare folder health to the expected 13-folder structure.
-- Report found, missing, mismatch, and owner-review counts.
-- Stop before Drive writes.`
-  }
-];
-
 function KpiCard({ label, value, helper, tone }: { label: string; value: string; helper: string; tone: Tone }) {
   return (
     <article className={`kpi-card status-strip ${tone}`}>
@@ -544,16 +402,8 @@ function liveSheetsStatus(system: SystemStatus | null): { value: string; helper:
 }
 
 export function FinalIntegrationView() {
-  const [activeCommand, setActiveCommand] = useState<CommandTemplate | null>(null);
-  const [copied, setCopied] = useState<string | null>(null);
   const { system } = useSheetsView<SettingsPayload>("settings");
-  const driveRecheckCommand = commands.find((command) => command.id === "drive-recheck");
   const sheetsStatus = liveSheetsStatus(system);
-
-  async function copyCommand(command: CommandTemplate) {
-    const ok = await copyTextToClipboard(command.prompt);
-    setCopied(ok ? command.id : null);
-  }
 
   const correctionColumns: DataTableColumn<CorrectionRow>[] = [
     { key: "expectedFolder", header: "Expected Folder", render: (row) => row.expectedFolder },
@@ -662,22 +512,6 @@ export function FinalIntegrationView() {
             </div>
           </article>
         </div>
-        {driveRecheckCommand ? (
-          <div className="remaining-command-button-grid">
-            <article className="codex-command-card command-tone-yellow">
-              <span>Metadata read-only only</span>
-              <strong>Generate Codex Command: Drive Folder Recheck</strong>
-              <p>Runs preflight, listing, and health checks only. No Drive writes or file content reads.</p>
-              <button type="button" onClick={() => {
-                setActiveCommand(driveRecheckCommand);
-                setCopied(null);
-              }}>
-                <Copy size={15} />
-                Generate Command
-              </button>
-            </article>
-          </div>
-        ) : null}
       </Section>
 
       <Section eyebrow="Section 3" title="Verified Data Entry Forms">
@@ -748,7 +582,7 @@ export function FinalIntegrationView() {
             ["Import Template Ready", "Preview", "No import performed", "green"],
             ["Conflicts Open", "Yes", "Resolve before migration", "red"],
             ["Proof Gaps Open", "Yes", "Proof required", "red"],
-            ["Owner Review Required", "Yes", "High-risk values blocked", "yellow"],
+            ["Owner Review Needed", "Yes", "High-risk values blocked", "yellow"],
             ["Migration Blocked", "Yes", "Until verified", "red"],
             ["Ready Later", "Planned", "After approval and dry run", "yellow"]
           ].map(([label, value, helper, tone]) => (
@@ -819,49 +653,6 @@ export function FinalIntegrationView() {
         ))}
       </section>
 
-      <section className="calendar-command-panel">
-        <span className="eyebrow">Section 9</span>
-        <h3>Final Integration Command Buttons</h3>
-        <p>All commands are preview/copy only. Nothing is connected, imported, written, sent, created, moved, renamed, deleted, or approved from this page.</p>
-        <div className="remaining-command-button-grid">
-          {commands.map((command) => (
-            <article className="codex-command-card command-tone-yellow" key={command.id}>
-              <span>Preview/copy only</span>
-              <strong>{command.actionName}</strong>
-              <p>Owner approval required. No live service action.</p>
-              <button type="button" onClick={() => {
-                setActiveCommand(command);
-                setCopied(null);
-              }}>
-                <Copy size={15} />
-                Generate Command
-              </button>
-            </article>
-          ))}
-        </div>
-        {activeCommand ? (
-          <div className="remaining-command-preview command-preview-panel">
-            <div className="command-preview-header">
-              <div>
-                <span className="eyebrow">Command Preview</span>
-                <h3>{activeCommand.title}</h3>
-              </div>
-              <button type="button" onClick={() => setActiveCommand(null)}>Close</button>
-            </div>
-            <div className="command-preview-labels">
-              {safetyLabels.map((label) => <span key={label}>{label}</span>)}
-            </div>
-            <pre>{activeCommand.prompt}</pre>
-            <div className="command-preview-actions">
-              <button type="button" onClick={() => copyCommand(activeCommand)}>
-                <Copy size={15} />
-                Copy Command
-              </button>
-              {copied === activeCommand.id ? <span>Copied command to clipboard.</span> : null}
-            </div>
-          </div>
-        ) : null}
-      </section>
     </div>
   );
 }

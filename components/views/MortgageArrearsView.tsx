@@ -1,11 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { AlertTriangle, Banknote, CheckCircle2, ClipboardList, Copy, Search, ShieldCheck } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ClipboardList, Search, ShieldCheck } from "lucide-react";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { EmptyState } from "@/components/DataState";
 import { StatusBadge } from "@/components/StatusBadge";
-import { copyTextToClipboard } from "@/lib/clipboard";
 import {
   commandCenterPeriod,
   money,
@@ -25,15 +24,6 @@ type MortgageFilter = {
   proofMissing: boolean;
   ownerActionRequired: boolean;
   search: string;
-};
-
-type MortgageCommandTemplate = {
-  id: string;
-  title: string;
-  actionName: string;
-  controls: string;
-  tone: SignalTone;
-  prompt: string;
 };
 
 const defaultFilters: MortgageFilter = {
@@ -94,122 +84,6 @@ const followUpPreview = [
   "Save MBFS confirmations to Drive",
   "Confirm updated remaining arrears balance",
   "Keep 4-unit current"
-];
-
-const commandTemplates: MortgageCommandTemplate[] = [
-  {
-    id: "mortgage-review",
-    title: "Codex Command - Mortgage Review",
-    actionName: "Generate Codex Command: Mortgage Review",
-    controls: "Mortgage due amounts, arrears, proof, posting status, allotment setup, and owner action items.",
-    tone: "red",
-    prompt: `Run a Mortgage / Allotment Review for the Property Command Center.
-
-Rules:
-- Read-only/local review first.
-- Do not contact lender, MBFS, bank, tenants, property manager, or vendors.
-- Do not make payments.
-- Do not update Google Drive, Gmail, Calendar, Google Tasks, Sheets, lender portal, or mortgage records without owner approval.
-- Review mortgage due amounts, arrears, payment proof, posting status, allotment setup, and owner action items.
-- Produce a mortgage preview report with:
-  1. Mortgage risk status
-  2. Monthly mortgage due by property
-  3. Payment requests accepted
-  4. Current arrears
-  5. Proof needed
-  6. Allotment setup status
-  7. Owner decisions required
-  8. Blocked-until-verified items
-- Stop before all live actions.`
-  },
-  {
-    id: "payment-proof",
-    title: "Codex Command - Payment Proof Verification",
-    actionName: "Generate Codex Command: Payment Proof Verification",
-    controls: "Proof checklist for MBFS payment requests and lender posting confirmation.",
-    tone: "red",
-    prompt: `Prepare a mortgage payment proof verification review.
-
-Rules:
-- Do not read Gmail message bodies unless owner approves.
-- Do not update Drive or mortgage records.
-- Do not contact lender or MBFS.
-- Identify what proof is needed to confirm MBFS payment requests posted.
-- Produce a checklist for:
-  1. Accepted payment request emails
-  2. Lender posted payment proof
-  3. Updated balance
-  4. Next due date
-  5. Legal/foreclosure pause confirmation
-- Stop before any live action.`
-  },
-  {
-    id: "arrears-payoff",
-    title: "Codex Command - Arrears Payoff Update",
-    actionName: "Generate Codex Command: Arrears Payoff Update",
-    controls: "Estimated arrears progress and expected funds requiring verification.",
-    tone: "yellow",
-    prompt: `Prepare a mortgage arrears payoff update.
-
-Rules:
-- Do not change records or make payments.
-- Use current dashboard values only.
-- Calculate estimated arrears progress from local sample data.
-- Identify expected funds that still need verification.
-- Explain what cannot be marked complete until lender proof is saved.
-- Stop before live actions.`
-  },
-  {
-    id: "allotment-setup",
-    title: "Codex Command - Allotment Setup Prep",
-    actionName: "Generate Codex Command: Allotment Setup Prep",
-    controls: "Checklist for 7-unit and 4-unit mortgage payment setup.",
-    tone: "yellow",
-    prompt: `Prepare mortgage allotment setup checklist.
-
-Rules:
-- Do not change payroll, bank, lender, or allotment settings.
-- Do not create tasks or calendar events without owner approval.
-- Prepare a checklist for setting up:
-  1. 7-unit $2,500 monthly mortgage allotment
-  2. 4-unit $2,000 monthly mortgage payment process
-  3. Proof and follow-up tracking
-- Stop before live actions.`
-  },
-  {
-    id: "drive-update",
-    title: "Codex Command - Mortgage Google Drive Update",
-    actionName: "Generate Codex Command: Mortgage Google Drive Update",
-    controls: "Drive preview package for mortgage tracker, arrears, proof, and blocked items.",
-    tone: "green",
-    prompt: `Prepare a Google Drive mortgage update package.
-
-Rules:
-- Do not upload, move, rename, delete, or update Drive files without owner approval.
-- Prepare a preview package only.
-- Include mortgage tracker snapshot, arrears progress, MBFS proof checklist, payment posting status, allotment status, and blocked-until-verified items.
-- Stop and ask for owner approval before any Drive write.`
-  },
-  {
-    id: "calendar-task",
-    title: "Codex Command - Mortgage Calendar / Task Prep",
-    actionName: "Generate Codex Command: Mortgage Calendar / Task Prep",
-    controls: "Calendar and Google Tasks preview for mortgage proof and arrears follow-ups.",
-    tone: "yellow",
-    prompt: `Prepare mortgage calendar and task updates.
-
-Rules:
-- Do not create, update, complete, or delete Calendar events or Google Tasks without owner approval.
-- Prepare preview only.
-- Include follow-ups for:
-  1. Confirm MBFS payments posted
-  2. Get updated balance
-  3. Save proof
-  4. Confirm next due date
-  5. Set up allotment
-  6. Weekly arrears review
-- Stop before live actions.`
-  }
 ];
 
 function riskStatus(row: MortgageCommandRow) {
@@ -545,66 +419,6 @@ function MortgageOperationalSections() {
   );
 }
 
-function MortgageCommandButtons() {
-  const [selected, setSelected] = useState<MortgageCommandTemplate | null>(null);
-  const [copied, setCopied] = useState(false);
-
-  async function copyPrompt() {
-    if (!selected) return;
-    const copiedCommand = await copyTextToClipboard(selected.prompt);
-    setCopied(copiedCommand);
-    if (copiedCommand) {
-      window.setTimeout(() => setCopied(false), 1800);
-    }
-  }
-
-  return (
-    <section className="mortgage-command-panel">
-      <div className="section-heading">
-        <div>
-          <p className="eyebrow">Codex command buttons</p>
-          <h3>Mortgage workflow prompts</h3>
-        </div>
-        <StatusBadge label="Draft command only" />
-      </div>
-      <div className="mortgage-command-button-grid">
-        {commandTemplates.map((template) => (
-          <button key={template.id} className={`command-action-button ${template.tone}`} type="button" onClick={() => setSelected(template)}>
-            <Banknote size={18} />
-            <span>{template.actionName}</span>
-            <small>{template.controls}</small>
-          </button>
-        ))}
-      </div>
-
-      {selected ? (
-        <div className="mortgage-command-preview">
-          <div className="section-heading">
-            <div>
-              <p className="eyebrow">Command preview</p>
-              <h3>{selected.title}</h3>
-            </div>
-            <button className="copy-command-button" type="button" onClick={copyPrompt}>
-              <Copy size={16} />
-              {copied ? "Copied" : "Copy Command"}
-            </button>
-          </div>
-          <div className="command-safety-strip">
-            <span>Draft command only</span>
-            <span>Owner approval required</span>
-            <span>Live writes disabled</span>
-            <span>No lender contacted</span>
-            <span>No mortgage payment made</span>
-            <span>No Drive upload</span>
-          </div>
-          <pre>{selected.prompt}</pre>
-          <p>This dashboard does not contact lenders, make payments, update Google services, or move proof files. It only prepares the Codex command.</p>
-        </div>
-      ) : null}
-    </section>
-  );
-}
-
 export function MortgageArrearsView() {
   const [filters, setFilters] = useState(defaultFilters);
   const filteredRows = useMemo(() => mortgageRows.filter((row) => matchesFilters(row, filters)), [filters]);
@@ -638,7 +452,6 @@ export function MortgageArrearsView() {
       <ArrearsPayoffTracker />
       <AllotmentSetupTracker />
       <MortgageOperationalSections />
-      <MortgageCommandButtons />
     </div>
   );
 }

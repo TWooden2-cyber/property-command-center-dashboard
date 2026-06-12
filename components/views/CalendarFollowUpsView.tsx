@@ -1,11 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Bell, CalendarClock, CheckCircle2, ClipboardList, Copy, Mail, Search, ShieldAlert } from "lucide-react";
+import { Bell, CalendarClock, CheckCircle2, ClipboardList, Mail, Search, ShieldAlert } from "lucide-react";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { EmptyState } from "@/components/DataState";
 import { StatusBadge } from "@/components/StatusBadge";
-import { copyTextToClipboard } from "@/lib/clipboard";
 import {
   commandCenterPeriod,
   followUpRows,
@@ -31,15 +30,6 @@ type FollowUpFilter = {
   search: string;
 };
 
-type CalendarCommandTemplate = {
-  id: string;
-  title: string;
-  actionName: string;
-  controls: string;
-  tone: SignalTone;
-  prompt: string;
-};
-
 const defaultFilters: FollowUpFilter = {
   property: "All",
   unit: "All",
@@ -63,127 +53,6 @@ const blockedWarnings = [
   "Do not close mortgage follow-up until lender posting proof is saved.",
   "Do not close maintenance safety follow-up until tenant/vendor confirmation or proof is saved.",
   "Do not mark payment arrangement follow-up complete until payment proof is verified."
-];
-
-const commandTemplates: CalendarCommandTemplate[] = [
-  {
-    id: "followup-review",
-    title: "Codex Command - Calendar Follow-Up Review",
-    actionName: "Generate Codex Command: Calendar Follow-Up Review",
-    controls: "Suspense dates, due-soon items, calendar-needed items, approvals, and blocked items.",
-    tone: "yellow",
-    prompt: `Run a Calendar Follow-Ups review for the Property Command Center.
-
-Rules:
-- Read-only/local review first.
-- Do not create, update, or delete Google Calendar events.
-- Do not create/update/complete Google Tasks.
-- Do not send emails or messages.
-- Do not update Google Drive, Gmail, Sheets, RentRedi, tenant, legal, mortgage, or vendor records without owner approval.
-- Review suspense dates, recurring reviews, due-soon items, overdue items, calendar-needed items, email-needed items, owner approval items, and blocked-until-verified items.
-- Produce a calendar follow-up preview report.
-- Stop before all live actions.`
-  },
-  {
-    id: "event-prep",
-    title: "Codex Command - Calendar Event Prep",
-    actionName: "Generate Codex Command: Calendar Event Prep",
-    controls: "Proposed event titles, times, descriptions, modules, trigger prompts, and approvals.",
-    tone: "yellow",
-    prompt: `Prepare Google Calendar event previews for the Property Command Center.
-
-Rules:
-- Do not create or update calendar events without owner approval.
-- Generate proposed calendar events only.
-- For each event, show:
-  1. Event title
-  2. Date/time
-  3. Description
-  4. Related module
-  5. Trigger prompt
-  6. Owner approval requirement
-- Stop before live Calendar actions.`
-  },
-  {
-    id: "weekly-review",
-    title: "Codex Command - Weekly Admin Review Prep",
-    actionName: "Generate Codex Command: Weekly Admin Review Prep",
-    controls: "Weekly review across rent, maintenance, notices, mortgage, utilities, Gmail, Drive, Calendar, tasks, and approvals.",
-    tone: "green",
-    prompt: `Prepare the Weekly Property Admin Review.
-
-Rules:
-- Do not perform live Google Drive, Gmail, Calendar, Task, Sheets, RentRedi, tenant, legal, payment, or mortgage actions.
-- Prepare a weekly review preview covering:
-  1. Rent collection
-  2. Maintenance
-  3. Notices/legal holds
-  4. Mortgage/arrears
-  5. Utilities
-  6. Gmail follow-ups
-  7. Drive update needs
-  8. Calendar follow-ups
-  9. Open tasks
-  10. Owner approvals required
-- Stop before live actions.`
-  },
-  {
-    id: "rent-calendar",
-    title: "Codex Command - Rent Follow-Up Calendar Prep",
-    actionName: "Generate Codex Command: Rent Follow-Up Calendar Prep",
-    controls: "Rent due checks, late rent review, arrangement dates, ledger checks, and Section 8/HAP verification.",
-    tone: "yellow",
-    prompt: `Prepare rent-related calendar follow-ups.
-
-Rules:
-- Do not create calendar events.
-- Do not send tenant messages.
-- Do not create notices.
-- Prepare event previews for rent due checks, late rent review, payment arrangement dates, ledger verification, and Section 8/HAP verification.
-- Stop before live actions.`
-  },
-  {
-    id: "mortgage-calendar",
-    title: "Codex Command - Mortgage Follow-Up Calendar Prep",
-    actionName: "Generate Codex Command: Mortgage Follow-Up Calendar Prep",
-    controls: "Payment posting, updated balance, proof, next due date, allotment, and arrears review.",
-    tone: "red",
-    prompt: `Prepare mortgage-related calendar follow-ups.
-
-Rules:
-- Do not create calendar events or tasks.
-- Do not contact lender, MBFS, bank, tenants, or property manager.
-- Prepare event previews for payment posting confirmation, updated balance, proof saving, next due date, allotment setup, and weekly arrears review.
-- Stop before live actions.`
-  },
-  {
-    id: "maintenance-calendar",
-    title: "Codex Command - Maintenance Follow-Up Calendar Prep",
-    actionName: "Generate Codex Command: Maintenance Follow-Up Calendar Prep",
-    controls: "Safety follow-up, vendor follow-up, proof collection, invoice/photos, and tenant update review.",
-    tone: "red",
-    prompt: `Prepare maintenance-related calendar follow-ups.
-
-Rules:
-- Do not create calendar events or tasks.
-- Do not contact tenants or vendors.
-- Prepare event previews for safety issue follow-up, vendor follow-up, proof collection, invoice/photo confirmation, and tenant update review.
-- Stop before live actions.`
-  },
-  {
-    id: "sync-preview",
-    title: "Codex Command - Calendar / Task Sync Preview",
-    actionName: "Generate Codex Command: Calendar / Task Sync Preview",
-    controls: "Preview which follow-ups should become calendar events or future tasks.",
-    tone: "yellow",
-    prompt: `Prepare a Calendar and Task sync preview.
-
-Rules:
-- Do not create, update, complete, or delete Calendar events or Google Tasks.
-- Produce a preview of which follow-ups should become calendar events and which should become tasks.
-- Include owner approvals required and blocked-until-verified items.
-- Stop before live actions.`
-  }
 ];
 
 function parseDate(row: FollowUpCommandRow) {
@@ -480,65 +349,6 @@ function CalendarBlockedAndPreview() {
   );
 }
 
-function CalendarCommandButtons() {
-  const [selected, setSelected] = useState<CalendarCommandTemplate | null>(null);
-  const [copied, setCopied] = useState(false);
-
-  async function copyPrompt() {
-    if (!selected) return;
-    const copiedCommand = await copyTextToClipboard(selected.prompt);
-    setCopied(copiedCommand);
-    if (copiedCommand) {
-      window.setTimeout(() => setCopied(false), 1800);
-    }
-  }
-
-  return (
-    <section className="calendar-command-panel">
-      <div className="section-heading">
-        <div>
-          <p className="eyebrow">Codex command buttons</p>
-          <h3>Calendar workflow prompts</h3>
-        </div>
-        <StatusBadge label="Draft command only" />
-      </div>
-      <div className="calendar-command-button-grid">
-        {commandTemplates.map((template) => (
-          <button key={template.id} className={`command-action-button ${template.tone}`} type="button" onClick={() => setSelected(template)}>
-            <ClipboardList size={18} />
-            <span>{template.actionName}</span>
-            <small>{template.controls}</small>
-          </button>
-        ))}
-      </div>
-      {selected ? (
-        <div className="calendar-command-preview">
-          <div className="section-heading">
-            <div>
-              <p className="eyebrow">Command preview</p>
-              <h3>{selected.title}</h3>
-            </div>
-            <button className="copy-command-button" type="button" onClick={copyPrompt}>
-              <Copy size={16} />
-              {copied ? "Copied" : "Copy Command"}
-            </button>
-          </div>
-          <div className="command-safety-strip">
-            <span>Draft command only</span>
-            <span>Owner approval required</span>
-            <span>Live writes disabled</span>
-            <span>No Calendar event created</span>
-            <span>No Gmail sent</span>
-            <span>No Google Task created</span>
-          </div>
-          <pre>{selected.prompt}</pre>
-          <p>This dashboard does not create calendar events, send emails, create tasks, update Drive, or change live records.</p>
-        </div>
-      ) : null}
-    </section>
-  );
-}
-
 export function CalendarFollowUpsView() {
   const [filters, setFilters] = useState(defaultFilters);
   const filteredRows = useMemo(() => followUpRows.filter((row) => matchesFilters(row, filters)), [filters]);
@@ -574,7 +384,6 @@ export function CalendarFollowUpsView() {
       )}
       <CalendarQueues />
       <CalendarBlockedAndPreview />
-      <CalendarCommandButtons />
     </div>
   );
 }

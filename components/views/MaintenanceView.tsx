@@ -1,11 +1,10 @@
 "use client";
 
 import { useMemo, useState, type CSSProperties } from "react";
-import { AlertTriangle, CheckCircle2, ClipboardList, Copy, Search, ShieldCheck, Wrench } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ClipboardList, Search, ShieldCheck, Wrench } from "lucide-react";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { EmptyState } from "@/components/DataState";
 import { StatusBadge } from "@/components/StatusBadge";
-import { copyTextToClipboard } from "@/lib/clipboard";
 import {
   commandCenterPeriod,
   maintenanceRows,
@@ -29,15 +28,6 @@ type MaintenanceFilter = {
   tenantUpdateNeeded: boolean;
   criticalOnly: boolean;
   search: string;
-};
-
-type MaintenanceCommandTemplate = {
-  id: string;
-  title: string;
-  actionName: string;
-  controls: string;
-  tone: SignalTone;
-  prompt: string;
 };
 
 const defaultFilters: MaintenanceFilter = {
@@ -75,113 +65,6 @@ const proofNeededItems = [
   "Photos if applicable",
   "Invoice if applicable",
   "RentRedi/Gmail alert reference saved to Drive later"
-];
-
-const commandTemplates: MaintenanceCommandTemplate[] = [
-  {
-    id: "maintenance-review",
-    title: "Codex Command - Maintenance Review",
-    actionName: "Generate Codex Command: Maintenance Review",
-    controls: "Open items, safety issues, vendor status, proof status, tenant updates, and owner actions.",
-    tone: "red",
-    prompt: `Run a Maintenance Review for the Property Command Center.
-
-Rules:
-- Read-only/local review first.
-- Do not contact tenants or vendors.
-- Do not update RentRedi, Google Drive, Gmail, Calendar, Google Tasks, or Sheets.
-- Review open maintenance items, safety issues, vendor status, proof status, tenant update status, and owner actions.
-- Produce a maintenance preview report with:
-  1. Open items
-  2. Critical/safety items
-  3. Vendor assignment status
-  4. Proof needed
-  5. Tenant updates needed
-  6. Owner decisions required
-  7. Blocked-until-verified items
-- Stop before all live actions.`
-  },
-  {
-    id: "safety-follow-up",
-    title: "Codex Command - Safety Issue Follow-Up",
-    actionName: "Generate Codex Command: Safety Issue Follow-Up",
-    controls: "Unit 6 heat/breathing complaint verification and safe owner decision checklist.",
-    tone: "red",
-    prompt: `Prepare a safety-sensitive maintenance follow-up review.
-
-Rules:
-- Do not send messages.
-- Do not contact tenants or vendors.
-- Do not update live systems.
-- Review the Unit 6 heat/breathing complaint and identify what needs verification.
-- Prepare owner decision options and a safe follow-up checklist.
-- Stop before communication or live updates.`
-  },
-  {
-    id: "vendor-follow-up",
-    title: "Codex Command - Vendor Follow-Up Prep",
-    actionName: "Generate Codex Command: Vendor Follow-Up Prep",
-    controls: "Vendor checklist and owner-review draft language.",
-    tone: "yellow",
-    prompt: `Prepare vendor follow-up for maintenance items.
-
-Rules:
-- Do not contact vendors.
-- Do not send emails or texts.
-- Do not update calendars or tasks.
-- Draft a vendor follow-up checklist and message draft for owner review.
-- Include requested proof: photos, invoice, completion confirmation.
-- Stop before all live communication.`
-  },
-  {
-    id: "tenant-update",
-    title: "Codex Command - Tenant Maintenance Update Draft",
-    actionName: "Generate Codex Command: Tenant Maintenance Update Draft",
-    controls: "Draft-only tenant update for owner review.",
-    tone: "yellow",
-    prompt: `Draft a tenant maintenance update for owner review.
-
-Rules:
-- Do not send the message.
-- Do not contact the tenant.
-- Keep tone professional and safety-aware.
-- Avoid legal conclusions or promises not confirmed by owner/vendor.
-- Draft only and stop for owner approval.`
-  },
-  {
-    id: "proof-checklist",
-    title: "Codex Command - Maintenance Proof Checklist",
-    actionName: "Generate Codex Command: Maintenance Proof Checklist",
-    controls: "Proof checklist for tenant confirmation, vendor confirmation, photos, invoices, and logs.",
-    tone: "yellow",
-    prompt: `Prepare a maintenance proof checklist.
-
-Rules:
-- Do not upload or move files.
-- Do not update Google Drive.
-- Identify proof needed for each maintenance item:
-  1. Tenant confirmation
-  2. Vendor confirmation
-  3. Photos
-  4. Invoice
-  5. Completion date
-  6. Communication log
-- Stop before live actions.`
-  },
-  {
-    id: "drive-update",
-    title: "Codex Command - Maintenance Google Drive Update",
-    actionName: "Generate Codex Command: Maintenance Google Drive Update",
-    controls: "Drive preview package for maintenance status, proof needs, vendor status, and blocked items.",
-    tone: "green",
-    prompt: `Prepare a Google Drive maintenance update package.
-
-Rules:
-- Do not upload, move, rename, delete, or update Drive files without owner approval.
-- Prepare a preview package only.
-- Include maintenance status, proof-needed checklist, vendor status, tenant update status, and blocked-until-verified items.
-- Stop and ask for owner approval before any Drive write.`
-  }
 ];
 
 function proofStatus(row: MaintenanceCommandRow) {
@@ -499,73 +382,6 @@ function VendorAndTenantTrackers() {
   );
 }
 
-function MaintenanceCommandButtons() {
-  const [activeCommand, setActiveCommand] = useState<MaintenanceCommandTemplate | null>(null);
-  const [copiedCommandId, setCopiedCommandId] = useState<string | null>(null);
-
-  async function copyCommand(command: MaintenanceCommandTemplate) {
-    const copied = await copyTextToClipboard(`${command.title}\n\n${command.prompt}`);
-    setCopiedCommandId(copied ? command.id : null);
-  }
-
-  return (
-    <section className="section-block">
-      <div className="section-heading">
-        <div>
-          <p className="eyebrow">Codex Commands</p>
-          <h2>Maintenance command buttons</h2>
-        </div>
-        <Copy size={18} aria-hidden />
-      </div>
-      <div className="maintenance-command-button-grid">
-        {commandTemplates.map((command) => (
-          <article key={command.id} className={`codex-command-card command-kpi-${command.tone}`}>
-            <span>{command.actionName}</span>
-            <strong>{command.controls}</strong>
-            <p>Draft command only. Owner approval required. Live writes disabled.</p>
-            <button type="button" onClick={() => {
-              setActiveCommand(command);
-              setCopiedCommandId(null);
-            }}>
-              Generate command
-            </button>
-          </article>
-        ))}
-      </div>
-      {activeCommand ? (
-        <aside className="command-preview-panel maintenance-command-preview" aria-live="polite">
-          <div className="command-preview-header">
-            <div>
-              <p className="eyebrow">Command Preview</p>
-              <h3>{activeCommand.title}</h3>
-            </div>
-            <button type="button" className="ghost-button" onClick={() => setActiveCommand(null)}>Close</button>
-          </div>
-          <div className="command-preview-labels">
-            <span>Draft command only</span>
-            <span>Owner approval required</span>
-            <span>Live writes disabled</span>
-            <span>No tenant message sent</span>
-            <span>No vendor contacted</span>
-            <span>No Drive upload</span>
-          </div>
-          <p className="command-preview-warning">
-            This dashboard does not contact tenants or vendors and does not update RentRedi, Google Drive, Gmail, Calendar, Tasks, or Sheets.
-          </p>
-          <pre>{activeCommand.prompt}</pre>
-          <div className="command-preview-actions">
-            <button type="button" onClick={() => copyCommand(activeCommand)}>
-              <Copy size={16} aria-hidden />
-              Copy Command
-            </button>
-            {copiedCommandId === activeCommand.id ? <span>Copied command to clipboard.</span> : null}
-          </div>
-        </aside>
-      ) : null}
-    </section>
-  );
-}
-
 export function MaintenanceView() {
   const [filters, setFilters] = useState<MaintenanceFilter>(defaultFilters);
   const filteredRows = useMemo(() => maintenanceRows.filter((row) => matchesFilters(row, filters)), [filters]);
@@ -596,7 +412,6 @@ export function MaintenanceView() {
       <BlockedUntilVerified />
       <ProofNeeded />
       <VendorAndTenantTrackers />
-      <MaintenanceCommandButtons />
     </div>
   );
 }

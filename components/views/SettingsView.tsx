@@ -117,7 +117,7 @@ export function SettingsView() {
       <section className="section-block">
         <div className="section-heading">
           <div>
-            <p className="eyebrow">Safety Gates</p>
+            <p className="eyebrow">Access Controls</p>
             <h2>Live services</h2>
           </div>
           <ShieldCheck size={20} aria-hidden />

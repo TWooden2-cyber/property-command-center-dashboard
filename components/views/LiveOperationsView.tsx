@@ -5,7 +5,6 @@ import {
   AlertTriangle,
   CheckCircle2,
   ClipboardCheck,
-  Copy,
   Database,
   FileText,
   ListChecks,
@@ -861,64 +860,6 @@ function buildPlan(items: CommandItem[]): Plan {
   };
 }
 
-function buildCodexPrompt(items: CommandItem[], plan: Plan, template: string) {
-  const itemLines = items.map((item, index) => (
-    `${index + 1}. ${item.category} | ${item.property || "No property"} ${item.unit || ""} | ${item.title} | ${item.currentStatus || "not set"} -> ${item.newStatus || "review"} | Remarks: ${item.ownerRemarks || "None"} | Source: ${item.source}`
-  ));
-
-  return `Generate and execute approved mass update plan for the following owner-reviewed items.
-
-Template: ${template}
-
-Selected completed/updated items:
-${itemLines.join("\n") || "None selected."}
-
-SECTION A - Execute these exact approved actions:
-${plan.executable.map((item) => `- ${item}`).join("\n") || "- None. Do not execute incomplete items."}
-
-SECTION B - Do not execute these incomplete items:
-${plan.needsInfo.map((item) => `- ${item}`).join("\n") || "- None."}
-${plan.blocked.map((item) => `- ${item}`).join("\n")}
-
-SECTION C - Missing information needed:
-${plan.missingInformation.map((item) => `- ${item}`).join("\n") || "- None."}
-
-Proposed Sheet updates with executable validation:
-${plan.sheets.map((item) => `- ${item}`).join("\n") || "- None"}
-
-Proposed Calendar actions with executable validation:
-${plan.calendar.map((item) => `- ${item}`).join("\n") || "- None"}
-
-Proposed Drive routing actions with executable validation:
-${plan.drive.map((item) => `- ${item}`).join("\n") || "- None"}
-
-Proposed Gmail read actions:
-${plan.gmail.map((item) => `- ${item}`).join("\n") || "- None"}
-
-Proposed Google Task updates from phone:
-${plan.tasks.map((item) => `- ${item}`).join("\n") || "- None"}
-
-Proposed audit log actions:
-${plan.audit.map((item) => `- ${item}`).join("\n") || "- None"}
-
-DO NOT:
-- send Gmail
-- reply to Gmail
-- forward Gmail
-- archive Gmail
-- delete Gmail
-- delete Drive files
-- trash Drive files
-- change Drive permissions
-- share Drive files
-- delete Calendar events
-- delete Tasks
-- perform legal/payment/tenant notice actions without explicit approval
-- execute anything not listed in the approved plan
-
-Dry-run is required. Owner approval is required. Audit logging is required.`;
-}
-
 export function LiveOperationsView() {
   const [status, setStatus] = useState<LiveOperationsStatus | null>(null);
   const [loading, setLoading] = useState(true);
@@ -937,7 +878,6 @@ export function LiveOperationsView() {
   const [gmailMessage, setGmailMessage] = useState("No Gmail scan run yet.");
   const [gmailFilters, setGmailFilters] = useState({ property: "All", unit: "All", category: "All", status: "All" });
   const [plan, setPlan] = useState<Plan | null>(null);
-  const [prompt, setPrompt] = useState("");
   const [workflow, setWorkflow] = useState<WorkflowResult>({ message: "Execution is locked until the plan is approved." });
 
   useEffect(() => {
@@ -1094,7 +1034,7 @@ export function LiveOperationsView() {
   function addSelectedGmailToMassPrompt() {
     const selectedGmailItems = gmailItems.filter((item) => item.selected);
     if (!selectedGmailItems.length) {
-      setGmailMessage("Select at least one Gmail item before adding it to the mass prompt.");
+      setGmailMessage("Select at least one Gmail item before adding it to the mass update plan.");
       return;
     }
 
@@ -1158,7 +1098,7 @@ export function LiveOperationsView() {
 
     setItems((previous) => [...gmailCommandItems, ...previous.filter((item) => !gmailCommandItems.some((gmailItem) => gmailItem.id === item.id))]);
     setSelected((previous) => ({ ...previous, ...Object.fromEntries(gmailCommandItems.map((item) => [item.id, true])) }));
-    setGmailMessage(`${gmailCommandItems.length} Gmail needs-action item(s) added to the mass prompt. Incomplete items stay visible under Needs More Info.`);
+    setGmailMessage(`${gmailCommandItems.length} Gmail needs-action item(s) added to the mass update plan. Incomplete items stay visible under Needs More Info.`);
   }
 
   function updateDriveFile(id: string, patch: Partial<DriveFileCandidate>) {
@@ -1185,7 +1125,7 @@ export function LiveOperationsView() {
   function addSelectedDriveFilesToMassPrompt() {
     const selectedFiles = driveFiles.filter((file) => selectedDriveFiles[file.id]);
     if (!selectedFiles.length) {
-      setDriveMessage("Select at least one Drive file before adding it to the mass prompt.");
+      setDriveMessage("Select at least one Drive file before adding it to the mass update plan.");
       return;
     }
 
@@ -1235,7 +1175,6 @@ export function LiveOperationsView() {
   function generatePlan() {
     const nextPlan = buildPlan(selectedItems);
     setPlan(nextPlan);
-    setPrompt(buildCodexPrompt(selectedItems, nextPlan, template));
     setWorkflow({ message: "Dry-run plan generated. Portal approval does not run Codex." });
   }
 
@@ -1248,10 +1187,10 @@ export function LiveOperationsView() {
         stage,
         dryRunId: workflow.dryRunId,
         approvalConfirmation: stage === "approve" || stage === "execute" ? "OWNER APPROVES" : "",
-        actionType: "Owner Command Center Mass Update",
+        actionType: "Owner Review Center Mass Update",
         targetName: `${selectedItems.length} owner-reviewed items`,
         oldValue: "",
-        newValue: prompt.slice(0, 900),
+        newValue: JSON.stringify(plan ?? buildPlan(selectedItems)).slice(0, 900),
         reason: `Owner generated ${template} mass update plan from mockup-style Live Operations Center.`
       })
     });
@@ -1277,7 +1216,7 @@ export function LiveOperationsView() {
         <header className="mockup-top-header">
           <div>
             <h2>Live Operations Center</h2>
-            <p>Owner Command Generator & Mass Update Flow</p>
+            <p>Owner Review & Mass Update Flow</p>
           </div>
           <div className="mockup-status-pills">
             <span>Operations Gate: <strong>ENABLED</strong></span>
@@ -1289,7 +1228,7 @@ export function LiveOperationsView() {
         </header>
 
         <section className="mockup-card">
-          <div className="mockup-card-heading"><span>1</span><div><p>OWNER COMMAND GENERATOR</p><h3>Quick Templates</h3></div></div>
+          <div className="mockup-card-heading"><span>1</span><div><p>OWNER REVIEW CENTER</p><h3>Quick Templates</h3></div></div>
           <div className="mockup-template-grid">
             {templates.map((item) => <button type="button" className={template === item ? "active" : ""} key={item} onClick={() => setTemplate(item)}>{item}</button>)}
           </div>
@@ -1350,7 +1289,7 @@ export function LiveOperationsView() {
               <label className="wide"><span>Owner Remarks</span><textarea value={form.ownerRemarks} onChange={(event) => setForm((previous) => ({ ...previous, ownerRemarks: event.target.value }))} /></label>
             </div>
             <div className="mockup-validation-note">
-              Required for executable prompts: Sheet tab, exact property/unit, tracker title, Calendar date/time, and Drive file name or ID plus destination folder. Missing proof defaults to next business day at 8:30 AM; rent defaults to next business day at 12:30 PM.
+              Required for executable dry runs: Sheet tab, exact property/unit, tracker title, Calendar date/time, and Drive file name or ID plus destination folder. Missing proof defaults to next business day at 8:30 AM; rent defaults to next business day at 12:30 PM.
             </div>
             <div className="mockup-action-row">
               <button type="button" onClick={addFormItem}><CheckCircle2 size={16} />Add to Mass Prompt</button>
@@ -1429,7 +1368,7 @@ export function LiveOperationsView() {
             )) : <article className="mockup-gmail-card"><strong>No Gmail items loaded</strong><p>Run a property scan to classify Gmail items for 228 Reifert Units 1-7 and 3103 Courtney Units A-D.</p></article>}
           </div>
           <div className="mockup-validation-note">
-            Missing property or unit stays visible under Data Missing / Needs Cleanup and is placed in Section B / Section C of the mass prompt. Attachments are detected, but Drive moves still require owner confirmation of the exact file.
+            Missing property or unit stays visible under Data Missing / Needs Cleanup and is placed in Section B / Section C of the mass update plan. Attachments are detected, but Drive moves still require owner confirmation of the exact file.
           </div>
           <div className="mockup-action-row">
             <button type="button" onClick={addSelectedGmailToMassPrompt}><CheckCircle2 size={16} />Add Selected Gmail Items to Mass Prompt</button>
@@ -1516,17 +1455,6 @@ export function LiveOperationsView() {
             <span>Items Requiring Approval: <strong>{plan?.approvalCount || 0}</strong></span>
             <span>Executable: <strong>{plan?.executable.length || 0}</strong></span>
             <span>Needs More Info: <strong>{plan?.needsInfo.length || 0}</strong></span>
-          </div>
-        </section>
-
-        <section className="mockup-card">
-          <div className="mockup-card-heading"><span>9</span><div><p>OWNER COMMAND PREVIEW</p><h3>Copyable</h3></div></div>
-          <textarea className="mockup-command-box" value={prompt} onChange={(event) => setPrompt(event.target.value)} />
-          <div className="mockup-action-row">
-            <button type="button" onClick={() => navigator.clipboard.writeText(prompt)}><Copy size={16} />Copy Command</button>
-            <button type="button" onClick={() => setWorkflow({ ...workflow, message: "Command saved in browser preview state." })}><FileText size={16} />Save Command</button>
-            <button type="button" onClick={() => setWorkflow({ ...workflow, message: "Edit the command directly in the preview box." })}><ClipboardCheck size={16} />Edit Command</button>
-            <button type="button" onClick={generatePlan}><RefreshCw size={16} />Regenerate Command</button>
           </div>
         </section>
 

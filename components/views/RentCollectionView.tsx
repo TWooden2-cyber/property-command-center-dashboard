@@ -1,11 +1,10 @@
 "use client";
 
 import { useMemo, useState, type CSSProperties } from "react";
-import { AlertTriangle, BarChart3, CheckCircle2, Copy, Search, ShieldCheck } from "lucide-react";
+import { AlertTriangle, BarChart3, CheckCircle2, Search, ShieldCheck } from "lucide-react";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { EmptyState } from "@/components/DataState";
 import { StatusBadge } from "@/components/StatusBadge";
-import { copyTextToClipboard } from "@/lib/clipboard";
 import {
   commandCenterPeriod,
   money,
@@ -31,15 +30,6 @@ type RentFilter = {
   section8Only: boolean;
   ledgerConflictOnly: boolean;
   search: string;
-};
-
-type RentCommandTemplate = {
-  id: string;
-  title: string;
-  actionName: string;
-  controls: string;
-  tone: SignalTone;
-  prompt: string;
 };
 
 const defaultFilters: RentFilter = {
@@ -94,98 +84,6 @@ const blockedWarnings = [
   "Do not escalate Unit A until HAP payment status is verified.",
   "Do not serve/escalate Unit 4 until Section 8 and ledger are verified.",
   "Do not close Unit 7 issue until UPMC May rent status is verified."
-];
-
-const commandTemplates: RentCommandTemplate[] = [
-  {
-    id: "rent-review",
-    title: "Codex Command - Rent Collection Review",
-    actionName: "Generate Codex Command: Rent Collection Review",
-    controls: "Monthly rent ledger, balances, owner actions, and blocked verification items.",
-    tone: "yellow",
-    prompt: `Run a Rent Collection Review for the Property Command Center.
-
-Rules:
-- Read-only/local review first.
-- Do not send tenant messages.
-- Do not create or serve notices.
-- Do not update Google Drive, Gmail, Calendar, Tasks, Sheets, RentRedi, or tenant records without owner approval.
-- Review the rent ledger, balances, payment arrangements, ledger conflicts, Section 8/HAP verification items, and owner action items.
-- Produce a rent collection preview report with:
-  1. Total projected rent
-  2. Total collected
-  3. Total balance
-  4. Collection percentage
-  5. Paid units
-  6. Units with balance
-  7. Verification issues
-  8. Owner decisions required
-  9. Blocked-until-verified items
-- Stop before all live actions.`
-  },
-  {
-    id: "rentredi-ledger",
-    title: "Codex Command - RentRedi Ledger Verification",
-    actionName: "Generate Codex Command: RentRedi Ledger Verification",
-    controls: "Ledger conflict, payment discrepancy, and unresolved payment source checklist.",
-    tone: "yellow",
-    prompt: `Prepare a RentRedi ledger verification review.
-
-Rules:
-- Do not connect to RentRedi or update live records.
-- Do not send tenant messages.
-- Do not create notices.
-- Review dashboard rent ledger items with ledger conflict, payment discrepancy, or unresolved payment source.
-- Identify units needing ledger verification.
-- Produce a verification checklist.
-- Stop before any live action.`
-  },
-  {
-    id: "late-rent-prep",
-    title: "Codex Command - Late Rent Follow-Up Prep",
-    actionName: "Generate Codex Command: Late Rent Follow-Up Prep",
-    controls: "Owner-review draft prep for unpaid balances and late rent watch items.",
-    tone: "red",
-    prompt: `Prepare late rent follow-up drafts for owner review.
-
-Rules:
-- Do not send messages.
-- Do not create legal notices.
-- Do not contact tenants.
-- Draft only general follow-up language for owner review.
-- Flag legal/notice-sensitive items separately.
-- Stop before all live communication.`
-  },
-  {
-    id: "hap-verification",
-    title: "Codex Command - Section 8 / HAP Verification",
-    actionName: "Generate Codex Command: Section 8 / HAP Verification",
-    controls: "Section 8, HAP, PM statement, and subsidy payment proof checklist.",
-    tone: "yellow",
-    prompt: `Prepare Section 8 / HAP verification review.
-
-Rules:
-- Do not contact tenants, agencies, property manager, or housing authority.
-- Do not send emails.
-- Do not change records.
-- Review units requiring Section 8/HAP verification.
-- Produce a checklist of what proof or confirmation is needed.
-- Stop before live actions.`
-  },
-  {
-    id: "drive-rent-update",
-    title: "Codex Command - Rent Collection Google Drive Update",
-    actionName: "Generate Codex Command: Rent Collection Google Drive Update",
-    controls: "Drive preview package for rent ledger, balances, verification items, and owner actions.",
-    tone: "green",
-    prompt: `Prepare a Google Drive rent collection update package.
-
-Rules:
-- Do not upload, move, rename, delete, or update Drive files without owner approval.
-- Prepare a preview package only.
-- Include rent ledger snapshot, balance list, verification items, owner action list, and blocked-until-verified items.
-- Stop and ask for owner approval before any Drive write.`
-  }
 ];
 
 function classifyPaymentState(row: RentCollectionRow) {
@@ -620,72 +518,6 @@ function BlockedUntilVerified() {
   );
 }
 
-function RentCommandButtons() {
-  const [activeCommand, setActiveCommand] = useState<RentCommandTemplate | null>(null);
-  const [copiedCommandId, setCopiedCommandId] = useState<string | null>(null);
-
-  async function copyCommand(command: RentCommandTemplate) {
-    const copied = await copyTextToClipboard(`${command.title}\n\n${command.prompt}`);
-    setCopiedCommandId(copied ? command.id : null);
-  }
-
-  return (
-    <section className="section-block">
-      <div className="section-heading">
-        <div>
-          <p className="eyebrow">Codex Commands</p>
-          <h2>Rent collection command buttons</h2>
-        </div>
-        <Copy size={18} aria-hidden />
-      </div>
-      <div className="rent-command-button-grid">
-        {commandTemplates.map((command) => (
-          <article key={command.id} className={`codex-command-card command-kpi-${command.tone}`}>
-            <span>{command.actionName}</span>
-            <strong>{command.controls}</strong>
-            <p>Draft command only. Owner approval required. Live writes disabled.</p>
-            <button type="button" onClick={() => {
-              setActiveCommand(command);
-              setCopiedCommandId(null);
-            }}>
-              Generate command
-            </button>
-          </article>
-        ))}
-      </div>
-      {activeCommand ? (
-        <aside className="command-preview-panel rent-command-preview" aria-live="polite">
-          <div className="command-preview-header">
-            <div>
-              <p className="eyebrow">Command Preview</p>
-              <h3>{activeCommand.title}</h3>
-            </div>
-            <button type="button" className="ghost-button" onClick={() => setActiveCommand(null)}>Close</button>
-          </div>
-          <div className="command-preview-labels">
-            <span>Draft command only</span>
-            <span>Owner approval required</span>
-            <span>Live writes disabled</span>
-            <span>No tenant messages sent</span>
-            <span>No notices created</span>
-          </div>
-          <p className="command-preview-warning">
-            This dashboard does not perform RentRedi, Google, tenant, notice, or payment actions. It only prepares the Codex command.
-          </p>
-          <pre>{activeCommand.prompt}</pre>
-          <div className="command-preview-actions">
-            <button type="button" onClick={() => copyCommand(activeCommand)}>
-              <Copy size={16} aria-hidden />
-              Copy Command
-            </button>
-            {copiedCommandId === activeCommand.id ? <span>Copied command to clipboard.</span> : null}
-          </div>
-        </aside>
-      ) : null}
-    </section>
-  );
-}
-
 export function RentCollectionView() {
   const [filters, setFilters] = useState<RentFilter>(defaultFilters);
   const filteredRows = useMemo(() => rentRows.filter((row) => matchesFilters(row, filters)), [filters]);
@@ -715,7 +547,6 @@ export function RentCollectionView() {
 
       <RentActionQueue />
       <BlockedUntilVerified />
-      <RentCommandButtons />
     </div>
   );
 }

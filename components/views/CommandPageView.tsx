@@ -3,12 +3,11 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import type { Route } from "next";
-import { CheckCircle2, Copy, Database, Search, ShieldAlert } from "lucide-react";
+import { CheckCircle2, Database, Search, ShieldAlert } from "lucide-react";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { EmptyState } from "@/components/DataState";
 import { StatusBadge } from "@/components/StatusBadge";
-import { copyTextToClipboard } from "@/lib/clipboard";
-import type { CommandButtonConfig, CommandPageConfig, CommandTableRow } from "@/lib/remainingCommandCenterData";
+import type { CommandPageConfig, CommandTableRow } from "@/lib/remainingCommandCenterData";
 import { commandCenterPeriod, monthOptions, yearOptions, type SignalTone } from "@/lib/propertyCommandCenterData";
 
 type FilterState = {
@@ -175,70 +174,6 @@ function BlockedAndApproval({ config }: { config: CommandPageConfig }) {
   );
 }
 
-function CommandButtons({ config }: { config: CommandPageConfig }) {
-  const [activeCommand, setActiveCommand] = useState<CommandButtonConfig | null>(null);
-  const [copiedCommandId, setCopiedCommandId] = useState<string | null>(null);
-
-  async function copyCommand(command: CommandButtonConfig) {
-    const copied = await copyTextToClipboard(command.prompt);
-    setCopiedCommandId(copied ? command.id : null);
-  }
-
-  return (
-    <section className="calendar-command-panel">
-      <span className="eyebrow">Draft Command Buttons</span>
-      <h3>{config.title} Codex Commands</h3>
-      <p>This dashboard does not perform live actions. It only prepares a Codex command for owner review.</p>
-      <div className="remaining-command-button-grid">
-        {config.commands.map((command) => (
-          <article className={`codex-command-card command-tone-${command.tone}`} key={command.id}>
-            <span>Draft command only</span>
-            <strong>{command.actionName}</strong>
-            <p>{command.controls}</p>
-            <button type="button" onClick={() => setActiveCommand(command)}>
-              <Copy size={15} />
-              Generate Command
-            </button>
-          </article>
-        ))}
-      </div>
-      {activeCommand ? (
-        <div className="remaining-command-preview command-preview-panel">
-          <div className="command-preview-header">
-            <div>
-              <span className="eyebrow">Command Preview</span>
-              <h3>{activeCommand.title}</h3>
-            </div>
-            <button type="button" onClick={() => setActiveCommand(null)}>
-              Close
-            </button>
-          </div>
-          <div className="command-preview-labels">
-            <span>Preview only</span>
-            <span>Owner approval required</span>
-            <span>No live import</span>
-            <span>No live writes</span>
-            <span>No Google Sheets connection</span>
-            <span>No Gmail body read</span>
-            <span>No Calendar/Task created</span>
-            <span>No Drive upload</span>
-            <span>No RentRedi connection</span>
-          </div>
-          <p className="command-preview-warning">This dashboard does not perform live actions. It only prepares the Codex command.</p>
-          <pre>{activeCommand.prompt}</pre>
-          <div className="command-preview-actions">
-            <button type="button" onClick={() => copyCommand(activeCommand)}>
-              <Copy size={15} />
-              Copy Command
-            </button>
-            {copiedCommandId === activeCommand.id ? <span>Copied command to clipboard.</span> : null}
-          </div>
-        </div>
-      ) : null}
-    </section>
-  );
-}
-
 function RelatedLinks({ config }: { config: CommandPageConfig }) {
   if (!config.relatedLinks?.length) {
     return null;
@@ -305,7 +240,6 @@ export function CommandPageView({ config }: { config: CommandPageConfig }) {
       {rows.length ? <DataTable rows={rows} columns={columns} /> : <EmptyState title="No matching local sample records" message="Adjust filters to restore records." />}
       <Queues config={config} />
       <BlockedAndApproval config={config} />
-      <CommandButtons config={config} />
       <SafetyFooter config={config} />
     </div>
   );

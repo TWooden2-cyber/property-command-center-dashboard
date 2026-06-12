@@ -50,7 +50,7 @@ const navigation = [
   { href: "/drive-update-center", label: "Drive Update Center", icon: FolderUp },
   { href: "/drive-readonly", label: "Drive Read-Only", icon: HardDrive },
   { href: "/final-integration", label: "Final Integration", icon: ClipboardList },
-  { href: "/gmail-follow-ups", label: "Gmail Follow-Ups", icon: Mail },
+  { href: "/gmail-follow-ups", label: "Gmail Tracking", icon: Mail },
   { href: "/reports", label: "Reports", icon: BarChart3 },
   { href: "/data-accuracy", label: "Data Accuracy", icon: ShieldCheck },
   { href: "/live-readiness", label: "Live Readiness", icon: RouteIcon },

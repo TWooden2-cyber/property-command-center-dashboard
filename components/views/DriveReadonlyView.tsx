@@ -380,46 +380,6 @@ export function DriveReadonlyView() {
         </article>
       </section>
 
-      <section className="calendar-command-panel">
-        <span className="eyebrow">Draft Command Buttons</span>
-        <h3>Drive Read-Only Commands</h3>
-        <p>These buttons prepare commands only. They do not connect OAuth, list Drive, or perform any Drive action from the browser.</p>
-        <div className="remaining-command-button-grid">
-          {commands.map((command) => (
-            <article className="codex-command-card command-tone-yellow" key={command.id}>
-              <span>Read-only only</span>
-              <strong>{command.actionName}</strong>
-              <p>No Drive writes, no folder creation, no upload, no move, no rename, no delete, no file content read.</p>
-              <button type="button" onClick={() => setActiveCommand(command)}>
-                <Copy size={15} />
-                Generate Command
-              </button>
-            </article>
-          ))}
-        </div>
-        {activeCommand ? (
-          <div className="remaining-command-preview command-preview-panel">
-            <div className="command-preview-header">
-              <div>
-                <span className="eyebrow">Command Preview</span>
-                <h3>{activeCommand.title}</h3>
-              </div>
-              <button type="button" onClick={() => setActiveCommand(null)}>Close</button>
-            </div>
-            <div className="command-preview-labels">
-              {["Read-only only", "Owner approval required", "No Drive writes", "No folder creation", "No rename", "No move", "No delete", "No file content read"].map((label) => <span key={label}>{label}</span>)}
-            </div>
-            <pre>{activeCommand.prompt}</pre>
-            <div className="command-preview-actions">
-              <button type="button" onClick={() => copyCommand(activeCommand)}>
-                <Copy size={15} />
-                Copy Command
-              </button>
-              {copied === activeCommand.id ? <span>Copied command to clipboard.</span> : null}
-            </div>
-          </div>
-        ) : null}
-      </section>
     </div>
   );
 }
