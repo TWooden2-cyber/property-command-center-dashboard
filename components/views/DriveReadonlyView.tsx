@@ -2,11 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Copy, FolderCheck, ShieldCheck } from "lucide-react";
+import { FolderCheck, ShieldCheck } from "lucide-react";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { EmptyState, LoadingState } from "@/components/DataState";
 import { StatusBadge } from "@/components/StatusBadge";
-import { copyTextToClipboard } from "@/lib/clipboard";
 import {
   EXPECTED_DRIVE_PROOF_FOLDERS,
   buildDriveFolderHealthMap,
@@ -26,132 +25,9 @@ type ApiPayload = {
   status: DriveReadonlyStatus;
 };
 
-type CommandTemplate = {
-  id: string;
-  title: string;
-  actionName: string;
-  prompt: string;
-};
-
-const commands: CommandTemplate[] = [
-  {
-    id: "preflight",
-    title: "Codex Command - Drive Read-Only Preflight",
-    actionName: "Generate Codex Command: Drive Read-Only Preflight",
-    prompt: `Run Google Drive Read-Only Preflight for the Property Command Center.
-
-Rules:
-- Read-only/listing only.
-- Do not upload, move, rename, delete, create, edit, or update Drive files or folders.
-- Do not read file contents.
-- Do not print tokens or secrets.
-- Confirm credentials and token are outside the repo.
-- Confirm scope is metadata/read-only only.
-- Confirm target folder ID is configured.
-- Run local preflight script.
-- Report PASS/FAIL and stop before OAuth exchange or live write actions.`
-  },
-  {
-    id: "listing",
-    title: "Codex Command - Drive Read-Only Folder Listing",
-    actionName: "Generate Codex Command: Drive Read-Only Folder Listing",
-    prompt: `Run Google Drive Read-Only Folder Listing for the Property Command Center.
-
-Rules:
-- Metadata listing only.
-- Do not download or read file contents.
-- Do not upload, move, rename, delete, create, edit, or update anything in Drive.
-- List only safe metadata for the configured Property Management Operating System folder.
-- Compare returned folders to the expected proof-folder plan.
-- Report missing folders and next owner actions.
-- Stop before any Drive write actions.`
-  },
-  {
-    id: "folder-health-mapping",
-    title: "Codex Command - Drive Folder Health Mapping",
-    actionName: "Generate Codex Command: Drive Folder Health Mapping",
-    prompt: `Run Drive Folder Health Mapping.
-
-Rules:
-- Use metadata-only Drive read-only listing.
-- Do not create, upload, move, rename, delete, edit, copy, trash, or change permissions.
-- Do not read file contents.
-- Compare expected proof folders to actual listed Drive metadata.
-- Mark folders as Found, Missing, Name Mismatch, Needs Owner Review, or Not Checked.
-- Produce a folder health report.
-- Stop before Drive write actions.`
-  },
-  {
-    id: "missing-folder-review",
-    title: "Codex Command - Missing Folder Review",
-    actionName: "Generate Codex Command: Missing Folder Review",
-    prompt: `Prepare a Missing Folder Review.
-
-Rules:
-- Do not create folders.
-- Do not update Drive.
-- Identify expected proof folders that are missing from the read-only listing.
-- Explain why each folder may be needed.
-- Prepare owner decision list for possible future Drive write package.
-- Stop before live writes.`
-  },
-  {
-    id: "write-package-preview",
-    title: "Codex Command - Drive Write Package Preview",
-    actionName: "Generate Codex Command: Drive Write Package Preview",
-    prompt: `Prepare a Drive Write Package Preview.
-
-Rules:
-- Preview only.
-- Do not create, upload, move, rename, delete, edit, copy, trash, or change permissions.
-- List potential future Drive actions separately from completed actions.
-- Mark all actions as not approved and blocked until owner approval.
-- Stop before Drive writes.`
-  },
-  {
-    id: "folder-naming-review",
-    title: "Codex Command - Drive Folder Naming Review",
-    actionName: "Generate Codex Command: Drive Folder Naming Review",
-    prompt: `Prepare a Drive Folder Naming Review.
-
-Rules:
-- Do not rename folders.
-- Do not update Drive.
-- Compare actual folder names to expected naming standard.
-- Identify possible mismatches and owner decisions required.
-- Stop before Drive writes.`
-  },
-  {
-    id: "token",
-    title: "Codex Command - Drive Token Safety Audit",
-    actionName: "Generate Codex Command: Drive Token Safety Audit",
-    prompt: `Run a Drive Token Safety Audit.
-
-Rules:
-- Do not print token or credential contents.
-- Confirm token and credentials are outside the repo.
-- Confirm no secrets are committed.
-- Confirm scopes are read-only only.
-- Confirm no write scopes or Drive mutation code exists.
-- Stop and report any risk.`
-  },
-  {
-    id: "report",
-    title: "Codex Command - Drive Read-Only Integration Report",
-    actionName: "Generate Codex Command: Drive Read-Only Integration Report",
-    prompt: `Prepare a Drive Read-Only Integration Report.
-
-Rules:
-- Read-only only.
-- Summarize preflight result, scope safety, token storage, target folder, folder listing status, missing folders, blocked actions, and owner next steps.
-- Do not perform Drive writes.`
-  }
-];
 
 export function DriveReadonlyView() {
   const [payload, setPayload] = useState<ApiPayload | null>(null);
-  const [activeCommand, setActiveCommand] = useState<CommandTemplate | null>(null);
-  const [copied, setCopied] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -221,10 +97,6 @@ export function DriveReadonlyView() {
     { key: "notes", header: "Notes", render: (row) => row.notes }
   ];
 
-  async function copyCommand(command: CommandTemplate) {
-    const ok = await copyTextToClipboard(command.prompt);
-    setCopied(ok ? command.id : null);
-  }
 
   if (!payload) {
     return <LoadingState label="Checking Drive read-only status..." />;
@@ -323,7 +195,7 @@ export function DriveReadonlyView() {
           </div>
         </article>
         <article className="remaining-queue-card queue-yellow">
-          <Copy size={19} />
+          <FolderCheck size={19} />
           <h3>Next Actions</h3>
           <p>Local owner workflow before any future write discussion.</p>
           <div className="calendar-mini-list">

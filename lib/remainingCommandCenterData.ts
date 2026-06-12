@@ -11,14 +11,6 @@ export type CommandTableColumn = {
   header: string;
 };
 
-export type CommandButtonConfig = {
-  id: string;
-  title: string;
-  actionName: string;
-  controls: string;
-  tone: SignalTone;
-  prompt: string;
-};
 
 export type CommandPageConfig = {
   id: string;
@@ -34,28 +26,10 @@ export type CommandPageConfig = {
   blocked: string[];
   approvalGate: string[];
   filters: string[];
-  commands: CommandButtonConfig[];
   safetyFooter: string;
   relatedLinks?: Array<{ title: string; detail: string; href: string; action: string; tone: SignalTone }>;
 };
 
-const commonStopRules = [
-  "Owner approval required before live actions.",
-  "Live writes disabled from dashboard.",
-  "Preview/copy command only.",
-  "Local Sample Mode is not a live source of truth."
-];
-
-function commandPrompt(title: string, body: string) {
-  return `${title}
-
-Rules:
-- Read-only/local review first.
-- Do not perform live Google Drive, Gmail, Calendar, Google Tasks, Sheets, RentRedi, tenant, legal, payment, lender, vendor, court, or banking actions without owner approval.
-- Prepare a preview only.
-${body}
-- Stop before all live actions.`;
-}
 
 export const commandPages: Record<string, CommandPageConfig> = {
   utilities: {
@@ -192,15 +166,8 @@ export const commandPages: Record<string, CommandPageConfig> = {
       "Do not set paperless/autopay status complete until account setup proof is saved.",
       "Do not update Drive, Calendar, or Tasks from this dashboard."
     ],
-    approvalGate: commonStopRules,
+    approvalGate: ["Owner approval required before live actions.", "Live writes disabled from dashboard.", "Owner review only.", "Local Sample Mode is not a live source of truth."],
     filters: ["Utility Type", "Property", "Provider", "Payment Proof Needed", "Account Setup Needed", "Status", "Search notes"],
-    commands: [
-      { id: "utility-review", title: "Codex Command - Utility Review", actionName: "Generate Codex Command: Utility Review", controls: "Utility costs, due dates, account setup, paperless/autopay, and proof gaps.", tone: "yellow", prompt: commandPrompt("Run a Utility Review for the Property Command Center.", "- Review utility costs, account setup, paperless/autopay, payment proof, due dates, owner approvals, and blocked items.") },
-      { id: "utility-proof", title: "Codex Command - Utility Proof Checklist", actionName: "Generate Codex Command: Utility Proof Checklist", controls: "Proof list for bills, receipts, payment status, and account setup.", tone: "yellow", prompt: commandPrompt("Prepare a Utility Proof Checklist.", "- Identify bill, receipt, account setup, and payment confirmation proof needed before closure.") },
-      { id: "utility-account", title: "Codex Command - Utility Account Setup Prep", actionName: "Generate Codex Command: Utility Account Setup Prep", controls: "Account setup and paperless/autopay preparation checklist.", tone: "yellow", prompt: commandPrompt("Prepare Utility Account Setup Prep.", "- Prepare a checklist for account setup, paperless/autopay review, proof capture, and follow-up tracking.") },
-      { id: "utility-drive", title: "Codex Command - Utility Drive Update Prep", actionName: "Generate Codex Command: Utility Drive Update Prep", controls: "Preview-only utility proof folder update package.", tone: "green", prompt: commandPrompt("Prepare a Google Drive utility update package.", "- Do not upload, move, rename, delete, or update files. Preview folder/package needs only.") },
-      { id: "utility-calendar", title: "Codex Command - Utility Calendar / Task Prep", actionName: "Generate Codex Command: Utility Calendar / Task Prep", controls: "Preview utility due-date follow-ups and future task candidates.", tone: "green", prompt: commandPrompt("Prepare Utility Calendar and Task previews.", "- Preview due-date follow-ups and future Google Task candidates. Do not create events or tasks.") }
-    ],
     safetyFooter: "No provider, bank, Drive, Gmail, Calendar, Task, Sheet, or live utility account action occurs from this dashboard."
   },
   "lease-violations": {
@@ -247,13 +214,8 @@ export const commandPages: Record<string, CommandPageConfig> = {
       "Do not escalate any lease issue without proof and owner approval.",
       "Do not create, serve, file, or upload notices from this page."
     ],
-    approvalGate: commonStopRules,
+    approvalGate: ["Owner approval required before live actions.", "Live writes disabled from dashboard.", "Owner review only.", "Local Sample Mode is not a live source of truth."],
     filters: ["Property", "Unit", "Tenant", "Issue Type", "Proof Needed", "Communication Needed", "Blocked", "Status", "Search issue text"],
-    commands: [
-      { id: "lease-review", title: "Codex Command - Lease Violation Review", actionName: "Generate Codex Command: Lease Violation Review", controls: "Lease issue status, proof, communication review, and blocked items.", tone: "yellow", prompt: commandPrompt("Run a Lease Violations review.", "- Review lease issues, proof gaps, owner approvals, communication needs, and blocked legal-sensitive actions.") },
-      { id: "lease-proof", title: "Codex Command - Lease Proof Checklist", actionName: "Generate Codex Command: Lease Proof Checklist", controls: "Proof checklist grouped by issue.", tone: "red", prompt: commandPrompt("Prepare a Lease Violation Proof Checklist.", "- Identify proof needed for each issue and what remains blocked until verified.") },
-      { id: "lease-comm", title: "Codex Command - Lease Communication Review", actionName: "Generate Codex Command: Lease Communication Review", controls: "Draft-only communication review.", tone: "yellow", prompt: commandPrompt("Prepare lease communication drafts for owner review.", "- Draft only. Do not contact tenants, vendors, agencies, or legal systems.") }
-    ],
     safetyFooter: "No tenant, legal, notice, Gmail, Drive, Calendar, Task, or Sheet action occurs from this dashboard."
   },
   "draft-status": {
@@ -299,13 +261,8 @@ export const commandPages: Record<string, CommandPageConfig> = {
       { title: "Proof Needed Before Use", detail: "Drafts blocked by missing verification.", items: ["Ledger confirmation", "Service/proof status", "Maintenance completion proof", "Payment/HAP status"], tone: "red" }
     ],
     blocked: ["Do not send, serve, file, upload, or finalize drafts.", "Do not treat a draft as legal approval.", "Do not create Gmail drafts from this dashboard."],
-    approvalGate: commonStopRules,
+    approvalGate: ["Owner approval required before live actions.", "Live writes disabled from dashboard.", "Owner review only.", "Local Sample Mode is not a live source of truth."],
     filters: ["Draft Type", "Related Module", "Property", "Status", "Owner Approval", "Proof Needed", "Legal Sensitive", "Blocked", "Search draft text"],
-    commands: [
-      { id: "draft-review", title: "Codex Command - Draft Status Review", actionName: "Generate Codex Command: Draft Status Review", controls: "Draft queue, proof gaps, legal sensitivity, and owner approvals.", tone: "yellow", prompt: commandPrompt("Run a Draft Status review.", "- Review drafts, approval gates, proof-needed-before-use, legal-sensitive items, and blocked drafts.") },
-      { id: "draft-proof", title: "Codex Command - Draft Proof Review", actionName: "Generate Codex Command: Draft Proof Review", controls: "Proof requirements before drafts can be used.", tone: "red", prompt: commandPrompt("Prepare draft proof requirements.", "- Identify proof needed before any draft can be used, sent, served, uploaded, or filed.") },
-      { id: "draft-package", title: "Codex Command - Draft Package Preview", actionName: "Generate Codex Command: Draft Package Preview", controls: "Preview package for owner review.", tone: "green", prompt: commandPrompt("Prepare a draft package preview.", "- Prepare a preview list only. Do not create, send, serve, file, upload, or finalize documents.") }
-    ],
     safetyFooter: "No legal notice, Gmail draft, Drive file, tenant message, vendor message, or report export is created from this dashboard."
   },
   "drive-update-center": {
@@ -360,13 +317,8 @@ export const commandPages: Record<string, CommandPageConfig> = {
       { title: "Drive Action Safety Rules", detail: "Drive writes require explicit owner approval.", items: ["No upload", "No move", "No rename", "No delete", "No update"], tone: "red" }
     ],
     blocked: ["No Drive upload, move, rename, delete, or update happens from this dashboard.", "Do not archive proof packages until proof is verified.", "Do not treat preview folder targets as live Drive changes."],
-    approvalGate: commonStopRules,
+    approvalGate: ["Owner approval required before live actions.", "Live writes disabled from dashboard.", "Owner review only.", "Local Sample Mode is not a live source of truth."],
     filters: ["Package", "Related Module", "Property", "Proof Needed", "Status", "Blocked", "Owner Approval", "Search package text"],
-    commands: [
-      { id: "drive-review", title: "Codex Command - Drive Update Center Review", actionName: "Generate Codex Command: Drive Update Center Review", controls: "Drive package preview, proof gaps, owner approvals, and blocked packages.", tone: "yellow", prompt: commandPrompt("Run a Drive Update Center review.", "- Review Drive package needs, proof gaps, folder targets, blocked items, and owner approvals. Do not write files.") },
-      { id: "drive-package", title: "Codex Command - Drive Package Prep", actionName: "Generate Codex Command: Drive Package Prep", controls: "Preview package contents only.", tone: "green", prompt: commandPrompt("Prepare Google Drive update package previews.", "- Report what would be updated and stop before any Drive write.") },
-      { id: "drive-proof", title: "Codex Command - Drive Proof Gap Review", actionName: "Generate Codex Command: Drive Proof Gap Review", controls: "Proof missing queue grouped by module.", tone: "red", prompt: commandPrompt("Prepare a Drive proof gap review.", "- Identify missing proof files and blocked packages. Do not upload or move files.") }
-    ],
     safetyFooter: "No Google Drive files were uploaded, moved, renamed, deleted, updated, read, or created by this dashboard.",
     relatedLinks: [
       {
@@ -430,14 +382,9 @@ commandPages["gmail-follow-ups"] = {
     { title: "Body-Read Approval Queue", detail: "Gmail body read requires owner approval.", items: ["Rent ledger emails", "Mortgage proof emails", "Maintenance proof emails", "Notice/legal proof emails"], tone: "red" }
   ],
   blocked: ["Do not read Gmail bodies without owner approval.", "Do not create Gmail drafts or send messages from this dashboard.", "Do not contact tenants, vendors, lenders, agencies, or property managers."],
-  approvalGate: commonStopRules,
+  approvalGate: ["Owner approval required before live actions.", "Live writes disabled from dashboard.", "Owner review only.", "Local Sample Mode is not a live source of truth."],
   filters: ["Related Module", "Recipient Type", "Property", "Draft Needed", "Body Read Needed", "Send Approval", "Blocked", "Status", "Search topic"],
-  commands: [
-    { id: "gmail-review", title: "Codex Command - Gmail Follow-Up Review", actionName: "Generate Codex Command: Gmail Follow-Up Review", controls: "Email follow-ups, draft needs, body-read approvals, send approvals, and blocked items.", tone: "yellow", prompt: commandPrompt("Run a Gmail Follow-Up Center review.", "- Metadata/search first. Identify follow-up topics, draft needs, body-read approvals, send approvals, and blocked items.") },
-    { id: "gmail-drafts", title: "Codex Command - Gmail Draft Prep", actionName: "Generate Codex Command: Gmail Draft Prep", controls: "Draft-needed queue for owner review.", tone: "yellow", prompt: commandPrompt("Prepare Gmail draft previews.", "- Draft language only in the report. Do not create Gmail drafts or send messages.") },
-    { id: "gmail-proof", title: "Codex Command - Gmail Proof Tracking", actionName: "Generate Codex Command: Gmail Proof Tracking", controls: "Proof emails that may need approval before read/save.", tone: "red", prompt: commandPrompt("Prepare Gmail proof tracking review.", "- Identify proof email topics that need owner approval before body read or Drive save.") }
-  ],
-  safetyFooter: "No Gmail bodies were read; no drafts, sends, labels, archives, deletes, or forwards were performed by this dashboard."
+    safetyFooter: "No Gmail bodies were read; no drafts, sends, labels, archives, deletes, or forwards were performed by this dashboard."
 };
 
 commandPages.reports = {
@@ -483,14 +430,9 @@ commandPages.reports = {
     { title: "Next 7 Days", detail: "Local suspense items only.", items: ["Greg payment check", "Weekly admin review", "Utility follow-up", "Mortgage posting check"], tone: "yellow" }
   ],
   blocked: ["Do not export reports to Drive from this dashboard.", "Do not mark local report preview as verified source data.", "Do not execute approvals from the report page."],
-  approvalGate: commonStopRules,
+  approvalGate: ["Owner approval required before live actions.", "Live writes disabled from dashboard.", "Owner review only.", "Local Sample Mode is not a live source of truth."],
   filters: ["Review Section", "Status", "Proof Needed", "Approval Required", "Risk Area", "Search report text"],
-  commands: [
-    { id: "weekly-command", title: "Codex Command - Weekly Command Review", actionName: "Generate Codex Command: Weekly Command Review", controls: "Weekly owner review across every module.", tone: "green", prompt: commandPrompt("Prepare the Weekly Property Command Review.", "- Cover rent, maintenance, notices/legal holds, mortgage, utilities, calendar, Gmail, Drive, proof gaps, approvals, blocked items, and dashboard corrections.") },
-    { id: "report-preview", title: "Codex Command - Report Preview", actionName: "Generate Codex Command: Report Preview", controls: "Preview report sections only.", tone: "yellow", prompt: commandPrompt("Prepare a report preview for owner review.", "- Produce report content only. Do not export, upload, email, or save files.") },
-    { id: "report-blocked", title: "Codex Command - Blocked Items Report", actionName: "Generate Codex Command: Blocked Items Report", controls: "Blocked-until-verified and approval decisions.", tone: "red", prompt: commandPrompt("Prepare a blocked items report.", "- List blocked items, missing proof, owner approvals, and what cannot be closed.") }
-  ],
-  safetyFooter: "Reports are preview-only. No Drive export, Gmail send, Calendar event, Google Task, Sheet update, or live record change occurs."
+    safetyFooter: "Reports are preview-only. No Drive export, Gmail send, Calendar event, Google Task, Sheet update, or live record change occurs."
 };
 
 commandPages["data-accuracy"] = {
@@ -538,14 +480,9 @@ commandPages["data-accuracy"] = {
     { title: "Live Migration Readiness", detail: "Not ready until proof gates clear.", items: ["OAuth intentionally disabled", "Google Sheets disabled", "No env vars required", "Local sample only"], tone: "red" }
   ],
   blocked: ["Do not treat Local Sample Mode as source of truth.", "Do not migrate values live until proof is verified.", "Do not mark estimated, pending, or conflicted values complete."],
-  approvalGate: commonStopRules,
+  approvalGate: ["Owner approval required before live actions.", "Live writes disabled from dashboard.", "Owner review only.", "Local Sample Mode is not a live source of truth."],
   filters: ["Related Module", "Proof Status", "Confidence", "Risk", "Pending Verification", "Ledger Conflict", "Ready for Live Migration", "Search data item"],
-  commands: [
-    { id: "data-review", title: "Codex Command - Data Accuracy Review", actionName: "Generate Codex Command: Data Accuracy Review", controls: "Source verification, confidence, proof gaps, and migration readiness.", tone: "red", prompt: commandPrompt("Prepare a dashboard data accuracy review.", "- Identify estimated values, pending proof, ledger conflicts, blocked values, and source-of-truth requirements.") },
-    { id: "data-proof", title: "Codex Command - Source Proof Checklist", actionName: "Generate Codex Command: Source Proof Checklist", controls: "Proof needed by module before live migration.", tone: "yellow", prompt: commandPrompt("Prepare a source proof checklist.", "- Group source proof requirements by rent, maintenance, mortgage, notices, utilities, Drive, and admin data.") },
-    { id: "data-migration", title: "Codex Command - Live Migration Readiness Preview", actionName: "Generate Codex Command: Live Migration Readiness Preview", controls: "Preview what blocks future live-data migration.", tone: "red", prompt: commandPrompt("Prepare a live migration readiness preview.", "- Identify what remains blocked before OAuth, Google Sheets, or live integrations are re-enabled.") }
-  ],
-  safetyFooter: "Local Sample Mode is not a live source of truth. No Sheets, Drive, Gmail, Calendar, Task, RentRedi, lender, payment, tenant, legal, or vendor record is changed."
+    safetyFooter: "Local Sample Mode is not a live source of truth. No Sheets, Drive, Gmail, Calendar, Task, RentRedi, lender, payment, tenant, legal, or vendor record is changed."
 };
 
 commandPages["data-accuracy"].relatedLinks = [
@@ -726,100 +663,6 @@ commandPages["live-readiness"] = {
     "Ready for Live Migration",
     "Owner Approval Required",
     "Search readiness notes"
-  ],
-  commands: [
-    {
-      id: "live-readiness-review",
-      title: "Codex Command - Live Readiness Review",
-      actionName: "Generate Codex Command: Live Readiness Review",
-      controls: "Data readiness, proof gaps, source-of-truth status, approval gates, and integration readiness.",
-      tone: "yellow",
-      prompt: `Run a Live Readiness Review for the Property Command Center.
-
-Rules:
-- Read-only/local review only.
-- Do not connect live services.
-- Do not update Google Drive, Gmail, Calendar, Tasks, Sheets, RentRedi, tenant, legal, lender, vendor, bank, court, or payment records.
-- Review data readiness, proof gaps, source-of-truth status, owner approval gates, and live integration readiness.
-- Recommend what is ready, what is blocked, and what needs proof first.
-- Stop before live actions.`
-    },
-    {
-      id: "source-data-cleanup",
-      title: "Codex Command - Source Data Cleanup Plan",
-      actionName: "Generate Codex Command: Source Data Cleanup Plan",
-      controls: "Source-of-truth plan and correction checklist.",
-      tone: "yellow",
-      prompt: `Prepare a Source Data Cleanup Plan.
-
-Rules:
-- Do not update live systems.
-- Identify the source of truth for rent, maintenance, mortgage, notices, utilities, lease violations, admin tasks, Drive proof, Gmail follow-ups, Calendar follow-ups, and reports.
-- Mark each area as verified, estimated, pending proof, conflict, blocked, or ready later.
-- Produce a correction checklist only.
-- Stop before live actions.`
-    },
-    {
-      id: "proof-folder-plan",
-      title: "Codex Command - Proof Folder Plan",
-      actionName: "Generate Codex Command: Proof Folder Plan",
-      controls: "Preview-only Drive proof folder structure.",
-      tone: "green",
-      prompt: `Prepare a Google Drive proof folder plan.
-
-Rules:
-- Do not create, move, rename, upload, delete, or update Drive files or folders.
-- Prepare a preview-only folder structure for the Property Management Operating System.
-- Include proof folders for rent, maintenance, mortgage, notices/legal, utilities, lease violations, tenant communications, vendor communications, weekly reviews, source exports, and owner approvals.
-- Stop before Drive actions.`
-    },
-    {
-      id: "drive-read-only-prep",
-      title: "Codex Command - Google Drive Read-Only Prep",
-      actionName: "Generate Codex Command: Google Drive Read-Only Prep",
-      controls: "Read-only/listing dry-run plan and scope checks.",
-      tone: "green",
-      prompt: `Prepare Google Drive read-only integration planning.
-
-Rules:
-- Do not request write scopes.
-- Do not upload, move, rename, delete, or edit Drive files.
-- Do not commit credentials or tokens.
-- Confirm token storage outside the repo.
-- Prepare a read-only/listing dry-run plan for the Property Management Operating System folder.
-- Include safety checks, scope checks, and rollback steps.
-- Stop before OAuth or live connection.`
-    },
-    {
-      id: "weekly-command-dry-run",
-      title: "Codex Command - Weekly Command Review Dry Run",
-      actionName: "Generate Codex Command: Weekly Command Review Dry Run",
-      controls: "Preview weekly review workflow from Reports.",
-      tone: "green",
-      prompt: `Run a Weekly Command Review dry run for the Property Command Center.
-
-Rules:
-- Read-only/local review only.
-- Do not update Google Drive, Gmail, Calendar, Tasks, Sheets, RentRedi, tenant, legal, lender, vendor, bank, court, or payment records.
-- Review rent, maintenance, mortgage, notices, utilities, lease violations, admin tasks, calendar follow-ups, Gmail follow-ups, Drive update needs, proof gaps, owner approvals, and blocked items.
-- Produce a preview report only.
-- Stop before live actions.`
-    },
-    {
-      id: "live-risk-review",
-      title: "Codex Command - Live Integration Risk Review",
-      actionName: "Generate Codex Command: Live Integration Risk Review",
-      controls: "Risk review and safest integration order.",
-      tone: "red",
-      prompt: `Prepare a live integration risk review.
-
-Rules:
-- Do not connect live services.
-- Do not perform live writes.
-- Review risks for Google Drive, Gmail, Calendar, Tasks, Sheets, RentRedi, tenant communications, legal notices, mortgage/lender workflows, vendor workflows, and payments.
-- Recommend the safest integration order and approval gates.
-- Stop before live actions.`
-    }
   ],
   relatedLinks: [
     {
@@ -1015,98 +858,7 @@ commandPages["real-data-cleanup"] = {
     "Conflict",
     "Search worksheet"
   ],
-  commands: [
-    {
-      id: "cleanup-review",
-      title: "Codex Command - Real Data Cleanup Review",
-      actionName: "Generate Codex Command: Real Data Cleanup Review",
-      controls: "Sample values, source needs, proof gaps, conflicts, estimated values, and import readiness.",
-      tone: "yellow",
-      prompt: `Run a Real Data Cleanup Review for the Property Command Center.
-
-Rules:
-- Read-only/local review only.
-- Do not connect live services.
-- Do not update Google Sheets, Drive, Gmail, Calendar, Tasks, RentRedi, tenant, legal, lender, vendor, bank, court, payment, or dashboard source records without owner approval.
-- Review current sample values, source-of-truth needs, proof gaps, conflicts, estimated values, blocked values, and ready-for-import items.
-- Produce a cleanup report only.
-- Stop before live actions.`
-    },
-    {
-      id: "source-export-mapping",
-      title: "Codex Command - Source Export Mapping Prep",
-      actionName: "Generate Codex Command: Source Export Mapping Prep",
-      controls: "Map future source exports to dashboard modules and fields.",
-      tone: "yellow",
-      prompt: `Prepare a source export mapping plan.
-
-Rules:
-- Do not import data.
-- Do not connect Google Sheets or RentRedi.
-- Map expected source exports to dashboard modules and fields.
-- Identify required fields, proof references, owner verification fields, and blocked values.
-- Stop before live actions.`
-    },
-    {
-      id: "proof-gap-checklist",
-      title: "Codex Command - Proof Gap Checklist",
-      actionName: "Generate Codex Command: Proof Gap Checklist",
-      controls: "Missing proof by module and risk level.",
-      tone: "red",
-      prompt: `Prepare a proof gap checklist.
-
-Rules:
-- Do not upload, move, rename, delete, or update Drive files.
-- Do not mark items complete.
-- List missing proof by module and risk level.
-- Include owner action required for each proof gap.
-- Stop before live actions.`
-    },
-    {
-      id: "conflict-resolution",
-      title: "Codex Command - Conflict Resolution Plan",
-      actionName: "Generate Codex Command: Conflict Resolution Plan",
-      controls: "Conflicting values, source needs, owner decisions, and blocked statuses.",
-      tone: "red",
-      prompt: `Prepare a conflict resolution plan.
-
-Rules:
-- Do not update dashboard source data.
-- Do not change tenant, legal, payment, mortgage, RentRedi, Gmail, Drive, Calendar, Task, or Sheets records.
-- Identify conflicting values, likely source needed, owner decision needed, and blocked status.
-- Stop before live actions.`
-    },
-    {
-      id: "import-template-prep",
-      title: "Codex Command - Import Template Prep",
-      actionName: "Generate Codex Command: Import Template Prep",
-      controls: "Preview field map for future verified-data import.",
-      tone: "green",
-      prompt: `Prepare a verified-data import template.
-
-Rules:
-- Do not import data.
-- Do not connect live systems.
-- Create a preview field map for module, record ID, property, unit, tenant/party, amount, status, source type, proof reference, owner verification, dashboard readiness, and notes.
-- Stop before live actions.`
-    },
-    {
-      id: "sample-to-verified",
-      title: "Codex Command - Sample-to-Verified Migration Plan",
-      actionName: "Generate Codex Command: Sample-to-Verified Migration Plan",
-      controls: "Future migration plan with validation, commit, rollback, and owner approval steps.",
-      tone: "yellow",
-      prompt: `Prepare a sample-to-verified dashboard migration plan.
-
-Rules:
-- Do not modify dashboard data yet.
-- Do not connect live services.
-- Identify which sample values can be replaced later, which must remain estimated, which are blocked, and what proof is required.
-- Include validation, commit, rollback, and owner approval steps.
-- Stop before live actions.`
-    }
-  ],
-  safetyFooter:
+    safetyFooter:
     "Real Data Cleanup is worksheet-only. No live import, Google Sheets connection, Drive upload, Gmail read, Calendar event, Google Task, RentRedi connection, tenant/vendor/lender/legal/payment action, or dashboard source update is performed."
 };
 
@@ -1307,111 +1059,6 @@ commandPages["operations-readiness"] = {
     "Each live action requires separate owner approval."
   ],
   filters: ["Phase", "Task", "Status", "Risk", "Owner Action", "Blocked Until", "Ready for Next Step", "Search readiness plan"],
-  commands: [
-    {
-      id: "ops-review",
-      title: "Codex Command - Operations Readiness Review",
-      actionName: "Generate Codex Command: Operations Readiness Review",
-      controls: "Five-phase readiness report across live site review, data cleanup, source package, proof folders, and roadmap.",
-      tone: "yellow",
-      prompt: `Run an Operations Readiness Review for the Property Command Center.
-
-Rules:
-- Read-only/local review only.
-- Do not connect live services.
-- Do not update Google Drive, Gmail, Calendar, Tasks, Sheets, RentRedi, tenant, legal, lender, vendor, bank, court, payment, or dashboard source records.
-- Review live-site verification, real data cleanup, source-of-truth status, proof folder readiness, and live integration roadmap.
-- Produce a readiness report only.
-- Stop before live actions.`
-    },
-    {
-      id: "live-site-checklist",
-      title: "Codex Command - Live Site Verification Checklist",
-      actionName: "Generate Codex Command: Live Site Verification Checklist",
-      controls: "Manual live-site route, navigation, copy button, label, and approval-gate QA.",
-      tone: "yellow",
-      prompt: `Prepare a live-site verification checklist.
-
-Rules:
-- Do not change files unless owner separately approves a fix.
-- Review all dashboard routes, navigation, command buttons, Local Sample Mode labels, owner approval gates, and blocked-until-verified language.
-- Report issues and recommended fixes.
-- Stop before live actions.`
-    },
-    {
-      id: "real-data-dry-run",
-      title: "Codex Command - Real Data Cleanup Dry Run",
-      actionName: "Generate Codex Command: Real Data Cleanup Dry Run",
-      controls: "Verified values, estimated values, conflicts, proof gaps, and blocked items.",
-      tone: "red",
-      prompt: `Run a Real Data Cleanup dry run.
-
-Rules:
-- Do not import data.
-- Do not connect live services.
-- Review rent, maintenance, mortgage, notices, utilities, lease violations, Drive proof, Gmail follow-ups, Calendar follow-ups, and reports.
-- Identify verified values, estimated values, conflicts, proof gaps, and blocked items.
-- Stop before live actions.`
-    },
-    {
-      id: "source-package",
-      title: "Codex Command - Source-of-Truth Package Prep",
-      actionName: "Generate Codex Command: Source-of-Truth Package Prep",
-      controls: "Preferred source assignments, required exports, proof docs, approvals, and blocked items.",
-      tone: "yellow",
-      prompt: `Prepare a Source-of-Truth Package.
-
-Rules:
-- Do not update live systems.
-- Assign the preferred source for each dashboard module.
-- Identify required exports, proof documents, owner approvals, and blocked items.
-- Stop before live actions.`
-    },
-    {
-      id: "drive-folder-preview",
-      title: "Codex Command - Drive Folder Structure Preview",
-      actionName: "Generate Codex Command: Drive Folder Structure Preview",
-      controls: "Preview-only Drive folder purposes, proof types, and approval requirements.",
-      tone: "green",
-      prompt: `Prepare a Google Drive folder structure preview.
-
-Rules:
-- Do not create, upload, move, rename, delete, or update Drive folders or files.
-- Use preview-only planning for the Property Management Operating System folder.
-- Include folder purposes, proof types, and owner approval requirements.
-- Stop before Drive actions.`
-    },
-    {
-      id: "drive-readonly-preflight",
-      title: "Codex Command - Google Drive Read-Only Preflight",
-      actionName: "Generate Codex Command: Google Drive Read-Only Preflight",
-      controls: "Read-only scope, token storage, dry-run plan, rollback, and approval gates.",
-      tone: "green",
-      prompt: `Prepare a Google Drive read-only preflight.
-
-Rules:
-- Do not connect OAuth yet.
-- Do not request write scopes.
-- Do not create, upload, move, rename, delete, or edit Drive files.
-- Confirm token storage outside repo, scope safety, no secrets committed, dry-run plan, rollback plan, and owner approval gates.
-- Stop before OAuth or live connection.`
-    },
-    {
-      id: "roadmap-review",
-      title: "Codex Command - Live Integration Roadmap Review",
-      actionName: "Generate Codex Command: Live Integration Roadmap Review",
-      controls: "Safest integration order, risk, approval gates, rollback needs, and blocked items.",
-      tone: "yellow",
-      prompt: `Prepare a live integration roadmap review.
-
-Rules:
-- Do not connect live services.
-- Do not perform live writes.
-- Review the safest order for Google Drive, Google Sheets, Calendar, Tasks, Gmail, and RentRedi.
-- Identify risks, approval gates, rollback needs, and blocked items.
-- Stop before live actions.`
-    }
-  ],
   relatedLinks: [
     { title: "Final Integration Package", detail: "Open Batch 39 for Drive correction preview, verified data entry forms, source import mapping, SOPs, and the launch checklist.", href: "/final-integration", action: "Open Final Integration", tone: "yellow" },
     { title: "Supporting Worksheet: Real Data Cleanup", detail: "Open the worksheet that tracks sample values, proof gaps, conflicts, and import readiness.", href: "/real-data-cleanup", action: "Open Real Data Cleanup", tone: "yellow" },

@@ -340,7 +340,7 @@ function CalendarBlockedAndPreview() {
               <span>Event Title</span>
               <strong>{row.item}</strong>
               <p>{row.date} at {row.time} - {row.detail}</p>
-              <small>Trigger prompt: Prepare {row.category} follow-up preview for owner approval.</small>
+              <small>Review note: Prepare {row.category} follow-up preview for owner approval.</small>
             </div>
           ))}
         </div>
