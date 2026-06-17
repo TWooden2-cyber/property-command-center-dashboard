@@ -7,8 +7,8 @@ export default async function AdminTasksPage() {
 
   return (
     <LuxuryShell
-      title="Admin Tasks Command"
-      subtitle="Owner approvals, proof collection, Drive update needs, weekly reviews, blocked items, and task-sync preparation"
+      title="Admin Tasks"
+      subtitle="Owner prompts, proof review, approvals, and task preparation"
     >
       <AdminTasksView />
     </LuxuryShell>

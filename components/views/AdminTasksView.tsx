@@ -31,9 +31,9 @@ type AdminFilter = {
 
 type AdminCommandTemplate = {
   id: string;
+  section: "Daily Command" | "Document / Drive Work" | "Legal / Eviction Work" | "Money / Utilities / Maintenance" | "Dashboard Updates";
   title: string;
-  actionName: string;
-  controls: string;
+  purpose: string;
   tone: SignalTone;
   prompt: string;
 };
@@ -177,429 +177,96 @@ const adminIntakeRoutingRules = [
   }
 ];
 
-const requiredFolderOrder = `Required review order for every item:
-1. Check the Intake folder for the specific property, unit, tenant/vendor/contact, and issue.
-2. Check Owner Approval folders for approval forms, owner comments, draft packets, source files, and proof.
-3. Check trackers, registers, dashboards, proof indexes, and approval queues.
-4. Use Gmail metadata or Drive search only where needed and only within approved access.
-5. Report blockers only after the Intake folder and Owner Approval folders have been checked.
+const adminPromptWarning = "Owner approval is required before live actions. Do not delete files, send messages, contact anyone, update Google Sheets, update trackers, modify Gmail/Calendar/Tasks, file legal documents, sign leases, or make payments unless separately approved.";
 
-Do not mark proof as missing, blocked, or owner-needed until the Intake folder and Owner Approval folders have been checked for that specific property, unit, tenant/vendor/contact, and issue.`;
-
-const proofReviewFields = `For every proof document or possible proof item, identify:
-1. File name
-2. Folder location
-3. Property
-4. Unit
-5. Tenant/vendor/contact
-6. What the document proves
-7. Whether it is final proof, supporting proof, draft-only, or conflicting proof
-8. Whether owner final approval is still required`;
-
-const noLiveActionRules = `Hard stops:
-- Do not send emails, texts, Google Voice replies, tenant messages, vendor messages, lender messages, or agency messages unless owner specifically approved sending/contact.
-- Do not file, serve, submit, finalize, or post legal paperwork unless owner specifically says "Approved to file eviction at court" or gives the exact final legal action approval.
-- Do not make payments.
-- Do not create Calendar events or Google Tasks unless separately approved.
-- Do not move, rename, archive, or delete files unless owner approved the exact file action.
-- Do not mark legal, financial, rent, maintenance, utility, communication, vendor, lender, or agency matters complete without verified proof and owner approval where required.`;
+const promptSectionOrder: AdminCommandTemplate["section"][] = [
+  "Daily Command",
+  "Document / Drive Work",
+  "Legal / Eviction Work",
+  "Money / Utilities / Maintenance",
+  "Dashboard Updates"
+];
 
 const commandTemplates: AdminCommandTemplate[] = [
   {
-    id: "daily-sync",
-    title: "Codex Command - Daily Sync Command",
-    actionName: "Generate Codex Command: Daily Sync",
-    controls: "Daily command report with Intake first, Owner Approval second, trackers third, and blockers last.",
+    id: "daily-system-review",
+    section: "Daily Command",
+    title: "Daily System Review",
+    purpose: "Start-of-day operating review across the whole property system.",
     tone: "yellow",
-    prompt: `Run the Property Command Center Daily Sync.
-
-${requiredFolderOrder}
-
-Daily sync scope:
-- Review operation health, rent collection, utilities, maintenance, notices/legal holds, mortgage/arrears, Gmail tracking needs, Drive update needs, Calendar update needs, Google Tasks completion needs, owner approvals required, and blocked-until-verified items.
-- Match every item to property, unit, tenant/vendor/contact, issue, proof, owner approval status, and next action.
-- Do not call anything missing until the matching Intake and Owner Approval folders have been reviewed.
-- End with a clear owner approval list and blockers that remain after folder review.
-
-${proofReviewFields}
-
-${noLiveActionRules}`
+    prompt: "Run today’s Property Management Operating System review. Check dashboard health, open trackers, owner decisions, missing proof, Intake folder status, utilities, maintenance, rent collection, notices/evictions, and calendar follow-ups. Do not perform live actions. Return a summary and recommended next actions."
   },
   {
-    id: "intake-approval-proof-review",
-    title: "Codex Command - Intake + Approval Folder Proof Review",
-    actionName: "Generate Codex Command: Intake + Approval Proof Review",
-    controls: "Proof review command that checks Intake first and Owner Approval second before marking proof missing.",
-    tone: "red",
-    prompt: `Run the Intake + Owner Approval Folder Proof Review.
-
-${requiredFolderOrder}
-
-Proof review instructions:
-- Review uploaded documents, screenshots, PDFs, HEIC images, emails, attachments, notices, invoices, utility bills, payment proof, court forms, tenant documents, and communication records in Intake.
-- Review approval forms, owner comments, completed quick approval forms, draft packets, supporting attachments, eviction templates, proof documents, and final owner instructions in Owner Approval folders.
-- Match each document to the correct property, unit, tenant/vendor/contact, and issue.
-- Only after those folder checks may proof be marked missing, blocked, or owner-needed.
-
-${proofReviewFields}
-
-Report:
-- Found proof documents
-- Missing proof after folder review
-- Conflicts or duplicates
-- Recommended owner decision
-- Whether Codex can proceed or must remain blocked
-
-${noLiveActionRules}`
-  },
-  {
-    id: "owner-approval-action-list",
-    title: "Codex Command - Owner Approval Action List",
-    actionName: "Generate Codex Command: Owner Approval Action List",
-    controls: "Owner approval queue grouped by exact approved action, missing proof, and final owner decision needed.",
+    id: "intake-review",
+    section: "Document / Drive Work",
+    title: "Review Intake Folder",
+    purpose: "Classify new uploads and identify routing/proof needs.",
     tone: "yellow",
-    prompt: `Prepare the Owner Approval Action List.
-
-${requiredFolderOrder}
-
-Owner Approval action list instructions:
-- For each approval item, read the Owner Approval folder record before tracker rows.
-- Preserve owner comments exactly.
-- Identify approval status, approved action, not approved action, required proof, deadline/follow-up date, and special conditions.
-- Separate draft-only approvals from final live action approvals.
-- Do not infer approval from folder placement or from a draft document.
-
-${proofReviewFields}
-
-Output:
-- Items approved for draft-only work
-- Items approved for tracker/status update only
-- Items pending owner decision
-- Items blocked after Intake and Owner Approval review
-- Items needing separate final live-action approval
-
-${noLiveActionRules}`
+    prompt: "Review the Property Management Intake folder. Classify each file, identify the correct destination folder, flag legal/tenant-sensitive files, and report missing proof. Do not move, delete, rename, or update anything unless separately approved."
   },
   {
-    id: "legal-eviction-review",
-    title: "Codex Command - Legal / Eviction Review Command",
-    actionName: "Generate Codex Command: Legal / Eviction Review",
-    controls: "Legal and eviction review with Intake first, Owner Approval second, and final filing blocked unless explicit.",
+    id: "drive-organization",
+    section: "Document / Drive Work",
+    title: "Organize Drive Documents",
+    purpose: "Prepare approved file organization work with uncertainty held for owner review.",
+    tone: "green",
+    prompt: "Organize approved documents into the correct Google Drive folders. Create missing folders only if needed. Do not delete files. Leave uncertain legal, tenant, lease, payment, or eviction files in place for owner review. Return a report of files moved, files left in place, and owner decisions needed."
+  },
+  {
+    id: "evictions-notices-review",
+    section: "Legal / Eviction Work",
+    title: "Review Evictions & Notices",
+    purpose: "Review notice and eviction materials without taking legal action.",
     tone: "red",
-    prompt: `Run the Legal / Eviction Review.
-
-${requiredFolderOrder}
-
-Legal/eviction requirements:
-- Review Intake folder first.
-- Review Owner Approval folder second.
-- Confirm complaint template, VTC request, draft email, notice copy, service/posting proof, ledger, balance proof, and Section 8/RFTA/HAP proof before saying anything is missing.
-- Treat legal packets as draft-only unless final filing approval is explicit.
-- Do not file, serve, submit, finalize, post, contact court, contact tenant, contact maintenance, or contact anyone unless owner approval specifically says "Approved to file eviction at court" or "Approved to send/contact".
-
-${proofReviewFields}
-
-Legal status options:
-- Legal Review Needed
-- Draft Created
-- Pending Owner Approval
-- Pending Proof
-- Blocked
-- Completed With Proof only if final proof and owner approval exist
-
-${noLiveActionRules}`
+    prompt: "Review all eviction documents, 10-day notices, notices to quit, proof of service, court filing documents, and tenant notice communications. Confirm property/unit, correct folder, missing proof, and filing packet readiness. Do not edit, send, file, or contact anyone."
   },
   {
-    id: "unit-4-kevin-royster-filing-readiness",
-    title: "Codex Command - Unit 4 Kevin Royster Eviction Filing Readiness",
-    actionName: "Generate Codex Command: Unit 4 Filing Readiness",
-    controls: "Unit 4 Kevin Royster filing-readiness review, courthouse helper instructions, and explicit final filing gate.",
+    id: "filing-packet-review",
+    section: "Legal / Eviction Work",
+    title: "Review Court Filing Packet",
+    purpose: "Check court packet readiness for a selected tenant/unit.",
     tone: "red",
-    prompt: `Review Unit 4 Kevin Royster eviction filing readiness.
-
-Property: 228 Reifert St, Pittsburgh, PA 15210
-Unit: Unit 4
-Tenant: Kevin Royster
-Court: Magisterial District Court 05-3-14
-Judge: Richard G. King
-Court address: 2213 Brownsville Road, Pittsburgh, PA 15210
-Filing fee: $197.00 total
-
-${requiredFolderOrder}
-
-Unit 4 required review:
-- Check Intake for complaint template, VTC request, draft email, notice copy, service/posting proof, HEIC images, ledger, tenant balance proof, Section 8/RFTA/HAP proof, and maintenance team filing support documents.
-- Check Owner Approval folders for the quick approval form, owner remarks, approved draft-only action, final filing approval status, draft packet, filing-helper instructions, and proof attachments.
-- Confirm whether the filing helper is only authorized to file the completed packet at the courthouse and must not alter documents, contact tenant, negotiate, serve notices, give legal advice, or act outside filing.
-- Do not file unless owner approval specifically says "Approved to file eviction at court".
-- Treat all filing packet materials as draft-only unless that exact final filing approval exists.
-
-${proofReviewFields}
-
-Report:
-- Filing-ready items
-- Draft-only items
-- Missing or conflicting proof after folder review
-- Whether final owner filing approval exists
-- Next owner action needed
-
-${noLiveActionRules}`
-  },
-  {
-    id: "rent-collection-review",
-    title: "Codex Command - Rent Collection Review Command",
-    actionName: "Generate Codex Command: Rent Collection Review",
-    controls: "Rent collection review with ledgers, screenshots, notices, agreements, payment proof, and legal status gates.",
-    tone: "yellow",
-    prompt: `Run the Rent Collection Review.
-
-${requiredFolderOrder}
-
-Rent collection requirements:
-- Check Intake and Owner Approval folders for ledgers, RentRedi screenshots, notices, payment agreements, payment confirmations, HEIC notice proof, tenant messages, and owner decisions.
-- Match proof to property, unit, tenant, issue, month, balance, due date, payment date, and notice/legal status.
-- Do not issue notices, update legal status, or mark delinquency resolved until ledger/payment proof is verified.
-- Do not mark payment received without payment proof.
-
-${proofReviewFields}
-
-Report:
-- Open rent items
-- Payment proof found
-- Ledger proof found
-- Payment agreement status
-- Notice/legal implications
-- Items still blocked after folder review
-
-${noLiveActionRules}`
+    prompt: "Prepare a filing packet readiness review for the selected tenant/unit using documents already in Drive. Check lease, ledger, payment history, notice, proof of service, Section 8/RFTA proof, tenant communications, court complaint, VTC request, and required affidavits. Do not file anything."
   },
   {
     id: "maintenance-proof-review",
-    title: "Codex Command - Maintenance Proof Review Command",
-    actionName: "Generate Codex Command: Maintenance Proof Review",
-    controls: "Maintenance proof review with photos, invoices, screenshots, texts, closeout docs, and vendor proof.",
+    section: "Money / Utilities / Maintenance",
+    title: "Review Maintenance Proof",
+    purpose: "Check maintenance closeout proof before anything is closed or sent.",
     tone: "yellow",
-    prompt: `Run the Maintenance Proof Review.
-
-${requiredFolderOrder}
-
-Maintenance requirements:
-- Check Intake for photos, invoices, screenshots, texts, estimates, completion proof, tenant messages, and vendor messages.
-- Check Owner Approval folders for closeout docs, vendor follow-up docs, owner decisions, and attached proof.
-- Match each proof item to property, unit, tenant/vendor/contact, work order or issue, completion status, invoice/quote status, and owner approval.
-- Do not mark maintenance complete unless proof is verified or owner explicitly confirms completion.
-
-${proofReviewFields}
-
-Report:
-- Maintenance items reviewed
-- Completion proof found
-- Invoice/photo proof found
-- Owner approval still required
-- Items still blocked after folder review
-
-${noLiveActionRules}`
+    prompt: "Review maintenance records for open issues. Check work orders, invoices, estimates, photos, tenant confirmation, vendor completion proof, and missing closeout proof. Do not close items or contact tenants/vendors without owner approval."
   },
   {
-    id: "mortgage-arrears-proof-review",
-    title: "Codex Command - Mortgage / Arrears Proof Review Command",
-    actionName: "Generate Codex Command: Mortgage / Arrears Proof Review",
-    controls: "Mortgage and arrears proof review with lender statements, payment postings, balances, and legal pause proof.",
+    id: "utilities-review",
+    section: "Money / Utilities / Maintenance",
+    title: "Review Utilities",
+    purpose: "Review utility documents and identify missing bills/setup proof.",
+    tone: "yellow",
+    prompt: "Review utility documents for electric, water, gas, trash, sewer, internet, and account setup. Identify filed documents, missing bills, setup proof, and recommended dashboard status. Do not update Sheets or trackers unless separately approved."
+  },
+  {
+    id: "rent-collection-review",
+    section: "Money / Utilities / Maintenance",
+    title: "Review Rent Collection",
+    purpose: "Review rent ledgers, balances, payment proof, and nonpayment risk.",
     tone: "red",
-    prompt: `Run the Mortgage / Arrears Proof Review.
-
-${requiredFolderOrder}
-
-Mortgage/arrears requirements:
-- Check Intake and Owner Approval folders for lender statements, payment confirmations, proof of posting, cure/reinstatement balance, due dates, foreclosure/legal pause proof, owner payment decisions, and tracker handling instructions.
-- Match each item to property, lender/account, payment amount, due date, proof status, owner approval, and remaining risk.
-- Do not mark current, paid, resolved, or legally paused unless posted-payment proof or lender proof exists.
-- Do not take lender/financial action without owner confirmation and reviewed secure-message/attachment proof.
-
-${proofReviewFields}
-
-Report:
-- Payment proof found
-- Lender balance proof found
-- Cure/reinstatement proof found
-- Foreclosure/legal pause proof found
-- Items still blocked after folder review
-
-${noLiveActionRules}`
+    prompt: "Review rent collection records, ledgers, payment confirmations, RentRedi screenshots, late rent items, payment arrangements, balances, and nonpayment risk. Do not create notices or contact tenants."
   },
   {
-    id: "utility-bill-review",
-    title: "Codex Command - Utility Bill Review Command",
-    actionName: "Generate Codex Command: Utility Bill Review",
-    controls: "Utility bill review with current bills, prior bills, payment proof, due dates, account numbers, and owner decisions.",
+    id: "owner-approvals-review",
+    section: "Dashboard Updates",
+    title: "Review Owner Approvals",
+    purpose: "Sort approval items by status and readiness without approving automatically.",
     tone: "yellow",
-    prompt: `Run the Utility Bill Review.
-
-${requiredFolderOrder}
-
-Utility requirements:
-- Check Intake and Owner Approval folders for current bills, prior bills, payment proof, due dates, account numbers, owner payment decisions, tracker decisions, screenshots, and provider notices.
-- Match each bill to utility type, provider, property, account, bill period, amount due, due date, proof available, and owner approval.
-- Do not update trackers or mark paid without owner-approved proof.
-- Do not make payments.
-
-${proofReviewFields}
-
-Report:
-- Bills found
-- Payment proof found
-- Due dates and account numbers found
-- Conflicts or duplicates
-- Items still blocked after folder review
-
-${noLiveActionRules}`
+    prompt: "Review the Owner Approvals folder. Classify each item as needs approval, approved but not processed, not approved, needs more proof, duplicate/old, legal-sensitive, ready to archive, or ready for processing. Do not approve anything automatically."
   },
   {
-    id: "gmail-communication-review",
-    title: "Codex Command - Gmail Metadata / Communication Review Command",
-    actionName: "Generate Codex Command: Gmail Metadata / Communication Review",
-    controls: "Gmail metadata and communications review with folder-first proof checks and no sends.",
-    tone: "yellow",
-    prompt: `Run the Gmail Metadata / Communication Review.
-
-${requiredFolderOrder}
-
-Gmail/communication requirements:
-- Use Gmail metadata only unless owner approved body or attachment review.
-- If documents or attachments are needed, check Intake and Owner Approval folders first.
-- Search for communication records already saved to Drive or approval folders before asking owner to upload proof.
-- Draft responses only if approved.
-- Send nothing unless owner specifically approved sending.
-- Link related attachments or proof only after verifying source and folder location.
-
-${proofReviewFields}
-
-Report:
-- Messages needing review
-- Drafts needed only if owner approval exists
-- Attachments/proof found in Intake or Owner Approval
-- Items still blocked after folder review
-
-${noLiveActionRules}`
-  },
-  {
-    id: "google-voice-workaround-review",
-    title: "Codex Command - Google Voice Workaround Review Command",
-    actionName: "Generate Codex Command: Google Voice Workaround Review",
-    controls: "Google Voice workaround review through screenshots, transcripts, exports, or Gmail notification references.",
-    tone: "yellow",
-    prompt: `Run the Google Voice Workaround Review.
-
-${requiredFolderOrder}
-
-Google Voice requirements:
-- Direct Google Voice access is unavailable unless separately provided.
-- Google Voice items may only be reviewed through approved workaround sources: Gmail notifications, voicemail transcripts, screenshots, exports, voicemail audio, owner-created summaries, or files uploaded to Intake or Owner Approval.
-- Check Intake and Owner Approval folders for screenshots, transcripts, exports, voicemail audio, or Gmail notification references.
-- Default Google Voice property to 7-unit rental property unless owner identifies a different property.
-- Ask owner to confirm unit, contact role, issue/request, and whether a response is needed.
-- Do not send Google Voice replies.
-- Do not create Gmail drafts unless separately approved.
-
-${proofReviewFields}
-
-Report:
-- Google Voice workaround items found
-- Contact name and phone number
-- Property default and unit status
-- Missing owner clarifications
-- Items still blocked after folder review
-
-${noLiveActionRules}`
-  },
-  {
-    id: "west-comm-review",
-    title: "Codex Command - West Comm / West Aircomm Review Command",
-    actionName: "Generate Codex Command: West Comm / West Aircomm Review",
-    controls: "West Comm / West Aircomm review with Owner Approval and Intake proof first.",
-    tone: "yellow",
-    prompt: `Run the West Comm / West Aircomm Review.
-
-${requiredFolderOrder}
-
-West Comm / West Aircomm requirements:
-- Check Owner Approval docs and Intake proof first.
-- Confirm whether West Comm and West Aircomm are the same intended item.
-- Search trackers/registers after folder review.
-- Use Gmail metadata only if needed and approved.
-- Do not take lender, financial, vendor, tenant, or communication action without owner confirmation and reviewed secure-message/attachment proof.
-
-${proofReviewFields}
-
-Report:
-- Matching West Comm / West Aircomm items
-- Sender/contact identity
-- Property/unit or account involved
-- Attachments/proof found
-- Whether owner action or response draft is needed
-- Items still blocked after folder review
-
-${noLiveActionRules}`
-  },
-  {
-    id: "duplicate-approval-folder-conflict",
-    title: "Codex Command - Duplicate Approval Folder Conflict Review Command",
-    actionName: "Generate Codex Command: Duplicate Folder Conflict Review",
-    controls: "Duplicate approval packet review with active/final folder and duplicate/archive-pending folder identification.",
-    tone: "red",
-    prompt: `Run the Duplicate Approval Folder Conflict Review.
-
-${requiredFolderOrder}
-
-Duplicate-folder requirements:
-- If an approval packet appears in multiple folders, do not delete anything.
-- Identify active/final folder.
-- Identify duplicate/archive-pending folder.
-- Report duplicate-location conflict.
-- Preserve proof links, approval history, owner comments, and tracker references.
-- Only move/archive files if owner has specifically approved that exact file action and the Drive tool supports it.
-
-${proofReviewFields}
-
-Report:
-- Approval item
-- All folder locations found
-- Active/final folder recommendation
-- Duplicate/archive-pending folder recommendation
-- Owner action required before any move/archive
-
-${noLiveActionRules}`
-  },
-  {
-    id: "vercel-ui-verification",
-    title: "Codex Command - Vercel Deployment / UI Change Verification Command",
-    actionName: "Generate Codex Command: Vercel UI Verification",
-    controls: "Deployment verification command for UI changes, Overview cleanliness, git status, commit, push, and Vercel deployment checks.",
+    id: "dashboard-update-preview",
+    section: "Dashboard Updates",
+    title: "Prepare Dashboard Update Preview",
+    purpose: "Prepare proposed tracker/dashboard updates for owner approval.",
     tone: "green",
-    prompt: `Run the Vercel Deployment / UI Change Verification.
-
-${requiredFolderOrder}
-
-UI/deployment requirements:
-- Confirm git status before action.
-- Confirm whether the intended source file was modified.
-- Confirm whether the change was committed.
-- Confirm whether the commit was pushed to the Vercel-connected branch.
-- Confirm whether Vercel created a new deployment.
-- For Overview cleanup, search Overview source and live page for command, prompt, automation, workflow action, Generate, Copy, Draft preview, Draft Only, Read Only, Approval Required, Live Write Disabled, Owner Review Required, Safety Gate, Will Prepare, Prepare Google Drive, Track Gmail, Gmail Follow-Ups, Calendar Update, Task Completion, and Verification Tasks.
-- Do not add prompt, command, workflow cards, automation sections, or command buttons back to Overview or any non-Admin Task tab.
-
-Report:
-- Lint result
-- Typecheck result
-- Build result
-- Commit hash
-- Branch pushed
-- Vercel deployment status
-- Live URL
-- Auth or visual verification limits, if any
-
-${noLiveActionRules}`
+    prompt: "Prepare a dashboard and tracker update preview based on completed work and owner status updates. Do not write to Google Sheets or update trackers. Return proposed values, affected tabs/ranges if known, blocked items, and owner approval required."
   }
 ];
 
@@ -861,7 +528,7 @@ function AdminRulesAndPreview({ rows }: { rows: AdminTaskControlRow[] }) {
               <strong>{row.taskTitle}</strong>
               <span>Due: {row.dueDate} / Module: {row.relatedModule}</span>
               <small>Proof: {row.proofNeeded} / Approval: {row.ownerApprovalRequired}</small>
-              <p>Trigger prompt: Prepare Google Task sync preview for {row.id}. Do not create the task.</p>
+              <p>Review note: Prepare a Google Task sync preview for {row.id}. Do not create the task.</p>
             </div>
           ))}
         </div>
@@ -953,7 +620,6 @@ function IntakeRoutingPanel() {
 }
 
 function AdminCommandButtons() {
-  const [activeCommand, setActiveCommand] = useState<AdminCommandTemplate | null>(null);
   const [copiedCommandId, setCopiedCommandId] = useState<string | null>(null);
 
   async function copyCommand(command: AdminCommandTemplate) {
@@ -962,54 +628,45 @@ function AdminCommandButtons() {
   }
 
   return (
-    <section className="calendar-command-panel">
-      <span className="eyebrow">Draft Command Buttons</span>
-      <h3>Admin Codex Commands</h3>
-      <p>This dashboard does not perform live Google actions. It only prepares the Codex command.</p>
-      <div className="calendar-command-button-grid">
-        {commandTemplates.map((command) => (
-          <article className={`codex-command-card command-tone-${command.tone}`} key={command.id}>
-            <span>Draft command only</span>
-            <strong>{command.actionName}</strong>
-            <p>{command.controls}</p>
-            <button type="button" onClick={() => setActiveCommand(command)}>
-              <Copy size={15} />
-              Generate Command
-            </button>
-          </article>
-        ))}
-      </div>
-      {activeCommand ? (
-        <div className="admin-command-preview command-preview-panel">
-          <div className="command-preview-header">
-            <div>
-              <span className="eyebrow">Command Preview</span>
-              <h3>{activeCommand.title}</h3>
-            </div>
-            <button type="button" onClick={() => setActiveCommand(null)}>
-              Close
-            </button>
-          </div>
-          <div className="command-preview-labels">
-            <span>Draft command only</span>
-            <span>Owner approval required</span>
-            <span>Live writes disabled</span>
-            <span>No Google Task created</span>
-            <span>No Drive upload</span>
-            <span>No Calendar event created</span>
-            <span>No Gmail sent</span>
-          </div>
-          <p className="command-preview-warning">This dashboard does not perform live Google actions. It only prepares the Codex command.</p>
-          <pre>{activeCommand.prompt}</pre>
-          <div className="command-preview-actions">
-            <button type="button" onClick={() => copyCommand(activeCommand)}>
-              <Copy size={15} />
-              Copy Command
-            </button>
-            {copiedCommandId === activeCommand.id ? <span>Copied command to clipboard.</span> : null}
-          </div>
+    <section className="admin-prompt-library">
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">Owner Prompt Library</p>
+          <h3>Admin Task Prompts</h3>
         </div>
-      ) : null}
+        <StatusBadge label={`${commandTemplates.length} prompts`} />
+      </div>
+
+      <p className="admin-prompt-warning">{adminPromptWarning}</p>
+
+      <div className="admin-prompt-section-stack">
+        {promptSectionOrder.map((section) => {
+          const prompts = commandTemplates.filter((command) => command.section === section);
+          return (
+            <section className="admin-prompt-section" key={section}>
+              <div className="admin-prompt-section-heading">
+                <h4>{section}</h4>
+                <span>{prompts.length} prompt{prompts.length === 1 ? "" : "s"}</span>
+              </div>
+              <div className="admin-prompt-card-grid">
+                {prompts.map((command) => (
+                  <details className={`admin-prompt-card prompt-${command.tone}`} key={command.id}>
+                    <summary>
+                      <span>{command.title}</span>
+                      <small>{command.purpose}</small>
+                    </summary>
+                    <textarea readOnly value={command.prompt} aria-label={`${command.title} prompt`} />
+                    <button type="button" onClick={() => copyCommand(command)}>
+                      <Copy size={15} />
+                      {copiedCommandId === command.id ? "Copied" : "Copy Prompt"}
+                    </button>
+                  </details>
+                ))}
+              </div>
+            </section>
+          );
+        })}
+      </div>
     </section>
   );
 }
