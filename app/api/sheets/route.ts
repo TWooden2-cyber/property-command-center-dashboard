@@ -1,7 +1,14 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { protectedCacheHeaders, requireApiOwner } from "@/lib/apiAuth";
 import { getAuthSetupStatus } from "@/lib/authConfig";
-import { getDashboardDataMode, getEnvironmentStatus, getLiveDiagnostics, getWorkbookSnapshot, isLiveSheetsConfigured } from "@/lib/googleSheets";
+import {
+  getDashboardDataMode,
+  getEnvironmentStatus,
+  getLiveDiagnostics,
+  getLiveSheetsEnv,
+  getWorkbookSnapshot,
+  isLiveSheetsConfigured
+} from "@/lib/googleSheets";
 import { getLiveOperationsStatus } from "@/lib/liveOperations";
 import { sampleWorkbookSnapshot } from "@/lib/sampleWorkbook";
 import { parseWorkbook } from "@/lib/sheetParsers";
@@ -9,6 +16,18 @@ import type { SheetsView, SystemStatus } from "@/types/sheets";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
+
+const availableViews: SheetsView[] = [
+  "overview",
+  "rent-collection",
+  "notices-evictions",
+  "maintenance",
+  "mortgage-arrears",
+  "admin-tasks",
+  "calendar-follow-ups",
+  "utilities",
+  "settings"
+];
 
 function selectView(data: ReturnType<typeof parseWorkbook>, view: SheetsView) {
   switch (view) {
@@ -122,6 +141,8 @@ export async function GET(request: NextRequest) {
     const warnings = fallbackWarning ? [...parsed.overview.warnings, fallbackWarning] : parsed.overview.warnings;
     const errors = Array.from(new Set(liveSetupErrors(system, fallbackWarning)));
     const source = diagnostics.source;
+    const isLive = dataMode === "live" && source === "google-sheets-readonly";
+    const spreadsheetId = getLiveSheetsEnv().spreadsheetId.value || null;
 
     return NextResponse.json(
       {
@@ -131,6 +152,10 @@ export async function GET(request: NextRequest) {
         requestedDataMode,
         resolvedDataMode: dataMode,
         source,
+        isLive,
+        spreadsheetId,
+        fetchedAt: refreshTimestamp,
+        availableViews,
         lastRefreshedAt: system.lastSuccessfulRefresh,
         liveConfigured: liveSheetsConfigured,
         liveAttempted,

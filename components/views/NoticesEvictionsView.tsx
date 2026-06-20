@@ -4,7 +4,10 @@ import { useMemo, useState } from "react";
 import { AlertTriangle, ClipboardCheck, Gavel, Search, ShieldAlert } from "lucide-react";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { EmptyState } from "@/components/DataState";
+import { SheetsSourcePanel } from "@/components/SheetsSourcePanel";
 import { StatusBadge } from "@/components/StatusBadge";
+import { noticeRecordToCommandRow } from "@/components/views/liveSheetAdapters";
+import { useSheetsView } from "@/components/views/useSheetsView";
 import {
   commandCenterPeriod,
   documentDraftStatuses,
@@ -14,6 +17,11 @@ import {
   type NoticeCommandRow,
   type SignalTone
 } from "@/lib/propertyCommandCenterData";
+import type { NoticeRecord } from "@/types/sheets";
+
+type NoticesPayload = {
+  rows: NoticeRecord[];
+};
 
 type NoticeFilter = {
   property: string;
@@ -165,13 +173,13 @@ function NoticesHeader() {
   return (
     <section className="notice-command-header">
       <div>
-        <p className="eyebrow">Local Sample Mode</p>
+        <p className="eyebrow">Read-only legal tracker</p>
         <h2>Notices / Evictions Command</h2>
         <p>Notice tracking, legal hold status, draft review, ledger verification, service proof, and owner approval controls.</p>
         <div className="hero-source-strip">
-          <span>Local Sample Mode</span>
-          <span>No live legal filing, tenant messaging, Gmail, Drive, Calendar, or Task updates</span>
-          <span>Last updated: May 21, 2026, 9:00 AM</span>
+          <span>Google Sheets preferred</span>
+          <span>No legal filing, tenant messaging, Gmail, Drive, Calendar, or Task updates</span>
+          <span>Draft and proof status only</span>
         </div>
       </div>
       <div className="rent-period-filter">
@@ -196,15 +204,15 @@ function NoticesHeader() {
   );
 }
 
-function NoticeKpis() {
-  const activeItems = noticeRows.filter((row) => !isClosed(row)).length;
+function NoticeKpis({ rows }: { rows: NoticeCommandRow[] }) {
+  const activeItems = rows.filter((row) => !isClosed(row)).length;
   const draftReady = 1;
-  const ledgerNeeded = noticeRows.filter(needsLedgerVerification).length;
-  const hapNeeded = noticeRows.filter(needsHapVerification).length;
-  const missingProof = noticeRows.filter(proofMissing).length;
-  const approvals = noticeRows.filter(ownerApprovalRequired).length;
-  const blocked = noticeRows.filter(isBlocked).length;
-  const closed = noticeRows.filter(isClosed).length;
+  const ledgerNeeded = rows.filter(needsLedgerVerification).length;
+  const hapNeeded = rows.filter(needsHapVerification).length;
+  const missingProof = rows.filter(proofMissing).length;
+  const approvals = rows.filter(ownerApprovalRequired).length;
+  const blocked = rows.filter(isBlocked).length;
+  const closed = rows.filter(isClosed).length;
 
   const cards = [
     { label: "Active Notice Items", value: String(activeItems), helper: "Owner review and verification items", tone: activeItems ? "yellow" : "green" },
@@ -263,12 +271,12 @@ function NoticeHealthEvaluation() {
   );
 }
 
-function NoticeFilters({ filters, onChange }: { filters: NoticeFilter; onChange: (next: NoticeFilter) => void }) {
-  const properties = ["All", ...Array.from(new Set(noticeRows.map((row) => row.property)))];
-  const units = ["All", ...Array.from(new Set(noticeRows.map((row) => row.unit)))];
-  const tenants = ["All", ...Array.from(new Set(noticeRows.map((row) => row.tenant)))];
-  const noticeTypes = ["All", ...Array.from(new Set(noticeRows.map((row) => row.noticeType)))];
-  const statuses = ["All", ...Array.from(new Set(noticeRows.map((row) => row.status)))];
+function NoticeFilters({ filters, onChange, rows }: { filters: NoticeFilter; onChange: (next: NoticeFilter) => void; rows: NoticeCommandRow[] }) {
+  const properties = ["All", ...Array.from(new Set(rows.map((row) => row.property)))];
+  const units = ["All", ...Array.from(new Set(rows.map((row) => row.unit)))];
+  const tenants = ["All", ...Array.from(new Set(rows.map((row) => row.tenant)))];
+  const noticeTypes = ["All", ...Array.from(new Set(rows.map((row) => row.noticeType)))];
+  const statuses = ["All", ...Array.from(new Set(rows.map((row) => row.status)))];
 
   return (
     <section className="notice-filter-panel">
@@ -375,7 +383,9 @@ function NoticeOperationalSections() {
 
 export function NoticesEvictionsView() {
   const [filters, setFilters] = useState(defaultFilters);
-  const filteredRows = useMemo(() => noticeRows.filter((row) => matchesFilters(row, filters)), [filters]);
+  const { data, system, error, loading } = useSheetsView<NoticesPayload>("notices-evictions");
+  const rows = useMemo(() => (data?.rows?.length ? data.rows.map(noticeRecordToCommandRow) : noticeRows), [data]);
+  const filteredRows = useMemo(() => rows.filter((row) => matchesFilters(row, filters)), [filters, rows]);
 
   const columns: DataTableColumn<NoticeCommandRow>[] = [
     { key: "dateStarted", header: "Date Started", render: (row) => row.dateStarted },
@@ -395,13 +405,14 @@ export function NoticesEvictionsView() {
   return (
     <div className="notice-command-page">
       <NoticesHeader />
-      <NoticeKpis />
+      <SheetsSourcePanel system={system} error={error} loading={loading} />
+      <NoticeKpis rows={rows} />
       <NoticeHealthEvaluation />
-      <NoticeFilters filters={filters} onChange={setFilters} />
+      <NoticeFilters filters={filters} onChange={setFilters} rows={rows} />
       {filteredRows.length ? (
         <DataTable rows={filteredRows} columns={columns} />
       ) : (
-        <EmptyState title="No notice records match these filters" message="Adjust the local sample filters to view notice and legal-hold records." />
+        <EmptyState title="No notice records match these filters" message="Reset filters or check the live Google Sheets source." />
       )}
       <DraftStatusSection />
       <NoticeOperationalSections />

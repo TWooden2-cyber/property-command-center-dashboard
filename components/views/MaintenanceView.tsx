@@ -4,7 +4,10 @@ import { useMemo, useState, type CSSProperties } from "react";
 import { AlertTriangle, CheckCircle2, ClipboardList, Search, ShieldCheck, Wrench } from "lucide-react";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { EmptyState } from "@/components/DataState";
+import { SheetsSourcePanel } from "@/components/SheetsSourcePanel";
 import { StatusBadge } from "@/components/StatusBadge";
+import { maintenanceRecordToCommandRow } from "@/components/views/liveSheetAdapters";
+import { useSheetsView } from "@/components/views/useSheetsView";
 import {
   commandCenterPeriod,
   maintenanceRows,
@@ -14,6 +17,11 @@ import {
   type MaintenanceCommandRow,
   type SignalTone
 } from "@/lib/propertyCommandCenterData";
+import type { MaintenanceRecord } from "@/types/sheets";
+
+type MaintenancePayload = {
+  rows: MaintenanceRecord[];
+};
 
 type MaintenanceFilter = {
   month: string;
@@ -92,13 +100,13 @@ function MaintenanceHeader({ filters, onFiltersChange }: { filters: MaintenanceF
   return (
     <section className="maintenance-command-header">
       <div>
-        <p className="eyebrow">Local Sample Mode</p>
+        <p className="eyebrow">Read-only maintenance tracker</p>
         <h2>Maintenance Command</h2>
         <p>Open work orders, health/safety issues, vendor status, proof tracking, tenant updates, and completion verification.</p>
         <div className="hero-source-strip">
-          <span>Local Sample Mode</span>
-          <span>No live RentRedi, Gmail, Drive, Calendar, or vendor updates</span>
-          <span>Last updated: May 21, 2026, 9:00 AM</span>
+          <span>Google Sheets preferred</span>
+          <span>No RentRedi, Gmail, Drive, Calendar, or vendor writes</span>
+          <span>Proof and closeout status only</span>
         </div>
       </div>
       <div className="rent-period-filter">
@@ -119,15 +127,15 @@ function MaintenanceHeader({ filters, onFiltersChange }: { filters: MaintenanceF
   );
 }
 
-function MaintenanceKpis() {
-  const openItems = maintenanceRows.filter(isOpen).length;
-  const criticalItems = maintenanceRows.filter((row) => row.priority === "Critical" && isOpen(row)).length;
-  const assignedCount = maintenanceRows.filter(vendorAssigned).length;
-  const proofMissing = maintenanceRows.filter((row) => proofStatus(row) === "Missing").length;
-  const updatesNeeded = maintenanceRows.filter(tenantUpdateNeeded).length;
-  const estimatedCost = maintenanceRows.reduce((total, row) => total + row.estimatedCost, 0);
-  const actualCost = maintenanceRows.reduce((total, row) => total + (row.actualCost ?? 0), 0);
-  const completionRate = maintenanceRows.length ? maintenanceRows.filter((row) => row.status === "Complete").length / maintenanceRows.length : 0;
+function MaintenanceKpis({ rows }: { rows: MaintenanceCommandRow[] }) {
+  const openItems = rows.filter(isOpen).length;
+  const criticalItems = rows.filter((row) => row.priority === "Critical" && isOpen(row)).length;
+  const assignedCount = rows.filter(vendorAssigned).length;
+  const proofMissing = rows.filter((row) => proofStatus(row) === "Missing").length;
+  const updatesNeeded = rows.filter(tenantUpdateNeeded).length;
+  const estimatedCost = rows.reduce((total, row) => total + row.estimatedCost, 0);
+  const actualCost = rows.reduce((total, row) => total + (row.actualCost ?? 0), 0);
+  const completionRate = rows.length ? rows.filter((row) => row.status === "Complete").length / rows.length : 0;
   const kpis = [
     { label: "Open Maintenance Items", value: String(openItems), helper: "Open or waiting local work orders", tone: openItems ? "yellow" as SignalTone : "green" as SignalTone },
     { label: "Critical / Safety Items", value: String(criticalItems), helper: "Health/safety-sensitive open items", tone: criticalItems ? "red" as SignalTone : "green" as SignalTone },
@@ -186,12 +194,12 @@ function MaintenanceHealthEvaluation() {
   );
 }
 
-function MaintenanceFilters({ filters, onFiltersChange }: { filters: MaintenanceFilter; onFiltersChange: (next: MaintenanceFilter) => void }) {
-  const propertyOptions = ["All", ...Array.from(new Set(maintenanceRows.map((row) => row.property)))];
-  const unitOptions = ["All", ...Array.from(new Set(maintenanceRows.map((row) => row.unit)))];
-  const tenantOptions = ["All", ...Array.from(new Set(maintenanceRows.map((row) => row.tenant)))];
+function MaintenanceFilters({ filters, onFiltersChange, rows }: { filters: MaintenanceFilter; onFiltersChange: (next: MaintenanceFilter) => void; rows: MaintenanceCommandRow[] }) {
+  const propertyOptions = ["All", ...Array.from(new Set(rows.map((row) => row.property)))];
+  const unitOptions = ["All", ...Array.from(new Set(rows.map((row) => row.unit)))];
+  const tenantOptions = ["All", ...Array.from(new Set(rows.map((row) => row.tenant)))];
   const priorityOptions = ["All", "Critical", "High", "Normal", "Low"];
-  const statusOptions = ["All", ...Array.from(new Set(maintenanceRows.map((row) => row.status)))];
+  const statusOptions = ["All", ...Array.from(new Set(rows.map((row) => row.status)))];
 
   return (
     <section className="section-block maintenance-filter-panel">
@@ -233,9 +241,6 @@ function MaintenanceFilters({ filters, onFiltersChange }: { filters: Maintenance
 }
 
 function matchesFilters(row: MaintenanceCommandRow, filters: MaintenanceFilter) {
-  const inSamplePeriod = filters.month === commandCenterPeriod.monthName && filters.year === commandCenterPeriod.year;
-
-  if (!inSamplePeriod) return false;
   if (filters.property !== "All" && row.property !== filters.property) return false;
   if (filters.unit !== "All" && row.unit !== filters.unit) return false;
   if (filters.tenant !== "All" && row.tenant !== filters.tenant) return false;
@@ -384,14 +389,17 @@ function VendorAndTenantTrackers() {
 
 export function MaintenanceView() {
   const [filters, setFilters] = useState<MaintenanceFilter>(defaultFilters);
-  const filteredRows = useMemo(() => maintenanceRows.filter((row) => matchesFilters(row, filters)), [filters]);
+  const { data, system, error, loading } = useSheetsView<MaintenancePayload>("maintenance");
+  const rows = useMemo(() => (data?.rows?.length ? data.rows.map(maintenanceRecordToCommandRow) : maintenanceRows), [data]);
+  const filteredRows = useMemo(() => rows.filter((row) => matchesFilters(row, filters)), [filters, rows]);
 
   return (
     <div className="view-stack maintenance-command-page">
       <MaintenanceHeader filters={filters} onFiltersChange={setFilters} />
-      <MaintenanceKpis />
+      <SheetsSourcePanel system={system} error={error} loading={loading} />
+      <MaintenanceKpis rows={rows} />
       <MaintenanceHealthEvaluation />
-      <MaintenanceFilters filters={filters} onFiltersChange={setFilters} />
+      <MaintenanceFilters filters={filters} onFiltersChange={setFilters} rows={rows} />
 
       <section className="section-block">
         <div className="section-heading">
@@ -404,7 +412,7 @@ export function MaintenanceView() {
         {filteredRows.length ? (
           <DataTable rows={filteredRows} columns={columns} />
         ) : (
-          <EmptyState title="No local sample maintenance records match these filters." message="Reset filters or choose May 2026 to view the local sample tracker." />
+          <EmptyState title="No maintenance records match these filters." message="Reset filters or check the live Google Sheets source." />
         )}
       </section>
 

@@ -5,6 +5,7 @@ import { AlertTriangle, TrendingUp } from "lucide-react";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { EmptyState, ErrorState, LoadingState } from "@/components/DataState";
 import { KpiCard } from "@/components/KpiCard";
+import { SheetsSourcePanel } from "@/components/SheetsSourcePanel";
 import { StatusBadge } from "@/components/StatusBadge";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import type { KpiMetric, UtilityRecord } from "@/types/sheets";
@@ -356,6 +357,7 @@ export function UtilitiesView() {
 
   return (
     <div className="view-stack">
+      <SheetsSourcePanel system={system} error={error} loading={loading} />
       <section className="filter-panel">
         <SelectFilter
           label="Property"

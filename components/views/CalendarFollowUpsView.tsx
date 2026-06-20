@@ -4,7 +4,10 @@ import { useMemo, useState } from "react";
 import { Bell, CalendarClock, CheckCircle2, ClipboardList, Mail, Search, ShieldAlert } from "lucide-react";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { EmptyState } from "@/components/DataState";
+import { SheetsSourcePanel } from "@/components/SheetsSourcePanel";
 import { StatusBadge } from "@/components/StatusBadge";
+import { flattenCalendarGroups } from "@/components/views/liveSheetAdapters";
+import { useSheetsView } from "@/components/views/useSheetsView";
 import {
   commandCenterPeriod,
   followUpRows,
@@ -13,6 +16,11 @@ import {
   type FollowUpCommandRow,
   type SignalTone
 } from "@/lib/propertyCommandCenterData";
+import type { CalendarFollowUpRecord } from "@/types/sheets";
+
+type CalendarPayload = {
+  groups: Record<CalendarFollowUpRecord["group"], CalendarFollowUpRecord[]>;
+};
 
 type FollowUpFilter = {
   property: string;
@@ -46,7 +54,7 @@ const defaultFilters: FollowUpFilter = {
   search: ""
 };
 
-const currentDate = new Date("2026-05-13T12:00:00");
+const currentDate = new Date();
 
 const blockedWarnings = [
   "Do not create notice-related calendar follow-ups until ledger/Section 8 status is verified.",
@@ -146,13 +154,13 @@ function CalendarHeader() {
   return (
     <section className="calendar-command-header">
       <div>
-        <p className="eyebrow">Local Sample Mode</p>
+        <p className="eyebrow">Read-only follow-up tracker</p>
         <h2>Calendar Follow-Ups Command</h2>
         <p>Suspense dates, owner follow-ups, recurring reviews, calendar-needed actions, email-needed actions, and task reminders.</p>
         <div className="hero-source-strip">
-          <span>Local Sample Mode</span>
-          <span>No live Google Calendar, Gmail, Drive, or Task updates</span>
-          <span>Last updated: May 21, 2026, 9:00 AM</span>
+          <span>Google Sheets preferred</span>
+          <span>No Google Calendar, Gmail, Drive, or Task writes</span>
+          <span>Follow-up status only</span>
         </div>
       </div>
       <div className="rent-period-filter">
@@ -173,19 +181,19 @@ function CalendarHeader() {
   );
 }
 
-function CalendarKpis() {
-  const open = followUpRows.filter((row) => row.status.toLowerCase() !== "complete").length;
-  const today = followUpRows.filter(isDueToday).length;
-  const week = followUpRows.filter(isNextSevenDays).length;
-  const overdue = followUpRows.filter(isPastDue).length;
-  const calendarCount = followUpRows.filter(calendarNeeded).length;
-  const emailCount = followUpRows.filter(emailNeeded).length;
-  const approval = followUpRows.filter(ownerApprovalNeeded).length;
-  const blockedCount = followUpRows.filter(blocked).length;
+function CalendarKpis({ rows }: { rows: FollowUpCommandRow[] }) {
+  const open = rows.filter((row) => row.status.toLowerCase() !== "complete").length;
+  const today = rows.filter(isDueToday).length;
+  const week = rows.filter(isNextSevenDays).length;
+  const overdue = rows.filter(isPastDue).length;
+  const calendarCount = rows.filter(calendarNeeded).length;
+  const emailCount = rows.filter(emailNeeded).length;
+  const approval = rows.filter(ownerApprovalNeeded).length;
+  const blockedCount = rows.filter(blocked).length;
 
   const cards = [
-    { label: "Open Follow-Ups", value: String(open), helper: "Open local suspense items", tone: "yellow" as SignalTone },
-    { label: "Due Today", value: String(today), helper: "May 13 local sample due date", tone: today ? "yellow" as SignalTone : "green" as SignalTone },
+    { label: "Open Follow-Ups", value: String(open), helper: "Open suspense items", tone: "yellow" as SignalTone },
+    { label: "Due Today", value: String(today), helper: "Due against current date", tone: today ? "yellow" as SignalTone : "green" as SignalTone },
     { label: "Due This Week", value: String(week), helper: "Upcoming dated follow-ups", tone: week ? "yellow" as SignalTone : "green" as SignalTone },
     { label: "Overdue / Past Due", value: String(overdue), helper: "Past due local follow-ups", tone: overdue ? "red" as SignalTone : "green" as SignalTone },
     { label: "Calendar Needed", value: String(calendarCount), helper: "Preview only; no events created", tone: "yellow" as SignalTone },
@@ -228,13 +236,13 @@ function CalendarHealthEvaluation() {
   );
 }
 
-function CalendarFilters({ filters, onChange }: { filters: FollowUpFilter; onChange: (next: FollowUpFilter) => void }) {
-  const properties = ["All", ...Array.from(new Set(followUpRows.map((row) => row.property)))];
-  const units = ["All", ...Array.from(new Set(followUpRows.map((row) => row.unit)))];
-  const types = ["All", ...Array.from(new Set(followUpRows.map((row) => row.item)))];
-  const modules = ["All", ...Array.from(new Set(followUpRows.map((row) => row.category)))];
+function CalendarFilters({ filters, onChange, rows }: { filters: FollowUpFilter; onChange: (next: FollowUpFilter) => void; rows: FollowUpCommandRow[] }) {
+  const properties = ["All", ...Array.from(new Set(rows.map((row) => row.property)))];
+  const units = ["All", ...Array.from(new Set(rows.map((row) => row.unit)))];
+  const types = ["All", ...Array.from(new Set(rows.map((row) => row.item)))];
+  const modules = ["All", ...Array.from(new Set(rows.map((row) => row.category)))];
   const priorities = ["All", "Critical", "High", "Medium"];
-  const statuses = ["All", ...Array.from(new Set(followUpRows.map((row) => row.status)))];
+  const statuses = ["All", ...Array.from(new Set(rows.map((row) => row.status)))];
 
   return (
     <section className="calendar-filter-panel">
@@ -277,13 +285,13 @@ function CalendarFilters({ filters, onChange }: { filters: FollowUpFilter; onCha
   );
 }
 
-function CalendarQueues() {
-  const dueToday = followUpRows.filter((row) => isDueToday(row) || priority(row) === "Critical");
-  const nextSeven = followUpRows.filter(isNextSevenDays);
-  const recurring = followUpRows.filter(isRecurring);
-  const calendarQueue = followUpRows.filter(calendarNeeded);
-  const emailQueue = followUpRows.filter(emailNeeded);
-  const ownerQueue = followUpRows.filter(ownerApprovalNeeded);
+function CalendarQueues({ rows }: { rows: FollowUpCommandRow[] }) {
+  const dueToday = rows.filter((row) => isDueToday(row) || priority(row) === "Critical");
+  const nextSeven = rows.filter(isNextSevenDays);
+  const recurring = rows.filter(isRecurring);
+  const calendarQueue = rows.filter(calendarNeeded);
+  const emailQueue = rows.filter(emailNeeded);
+  const ownerQueue = rows.filter(ownerApprovalNeeded);
 
   const groups = [
     { title: "Today's Follow-Ups", items: dueToday, icon: <Bell size={17} /> },
@@ -321,8 +329,8 @@ function CalendarQueues() {
   );
 }
 
-function CalendarBlockedAndPreview() {
-  const previewItems = followUpRows.filter((row) => calendarNeeded(row) && !isRecurring(row)).slice(0, 4);
+function CalendarBlockedAndPreview({ rows }: { rows: FollowUpCommandRow[] }) {
+  const previewItems = rows.filter((row) => calendarNeeded(row) && !isRecurring(row)).slice(0, 4);
 
   return (
     <section className="calendar-two-column">
@@ -351,7 +359,12 @@ function CalendarBlockedAndPreview() {
 
 export function CalendarFollowUpsView() {
   const [filters, setFilters] = useState(defaultFilters);
-  const filteredRows = useMemo(() => followUpRows.filter((row) => matchesFilters(row, filters)), [filters]);
+  const { data, system, error, loading } = useSheetsView<CalendarPayload>("calendar-follow-ups");
+  const rows = useMemo(() => {
+    const liveRows = flattenCalendarGroups(data?.groups);
+    return liveRows.length ? liveRows : followUpRows;
+  }, [data]);
+  const filteredRows = useMemo(() => rows.filter((row) => matchesFilters(row, filters)), [filters, rows]);
 
   const columns: DataTableColumn<FollowUpCommandRow>[] = [
     { key: "date", header: "Follow-Up Date", render: (row) => row.date },
@@ -374,16 +387,17 @@ export function CalendarFollowUpsView() {
   return (
     <div className="calendar-command-page">
       <CalendarHeader />
-      <CalendarKpis />
+      <SheetsSourcePanel system={system} error={error} loading={loading} />
+      <CalendarKpis rows={rows} />
       <CalendarHealthEvaluation />
-      <CalendarFilters filters={filters} onChange={setFilters} />
+      <CalendarFilters filters={filters} onChange={setFilters} rows={rows} />
       {filteredRows.length ? (
         <DataTable rows={filteredRows} columns={columns} />
       ) : (
-        <EmptyState title="No follow-ups match these filters" message="Adjust the local sample filters to view suspense and follow-up records." />
+        <EmptyState title="No follow-ups match these filters" message="Reset filters or check the live Google Sheets source." />
       )}
-      <CalendarQueues />
-      <CalendarBlockedAndPreview />
+      <CalendarQueues rows={rows} />
+      <CalendarBlockedAndPreview rows={rows} />
     </div>
   );
 }

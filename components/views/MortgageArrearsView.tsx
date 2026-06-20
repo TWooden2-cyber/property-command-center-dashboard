@@ -4,7 +4,10 @@ import { useMemo, useState } from "react";
 import { AlertTriangle, CheckCircle2, ClipboardList, Search, ShieldCheck } from "lucide-react";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { EmptyState } from "@/components/DataState";
+import { SheetsSourcePanel } from "@/components/SheetsSourcePanel";
 import { StatusBadge } from "@/components/StatusBadge";
+import { mortgageRecordToCommandRow } from "@/components/views/liveSheetAdapters";
+import { useSheetsView } from "@/components/views/useSheetsView";
 import {
   commandCenterPeriod,
   money,
@@ -14,6 +17,11 @@ import {
   type MortgageCommandRow,
   type SignalTone
 } from "@/lib/propertyCommandCenterData";
+import type { MortgageArrearsRecord } from "@/types/sheets";
+
+type MortgagePayload = {
+  rows: MortgageArrearsRecord[];
+};
 
 type MortgageFilter = {
   property: string;
@@ -136,13 +144,13 @@ function MortgageHeader() {
   return (
     <section className="mortgage-command-header">
       <div>
-        <p className="eyebrow">Local Sample Mode</p>
+        <p className="eyebrow">Read-only mortgage tracker</p>
         <h2>Mortgage / Allotment Command</h2>
         <p>Mortgage payment tracking, arrears status, payoff plan, allotment setup, proof confirmation, and owner financial risk controls.</p>
         <div className="hero-source-strip">
-          <span>Local Sample Mode</span>
-          <span>No live lender, MBFS, bank, Google Drive, Gmail, Calendar, or Task updates</span>
-          <span>Last updated: May 21, 2026, 9:00 AM</span>
+          <span>Google Sheets preferred</span>
+          <span>No lender, MBFS, bank, Google Drive, Gmail, Calendar, or Task writes</span>
+          <span>Payment proof status only</span>
         </div>
       </div>
       <div className="rent-period-filter">
@@ -171,10 +179,10 @@ function MortgageHeader() {
   );
 }
 
-function MortgageKpis() {
-  const totalDue = mortgageRows.reduce((total, row) => total + row.mortgageDueMonthly, 0);
-  const requested = mortgageRows.find((row) => row.property === "7-Unit")?.paidThisMonth ?? 0;
-  const arrears = mortgageRows.reduce((total, row) => total + row.currentArrears, 0);
+function MortgageKpis({ rows }: { rows: MortgageCommandRow[] }) {
+  const totalDue = rows.reduce((total, row) => total + row.mortgageDueMonthly, 0);
+  const requested = rows.reduce((total, row) => total + row.paidThisMonth, 0);
+  const arrears = rows.reduce((total, row) => total + row.currentArrears, 0);
   const proofCount = proofChecklist.length;
 
   const cards = [
@@ -210,7 +218,7 @@ function MortgageHealthEvaluation() {
         <h3>Critical / High Risk</h3>
         <p>
           The 7-unit mortgage had major arrears, and MBFS payment requests were accepted for $7,045.71 and $6,208.39, totaling $13,254.10.
-          Final lender posting is still pending, so the mortgage cannot be marked cured or current from local sample data alone.
+          Final lender posting is still pending, so the mortgage cannot be marked cured or current without verified lender proof.
         </p>
       </div>
       <div className="mortgage-cause-grid">
@@ -234,10 +242,10 @@ function MortgageHealthEvaluation() {
   );
 }
 
-function MortgageFilters({ filters, onChange }: { filters: MortgageFilter; onChange: (next: MortgageFilter) => void }) {
-  const properties = ["All", ...Array.from(new Set(mortgageRows.map((row) => row.property)))];
-  const riskOptions = ["All", ...Array.from(new Set(mortgageRows.map((row) => riskStatus(row))))];
-  const allotmentOptions = ["All", ...Array.from(new Set(mortgageRows.map((row) => row.allotmentStatus)))];
+function MortgageFilters({ filters, onChange, rows }: { filters: MortgageFilter; onChange: (next: MortgageFilter) => void; rows: MortgageCommandRow[] }) {
+  const properties = ["All", ...Array.from(new Set(rows.map((row) => row.property)))];
+  const riskOptions = ["All", ...Array.from(new Set(rows.map((row) => riskStatus(row))))];
+  const allotmentOptions = ["All", ...Array.from(new Set(rows.map((row) => row.allotmentStatus)))];
   const confirmationOptions = ["All", "pending", "verify", "posting"];
 
   return (
@@ -330,7 +338,7 @@ function ArrearsPayoffTracker() {
       <div className="mortgage-progress">
         <div className="mortgage-progress-bar" style={{ width: `${progress}%` }} />
       </div>
-      <p>{progress}% estimated progress based on local sample data. Final cure/reinstatement amount is pending lender confirmation.</p>
+      <p>{progress}% estimated progress based on current tracker data. Final cure/reinstatement amount is pending lender confirmation.</p>
     </section>
   );
 }
@@ -421,7 +429,9 @@ function MortgageOperationalSections() {
 
 export function MortgageArrearsView() {
   const [filters, setFilters] = useState(defaultFilters);
-  const filteredRows = useMemo(() => mortgageRows.filter((row) => matchesFilters(row, filters)), [filters]);
+  const { data, system, error, loading } = useSheetsView<MortgagePayload>("mortgage-arrears");
+  const rows = useMemo(() => (data?.rows?.length ? data.rows.map(mortgageRecordToCommandRow) : mortgageRows), [data]);
+  const filteredRows = useMemo(() => rows.filter((row) => matchesFilters(row, filters)), [filters, rows]);
 
   const columns: DataTableColumn<MortgageCommandRow>[] = [
     { key: "property", header: "Property", render: (row) => row.property },
@@ -441,13 +451,14 @@ export function MortgageArrearsView() {
   return (
     <div className="mortgage-command-page">
       <MortgageHeader />
-      <MortgageKpis />
+      <SheetsSourcePanel system={system} error={error} loading={loading} />
+      <MortgageKpis rows={rows} />
       <MortgageHealthEvaluation />
-      <MortgageFilters filters={filters} onChange={setFilters} />
+      <MortgageFilters filters={filters} onChange={setFilters} rows={rows} />
       {filteredRows.length ? (
         <DataTable rows={filteredRows} columns={columns} />
       ) : (
-        <EmptyState title="No mortgage records match these filters" message="Adjust the local sample filters to view mortgage and allotment records." />
+        <EmptyState title="No mortgage records match these filters" message="Reset filters or check the live Google Sheets source." />
       )}
       <ArrearsPayoffTracker />
       <AllotmentSetupTracker />

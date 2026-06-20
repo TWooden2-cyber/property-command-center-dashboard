@@ -4,7 +4,10 @@ import { useMemo, useState } from "react";
 import { CheckCircle2, ClipboardList, Copy, Database, FileCheck2, FolderUp, Search, ShieldAlert } from "lucide-react";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { EmptyState } from "@/components/DataState";
+import { SheetsSourcePanel } from "@/components/SheetsSourcePanel";
 import { StatusBadge } from "@/components/StatusBadge";
+import { adminTaskRecordToControlRow } from "@/components/views/liveSheetAdapters";
+import { useSheetsView } from "@/components/views/useSheetsView";
 import { copyTextToClipboard } from "@/lib/clipboard";
 import {
   adminTaskControlRows,
@@ -14,6 +17,11 @@ import {
   type AdminTaskControlRow,
   type SignalTone
 } from "@/lib/propertyCommandCenterData";
+import type { AdminTaskRecord } from "@/types/sheets";
+
+type AdminTasksPayload = {
+  rows: AdminTaskRecord[];
+};
 
 type AdminFilter = {
   module: string;
@@ -280,8 +288,8 @@ function rowTone(row: AdminTaskControlRow): SignalTone {
   return "green";
 }
 
-function uniqueValues(key: keyof Pick<AdminTaskControlRow, "relatedModule" | "property" | "unit" | "priority" | "status">) {
-  return ["All", ...Array.from(new Set(adminTaskControlRows.map((row) => row[key]).filter(Boolean)))];
+function uniqueValues(rows: AdminTaskControlRow[], key: keyof Pick<AdminTaskControlRow, "relatedModule" | "property" | "unit" | "priority" | "status">) {
+  return ["All", ...Array.from(new Set(rows.map((row) => row[key]).filter(Boolean)))];
 }
 
 function matchesFilters(row: AdminTaskControlRow, filters: AdminFilter) {
@@ -319,13 +327,13 @@ function AdminHeader() {
   return (
     <section className="admin-command-header">
       <div>
-        <span className="eyebrow">Local Sample Mode</span>
+        <span className="eyebrow">Read-only admin task tracker</span>
         <h2>Admin Tasks Command</h2>
         <p>Owner approvals, proof collection, Drive update needs, weekly reviews, blocked items, and task-sync preparation.</p>
       </div>
       <div className="admin-header-stack">
-        <StatusBadge label="No live Google Tasks, Drive, Gmail, Calendar, or Sheets updates" />
-        <StatusBadge label="Last updated: May 21, 2026, 9:00 AM local sample workbook" />
+        <StatusBadge label="No Google Tasks, Drive, Gmail, Calendar, or Sheets writes" />
+        <StatusBadge label="Google Sheets is the preferred display source" />
         <div className="filter-inline">
           <label>
             Month
@@ -402,16 +410,16 @@ function AdminHealth() {
   );
 }
 
-function AdminFilters({ filters, setFilters }: { filters: AdminFilter; setFilters: (filters: AdminFilter) => void }) {
+function AdminFilters({ filters, setFilters, rows }: { filters: AdminFilter; setFilters: (filters: AdminFilter) => void; rows: AdminTaskControlRow[] }) {
   return (
     <section className="admin-filter-panel">
       <div className="calendar-filter-grid">
         {[
-          ["Related Module", "module", uniqueValues("relatedModule")],
-          ["Property", "property", uniqueValues("property")],
-          ["Unit", "unit", uniqueValues("unit")],
-          ["Priority", "priority", uniqueValues("priority")],
-          ["Status", "status", uniqueValues("status")]
+          ["Related Module", "module", uniqueValues(rows, "relatedModule")],
+          ["Property", "property", uniqueValues(rows, "property")],
+          ["Unit", "unit", uniqueValues(rows, "unit")],
+          ["Priority", "priority", uniqueValues(rows, "priority")],
+          ["Status", "status", uniqueValues(rows, "status")]
         ].map(([label, key, options]) => (
           <label key={key as string}>
             {label as string}
@@ -691,27 +699,30 @@ const columns: DataTableColumn<AdminTaskControlRow>[] = [
 
 export function AdminTasksView() {
   const [filters, setFilters] = useState<AdminFilter>(defaultFilters);
-  const filteredRows = useMemo(() => adminTaskControlRows.filter((row) => matchesFilters(row, filters)), [filters]);
+  const { data, system, error, loading } = useSheetsView<AdminTasksPayload>("admin-tasks");
+  const rows = useMemo(() => (data?.rows?.length ? data.rows.map(adminTaskRecordToControlRow) : adminTaskControlRows), [data]);
+  const filteredRows = useMemo(() => rows.filter((row) => matchesFilters(row, filters)), [filters, rows]);
 
   return (
     <div className="admin-command-page">
       <AdminHeader />
-      <AdminKpis rows={adminTaskControlRows} />
+      <SheetsSourcePanel system={system} error={error} loading={loading} />
+      <AdminKpis rows={rows} />
       <AdminHealth />
-      <AdminFilters filters={filters} setFilters={setFilters} />
+      <AdminFilters filters={filters} setFilters={setFilters} rows={rows} />
       {filteredRows.length ? (
         <DataTable rows={filteredRows} columns={columns} />
       ) : (
-        <EmptyState title="No admin tasks match these filters" message="Adjust the Local Sample Mode filters to review the admin task-control queue." />
+        <EmptyState title="No admin tasks match these filters" message="Reset filters or check the live Google Sheets source." />
       )}
-      <AdminQueues rows={adminTaskControlRows} />
-      <AdminRulesAndPreview rows={adminTaskControlRows} />
+      <AdminQueues rows={rows} />
+      <AdminRulesAndPreview rows={rows} />
       <IntakeRoutingPanel />
       <AdminCommandButtons />
       <section className="admin-safety-footer">
         <Database size={18} />
         <p>
-          Local Sample Mode only. No Google Tasks, Drive, Gmail, Calendar, Sheets, RentRedi, tenant, legal, lender, vendor, or payment records were created,
+          Read-only display only. No Google Tasks, Drive, Gmail, Calendar, Sheets, RentRedi, tenant, legal, lender, vendor, or payment records were created,
           updated, sent, uploaded, moved, renamed, deleted, or completed.
         </p>
       </section>

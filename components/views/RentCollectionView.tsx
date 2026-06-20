@@ -4,7 +4,10 @@ import { useMemo, useState, type CSSProperties } from "react";
 import { AlertTriangle, BarChart3, CheckCircle2, Search, ShieldCheck } from "lucide-react";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { EmptyState } from "@/components/DataState";
+import { SheetsSourcePanel, sheetSourceLabel } from "@/components/SheetsSourcePanel";
 import { StatusBadge } from "@/components/StatusBadge";
+import { rentRecordToCommandRow } from "@/components/views/liveSheetAdapters";
+import { useSheetsView } from "@/components/views/useSheetsView";
 import {
   commandCenterPeriod,
   money,
@@ -12,11 +15,27 @@ import {
   monthlyRentTrend,
   percent,
   rentRows,
-  rentTotals,
   yearOptions,
   type RentCollectionRow,
   type SignalTone
 } from "@/lib/propertyCommandCenterData";
+import type { RentRecord } from "@/types/sheets";
+
+type RentPayload = {
+  rows: RentRecord[];
+};
+
+function totalsForRows(rows: RentCollectionRow[]) {
+  return rows.reduce(
+    (totals, row) => ({
+      projected: totals.projected + row.rentDue,
+      collected: totals.collected + row.paid,
+      balance: totals.balance + row.balance,
+      lateFees: totals.lateFees + row.lateFee
+    }),
+    { projected: 0, collected: 0, balance: 0, lateFees: 0 }
+  );
+}
 
 type RentFilter = {
   month: string;
@@ -155,16 +174,17 @@ function statusTone(row: RentCollectionRow): SignalTone {
   return "red";
 }
 
-function RentKpiCards() {
-  const collectionRate = rentTotals.collected / rentTotals.projected;
-  const paidUnits = rentRows.filter((row) => row.balance <= 0).length;
-  const unitsWithBalance = rentRows.filter((row) => row.balance > 0).length;
-  const verificationIssues = rentRows.filter((row) => verificationFlag(row) !== "Clear").length;
+function RentKpiCards({ rows }: { rows: RentCollectionRow[] }) {
+  const totals = totalsForRows(rows);
+  const collectionRate = totals.projected ? totals.collected / totals.projected : 0;
+  const paidUnits = rows.filter((row) => row.balance <= 0).length;
+  const unitsWithBalance = rows.filter((row) => row.balance > 0).length;
+  const verificationIssues = rows.filter((row) => verificationFlag(row) !== "Clear").length;
   const kpis = [
-    { label: "Total Projected Rent", value: money(rentTotals.projected), helper: "May 2026 local sample", tone: "green" as SignalTone },
-    { label: "Total Rent Collected", value: money(rentTotals.collected), helper: `${percent(collectionRate)} collection rate`, tone: collectionRate >= 1 ? "green" as SignalTone : "yellow" as SignalTone },
-    { label: "Total Balance", value: money(rentTotals.balance), helper: "Balances and verification issues remain", tone: rentTotals.balance > 0 ? "red" as SignalTone : "green" as SignalTone },
-    { label: "Total Late Fees", value: money(rentTotals.lateFees), helper: "Late fee total in local ledger", tone: rentTotals.lateFees > 0 ? "yellow" as SignalTone : "green" as SignalTone },
+    { label: "Total Projected Rent", value: money(totals.projected), helper: "Current sheet rows", tone: "green" as SignalTone },
+    { label: "Total Rent Collected", value: money(totals.collected), helper: `${percent(collectionRate)} collection rate`, tone: collectionRate >= 1 ? "green" as SignalTone : "yellow" as SignalTone },
+    { label: "Total Balance", value: money(totals.balance), helper: "Balances and verification issues remain", tone: totals.balance > 0 ? "red" as SignalTone : "green" as SignalTone },
+    { label: "Total Late Fees", value: money(totals.lateFees), helper: "Late fee total in ledger", tone: totals.lateFees > 0 ? "yellow" as SignalTone : "green" as SignalTone },
     { label: "Collection Rate", value: percent(collectionRate), helper: "Collected / projected", tone: collectionRate >= 1 ? "green" as SignalTone : collectionRate > 0.5 ? "yellow" as SignalTone : "red" as SignalTone },
     { label: "Units Paid", value: String(paidUnits), helper: "Rows with zero balance", tone: "green" as SignalTone },
     { label: "Units With Balance", value: String(unitsWithBalance), helper: "Needs follow-up or verification", tone: unitsWithBalance > 0 ? "red" as SignalTone : "green" as SignalTone },
@@ -186,21 +206,23 @@ function RentKpiCards() {
 
 function RentCommandHeader({
   filters,
-  onFiltersChange
+  onFiltersChange,
+  sourceLabel
 }: {
   filters: RentFilter;
   onFiltersChange: (next: RentFilter) => void;
+  sourceLabel: string;
 }) {
   return (
     <section className="rent-command-header">
       <div>
-        <p className="eyebrow">Local Sample Mode</p>
+        <p className="eyebrow">{sourceLabel}</p>
         <h2>Rent Collection Command</h2>
         <p>Monthly rent ledger, payment status, balances, reminders, and verification issues.</p>
         <div className="hero-source-strip">
-          <span>Local Sample Mode</span>
-          <span>No live RentRedi / Google Sheets data</span>
-          <span>Last updated: May 21, 2026, 9:00 AM</span>
+          <span>{sourceLabel}</span>
+          <span>Read-only display</span>
+          <span>Google Sheets is the preferred live source</span>
         </div>
       </div>
       <div className="rent-period-filter">
@@ -290,8 +312,8 @@ function PaidProjectedChart({ title, projected, collected }: { title: string; pr
   );
 }
 
-function BalanceByUnitChart() {
-  const rows = rentRows.filter((row) => row.balance > 0);
+function BalanceByUnitChart({ rows: sourceRows }: { rows: RentCollectionRow[] }) {
+  const rows = sourceRows.filter((row) => row.balance > 0);
   const max = Math.max(...rows.map((row) => row.balance), 1);
 
   return (
@@ -318,8 +340,9 @@ function BalanceByUnitChart() {
   );
 }
 
-function CollectionRateGauge() {
-  const rate = rentTotals.collected / rentTotals.projected;
+function CollectionRateGauge({ rows }: { rows: RentCollectionRow[] }) {
+  const totals = totalsForRows(rows);
+  const rate = totals.projected ? totals.collected / totals.projected : 0;
 
   return (
     <section className="chart-card rent-chart-card">
@@ -341,30 +364,33 @@ function CollectionRateGauge() {
   );
 }
 
-function RentCharts() {
+function RentCharts({ rows }: { rows: RentCollectionRow[] }) {
+  const totals = totalsForRows(rows);
   const projectedYtd = monthlyRentTrend.reduce((total, row) => total + row.projected, 0);
   const collectedYtd = monthlyRentTrend.reduce((total, row) => total + row.collected, 0);
 
   return (
     <section className="rent-chart-grid">
-      <PaidProjectedChart title="Monthly Paid vs Projected" projected={rentTotals.projected} collected={rentTotals.collected} />
+      <PaidProjectedChart title="Current Rows Paid vs Projected" projected={totals.projected} collected={totals.collected} />
       <PaidProjectedChart title="Year-to-Date Paid vs Projected" projected={projectedYtd} collected={collectedYtd} />
-      <BalanceByUnitChart />
-      <CollectionRateGauge />
+      <BalanceByUnitChart rows={rows} />
+      <CollectionRateGauge rows={rows} />
     </section>
   );
 }
 
 function RentFilters({
   filters,
-  onFiltersChange
+  onFiltersChange,
+  rows
 }: {
   filters: RentFilter;
   onFiltersChange: (next: RentFilter) => void;
+  rows: RentCollectionRow[];
 }) {
-  const propertyOptions = ["All", ...Array.from(new Set(rentRows.map((row) => row.property)))];
-  const unitOptions = ["All", ...Array.from(new Set(rentRows.map((row) => row.unit)))];
-  const statusOptions = ["All", ...Array.from(new Set(rentRows.map((row) => row.status)))];
+  const propertyOptions = ["All", ...Array.from(new Set(rows.map((row) => row.property)))];
+  const unitOptions = ["All", ...Array.from(new Set(rows.map((row) => row.unit)))];
+  const statusOptions = ["All", ...Array.from(new Set(rows.map((row) => row.status)))];
 
   return (
     <section className="section-block rent-filter-panel">
@@ -421,11 +447,6 @@ function RentFilters({
 }
 
 function matchesFilters(row: RentCollectionRow, filters: RentFilter) {
-  const inSamplePeriod = filters.month === commandCenterPeriod.monthName && filters.year === commandCenterPeriod.year;
-
-  if (!inSamplePeriod) {
-    return false;
-  }
   if (filters.property !== "All" && row.property !== filters.property) {
     return false;
   }
@@ -520,28 +541,32 @@ function BlockedUntilVerified() {
 
 export function RentCollectionView() {
   const [filters, setFilters] = useState<RentFilter>(defaultFilters);
-  const filteredRows = useMemo(() => rentRows.filter((row) => matchesFilters(row, filters)), [filters]);
+  const { data, system, error, loading } = useSheetsView<RentPayload>("rent-collection");
+  const rows = useMemo(() => (data?.rows?.length ? data.rows.map(rentRecordToCommandRow) : rentRows), [data]);
+  const filteredRows = useMemo(() => rows.filter((row) => matchesFilters(row, filters)), [filters, rows]);
+  const sourceLabel = sheetSourceLabel(system, error);
 
   return (
     <div className="view-stack rent-command-page">
-      <RentCommandHeader filters={filters} onFiltersChange={setFilters} />
-      <RentKpiCards />
+      <RentCommandHeader filters={filters} onFiltersChange={setFilters} sourceLabel={sourceLabel} />
+      <SheetsSourcePanel system={system} error={error} loading={loading} />
+      <RentKpiCards rows={rows} />
       <RentHealthEvaluation />
-      <RentCharts />
-      <RentFilters filters={filters} onFiltersChange={setFilters} />
+      <RentCharts rows={rows} />
+      <RentFilters filters={filters} onFiltersChange={setFilters} rows={rows} />
 
       <section className="section-block">
         <div className="section-heading">
           <div>
             <p className="eyebrow">Detailed Ledger</p>
-            <h2>May 2026 rent collection ledger</h2>
+            <h2>Rent collection ledger</h2>
           </div>
           <StatusBadge label={`${filteredRows.length} rows`} />
         </div>
         {filteredRows.length ? (
           <DataTable rows={filteredRows} columns={columns} />
         ) : (
-          <EmptyState title="No local sample rent records match these filters." message="Reset filters or choose May 2026 to view the local sample ledger." />
+          <EmptyState title="No rent records match these filters." message="Reset filters or check the live Google Sheets source." />
         )}
       </section>
 

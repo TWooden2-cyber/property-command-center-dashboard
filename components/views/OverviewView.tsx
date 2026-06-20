@@ -3,6 +3,7 @@
 import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { AlertTriangle, CheckCircle2, TrendingUp } from "lucide-react";
 import { EmptyState } from "@/components/DataState";
+import { SheetsSourcePanel } from "@/components/SheetsSourcePanel";
 import {
   computeDashboardHealth,
   maintenanceRows,
@@ -19,10 +20,10 @@ import {
   type SignalTone
 } from "@/lib/propertyCommandCenterData";
 import { useSheetsView } from "@/components/views/useSheetsView";
-import type { SystemStatus } from "@/types/sheets";
+import type { DashboardBlock, KpiMetric, OverviewData, RiskItem } from "@/types/sheets";
 
-type SettingsPayload = {
-  system: SystemStatus;
+type OverviewPayload = OverviewData & {
+  dashboardBlocks: Record<string, DashboardBlock>;
 };
 
 type Kpi = {
@@ -162,8 +163,8 @@ function FilterBar({
   return (
     <section className="command-filter-bar">
       <div className="dashboard-updated">
-        <span>Last updated</span>
-        <strong>May 21, 2026, 9:00 AM</strong>
+        <span>Display period</span>
+        <strong>{month} {year}</strong>
       </div>
       <label>
         <span>Month</span>
@@ -189,25 +190,35 @@ function FilterBar({
   );
 }
 
-function DataStatus({ system }: { system?: SystemStatus | null }) {
-  const refreshLabel = system?.lastSuccessfulRefresh ? new Date(system.lastSuccessfulRefresh).toLocaleString() : "Not connected";
-  const sourceLabel = system?.source === "google-sheets-readonly" ? "Live Google Sheets" : "Local data";
-  const statusLabel = system?.connectionOk ? "Connected" : "Data source unavailable";
+function toneFromRisk(tone?: KpiMetric["tone"]): SignalTone {
+  if (tone === "Critical" || tone === "High" || tone === "Watch") return tone === "Watch" ? "yellow" : "red";
+  return "green";
+}
+
+function LiveKpiTile({ item }: { item: KpiMetric }) {
+  const tone = toneFromRisk(item.tone);
+  return (
+    <article className={`kpi-card command-kpi kpi-${tone}`}>
+      <span>{item.label}</span>
+      <strong>{item.value}</strong>
+      <p>{item.helper ?? "Live Google Sheets metric"}</p>
+      <footer>{item.tone ?? "Live"}</footer>
+    </article>
+  );
+}
+
+function LiveRiskGrid({ risks }: { risks: RiskItem[] }) {
+  if (!risks.length) return null;
 
   return (
-    <section className="section-block sheets-refresh-status">
-      <div className="section-heading">
-        <div>
-          <p className="eyebrow">{sourceLabel}</p>
-          <h2>Data Refresh</h2>
-        </div>
-        <div className="source-badges">
-          <span>{statusLabel}</span>
-          <span>Last refresh: {refreshLabel}</span>
-        </div>
-      </div>
-      {system?.connectionMessage ? <p className="muted-line">{system.connectionMessage}</p> : null}
-      {system?.setupErrors?.length ? <p className="muted-line">Setup errors: {system.setupErrors.join(" ")}</p> : null}
+    <section className="health-grid">
+      {risks.map((risk) => (
+        <article key={risk.label} className={`health-card health-${toneFromRisk(risk.level)}`}>
+          <span>{risk.label}</span>
+          <strong>{risk.level}</strong>
+          <p>{risk.summary}</p>
+        </article>
+      ))}
     </section>
   );
 }
@@ -310,17 +321,18 @@ function MonthlyCashflowTrendChart() {
 export function OverviewView() {
   const [selectedMonth, setSelectedMonth] = useState(currentPeriod.monthName);
   const [selectedYear, setSelectedYear] = useState(currentPeriod.year);
-  const { system } = useSheetsView<SettingsPayload>("settings");
+  const { data, system, error, loading } = useSheetsView<OverviewPayload>("overview");
   const health = useMemo(() => computeDashboardHealth(), []);
   const kpis = useMemo(() => overviewKpis(), []);
   const hasPeriodData = selectedMonth === currentPeriod.monthName && selectedYear === currentPeriod.year;
-  const dataSourceLabel = system?.dataMode === "live" ? "Live Google Sheets" : "Local data";
+  const isLive = system?.source === "google-sheets-readonly" && system.dataMode === "live";
+  const dataSourceLabel = isLive ? "Live Google Sheets" : "Sample/Fallback Data";
   const lastRefreshLabel = system?.lastSuccessfulRefresh ? new Date(system.lastSuccessfulRefresh).toLocaleString() : "Not available";
 
   return (
     <div className="view-stack overview-dashboard">
       <FilterBar month={selectedMonth} year={selectedYear} onMonthChange={setSelectedMonth} onYearChange={setSelectedYear} />
-      <DataStatus system={system} />
+      <SheetsSourcePanel system={system} error={error} loading={loading} />
 
       {!hasPeriodData ? (
         <EmptyState title="No data available for this period." message="Choose May 2026 to view the current operation center dashboard." />
@@ -348,16 +360,18 @@ export function OverviewView() {
           </section>
 
           <section className="command-kpi-grid">
-            {kpis.map((item) => (
-              <KpiTile key={item.label} item={item} />
-            ))}
+            {isLive && data?.kpis?.length ? data.kpis.map((item) => <LiveKpiTile key={item.label} item={item} />) : kpis.map((item) => <KpiTile key={item.label} item={item} />)}
           </section>
 
-          <section className="health-grid">
-            {health.signals.map((signal) => (
-              <HealthCard key={signal.label} label={signal.label} status={signal.status} explanation={signal.explanation} />
-            ))}
-          </section>
+          {isLive && data?.risks?.length ? (
+            <LiveRiskGrid risks={data.risks} />
+          ) : (
+            <section className="health-grid">
+              {health.signals.map((signal) => (
+                <HealthCard key={signal.label} label={signal.label} status={signal.status} explanation={signal.explanation} />
+              ))}
+            </section>
+          )}
 
           <Section eyebrow="Cause of increase/decrease" title="Why totals changed" icon={<AlertTriangle size={20} aria-hidden />}>
             <div className="cause-grid">
@@ -370,12 +384,16 @@ export function OverviewView() {
             </div>
           </Section>
 
-          <div className="chart-grid">
-            <ComparisonChart title="Month Paid vs Projected" projected={rentTotals.projected} collected={rentTotals.collected} />
-            <YearTrendChart />
-          </div>
+          {!isLive ? (
+            <>
+              <div className="chart-grid">
+                <ComparisonChart title="Month Paid vs Projected" projected={rentTotals.projected} collected={rentTotals.collected} />
+                <YearTrendChart />
+              </div>
 
-          <MonthlyCashflowTrendChart />
+              <MonthlyCashflowTrendChart />
+            </>
+          ) : null}
         </>
       )}
     </div>
