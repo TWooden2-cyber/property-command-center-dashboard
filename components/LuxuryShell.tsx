@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { useEffect, useState } from "react";
 import type { Route } from "next";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -33,6 +34,13 @@ type NavItem = {
   href: Route;
   label: string;
   icon: LucideIcon;
+};
+
+type ProductHealth = {
+  product: string;
+  connected: boolean;
+  status: "live" | "error" | "not_enabled";
+  message: string;
 };
 
 const navigation = [
@@ -70,6 +78,31 @@ export function LuxuryShell({
   children: ReactNode;
 }) {
   const pathname = usePathname();
+  const [products, setProducts] = useState<ProductHealth[]>([]);
+  const [healthMessage, setHealthMessage] = useState("Checking Google product status...");
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadHealth() {
+      try {
+        const response = await fetch("/api/health/google-products", { cache: "no-store" });
+        const payload = (await response.json()) as { products?: ProductHealth[]; error?: string };
+        if (!mounted) return;
+        setProducts(payload.products ?? []);
+        setHealthMessage(response.ok ? "Operational source status checked." : payload.error ?? "Google product health check reported an error.");
+      } catch (error) {
+        if (!mounted) return;
+        setHealthMessage(error instanceof Error ? error.message : "Unable to load Google product health.");
+      }
+    }
+
+    loadHealth();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   return (
     <div className="app-shell">
@@ -97,9 +130,9 @@ export function LuxuryShell({
         </nav>
 
         <div className="sidebar-footer">
-          <span className="session-email">Local owner mode</span>
+          <span className="session-email">Owner mode</span>
           <Link className="icon-text-button" href="/login">
-            Sample data only
+            Owner login
           </Link>
         </div>
       </aside>
@@ -107,15 +140,22 @@ export function LuxuryShell({
       <main className="main-panel">
         <header className="page-header">
           <div>
-            <p className="eyebrow">Local Owner Operations</p>
+            <p className="eyebrow">Live Owner Operations</p>
             <h1>{title}</h1>
             <p>{subtitle}</p>
           </div>
-          <div className="security-chip">Local read-only sample mode</div>
+          <div className="security-chip">Read-only live data mode</div>
         </header>
-        <section className="local-mode-banner" aria-label="Local sample mode notice">
-          <strong>Local Sample Mode</strong>
-          <span>No live Google data or live actions.</span>
+        <section className="local-mode-banner" aria-label="Google products operational status">
+          <strong>Operational Sources</strong>
+          <span>{healthMessage}</span>
+          <div className="source-badges">
+            {products.map((product) => (
+              <span key={product.product} className={`status-pill ${product.connected ? "green" : product.status === "not_enabled" ? "yellow" : "red"}`}>
+                {product.product}: {product.connected ? "Live" : product.status === "not_enabled" ? "Not enabled" : "Error"}
+              </span>
+            ))}
+          </div>
         </section>
         {children}
       </main>

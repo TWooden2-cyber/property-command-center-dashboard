@@ -15,6 +15,8 @@ import type {
   RentCollectionRow
 } from "@/lib/propertyCommandCenterData";
 
+export const localDevelopmentFallbackAllowed = process.env.NODE_ENV !== "production";
+
 function text(value: string | undefined, fallback = "Not provided") {
   return value && value.trim() ? value : fallback;
 }

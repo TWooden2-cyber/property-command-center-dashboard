@@ -6,7 +6,7 @@ import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { EmptyState } from "@/components/DataState";
 import { SheetsSourcePanel } from "@/components/SheetsSourcePanel";
 import { StatusBadge } from "@/components/StatusBadge";
-import { noticeRecordToCommandRow } from "@/components/views/liveSheetAdapters";
+import { localDevelopmentFallbackAllowed, noticeRecordToCommandRow } from "@/components/views/liveSheetAdapters";
 import { useSheetsView } from "@/components/views/useSheetsView";
 import {
   commandCenterPeriod,
@@ -384,7 +384,7 @@ function NoticeOperationalSections() {
 export function NoticesEvictionsView() {
   const [filters, setFilters] = useState(defaultFilters);
   const { data, system, error, loading } = useSheetsView<NoticesPayload>("notices-evictions");
-  const rows = useMemo(() => (data?.rows?.length ? data.rows.map(noticeRecordToCommandRow) : noticeRows), [data]);
+  const rows = useMemo(() => (data?.rows ? data.rows.map(noticeRecordToCommandRow) : localDevelopmentFallbackAllowed ? noticeRows : []), [data]);
   const filteredRows = useMemo(() => rows.filter((row) => matchesFilters(row, filters)), [filters, rows]);
 
   const columns: DataTableColumn<NoticeCommandRow>[] = [
@@ -407,15 +407,19 @@ export function NoticesEvictionsView() {
       <NoticesHeader />
       <SheetsSourcePanel system={system} error={error} loading={loading} />
       <NoticeKpis rows={rows} />
-      <NoticeHealthEvaluation />
       <NoticeFilters filters={filters} onChange={setFilters} rows={rows} />
       {filteredRows.length ? (
         <DataTable rows={filteredRows} columns={columns} />
       ) : (
         <EmptyState title="No notice records match these filters" message="Reset filters or check the live Google Sheets source." />
       )}
-      <DraftStatusSection />
-      <NoticeOperationalSections />
+      {localDevelopmentFallbackAllowed ? (
+        <>
+          <NoticeHealthEvaluation />
+          <DraftStatusSection />
+          <NoticeOperationalSections />
+        </>
+      ) : null}
     </div>
   );
 }

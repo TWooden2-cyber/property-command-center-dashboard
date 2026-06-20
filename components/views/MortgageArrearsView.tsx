@@ -6,7 +6,7 @@ import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { EmptyState } from "@/components/DataState";
 import { SheetsSourcePanel } from "@/components/SheetsSourcePanel";
 import { StatusBadge } from "@/components/StatusBadge";
-import { mortgageRecordToCommandRow } from "@/components/views/liveSheetAdapters";
+import { localDevelopmentFallbackAllowed, mortgageRecordToCommandRow } from "@/components/views/liveSheetAdapters";
 import { useSheetsView } from "@/components/views/useSheetsView";
 import {
   commandCenterPeriod,
@@ -430,7 +430,7 @@ function MortgageOperationalSections() {
 export function MortgageArrearsView() {
   const [filters, setFilters] = useState(defaultFilters);
   const { data, system, error, loading } = useSheetsView<MortgagePayload>("mortgage-arrears");
-  const rows = useMemo(() => (data?.rows?.length ? data.rows.map(mortgageRecordToCommandRow) : mortgageRows), [data]);
+  const rows = useMemo(() => (data?.rows ? data.rows.map(mortgageRecordToCommandRow) : localDevelopmentFallbackAllowed ? mortgageRows : []), [data]);
   const filteredRows = useMemo(() => rows.filter((row) => matchesFilters(row, filters)), [filters, rows]);
 
   const columns: DataTableColumn<MortgageCommandRow>[] = [
@@ -453,16 +453,20 @@ export function MortgageArrearsView() {
       <MortgageHeader />
       <SheetsSourcePanel system={system} error={error} loading={loading} />
       <MortgageKpis rows={rows} />
-      <MortgageHealthEvaluation />
       <MortgageFilters filters={filters} onChange={setFilters} rows={rows} />
       {filteredRows.length ? (
         <DataTable rows={filteredRows} columns={columns} />
       ) : (
         <EmptyState title="No mortgage records match these filters" message="Reset filters or check the live Google Sheets source." />
       )}
-      <ArrearsPayoffTracker />
-      <AllotmentSetupTracker />
-      <MortgageOperationalSections />
+      {localDevelopmentFallbackAllowed ? (
+        <>
+          <MortgageHealthEvaluation />
+          <ArrearsPayoffTracker />
+          <AllotmentSetupTracker />
+          <MortgageOperationalSections />
+        </>
+      ) : null}
     </div>
   );
 }

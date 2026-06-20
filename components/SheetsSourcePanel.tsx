@@ -4,10 +4,10 @@ import { StatusBadge } from "@/components/StatusBadge";
 import type { SystemStatus } from "@/types/sheets";
 
 export function sheetSourceLabel(system: SystemStatus | null, error?: string | null) {
-  if (error) return "Sample/Fallback Data";
+  if (error) return "Live data unavailable";
   if (system?.source === "google-sheets-readonly" && system.dataMode === "live") return "Live Google Sheets";
-  if (system?.liveAttempted) return "Sample/Fallback Data";
-  return "Local Static Data";
+  if (system?.liveAttempted) return "Live data unavailable";
+  return process.env.NODE_ENV === "production" ? "Live data unavailable" : "Local development sample";
 }
 
 export function sheetSourceTone(system: SystemStatus | null, error?: string | null): "success" | "warning" | "danger" {
@@ -20,7 +20,7 @@ export function SheetsSourcePanel({
   system,
   error,
   loading,
-  fallbackDetail = "This page is using local sample/static data until live Google Sheets data is available."
+  fallbackDetail = "Live Google Sheets data is unavailable. Check the safe health endpoint for missing env vars or connection errors."
 }: {
   system: SystemStatus | null;
   error?: string | null;

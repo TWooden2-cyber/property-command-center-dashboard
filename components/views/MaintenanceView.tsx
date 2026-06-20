@@ -6,7 +6,7 @@ import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { EmptyState } from "@/components/DataState";
 import { SheetsSourcePanel } from "@/components/SheetsSourcePanel";
 import { StatusBadge } from "@/components/StatusBadge";
-import { maintenanceRecordToCommandRow } from "@/components/views/liveSheetAdapters";
+import { localDevelopmentFallbackAllowed, maintenanceRecordToCommandRow } from "@/components/views/liveSheetAdapters";
 import { useSheetsView } from "@/components/views/useSheetsView";
 import {
   commandCenterPeriod,
@@ -142,7 +142,7 @@ function MaintenanceKpis({ rows }: { rows: MaintenanceCommandRow[] }) {
     { label: "Vendor Assigned", value: String(assignedCount), helper: "Rows with named vendor/crew", tone: assignedCount ? "green" as SignalTone : "yellow" as SignalTone },
     { label: "Proof Missing", value: String(proofMissing), helper: "Photos, invoice, or confirmation needed", tone: proofMissing ? "red" as SignalTone : "green" as SignalTone },
     { label: "Tenant Update Needed", value: String(updatesNeeded), helper: "No approved/logged update yet", tone: updatesNeeded ? "yellow" as SignalTone : "green" as SignalTone },
-    { label: "Estimated Cost", value: money(estimatedCost), helper: "Local sample estimate total", tone: "yellow" as SignalTone },
+    { label: "Estimated Cost", value: money(estimatedCost), helper: "Current tracker estimate total", tone: "yellow" as SignalTone },
     { label: "Actual Cost", value: money(actualCost), helper: "Known actual cost only", tone: actualCost > 500 ? "red" as SignalTone : "green" as SignalTone },
     { label: "Completion Rate", value: `${Math.round(completionRate * 100)}%`, helper: "Complete items / all items", tone: completionRate === 1 ? "green" as SignalTone : "yellow" as SignalTone }
   ];
@@ -390,7 +390,7 @@ function VendorAndTenantTrackers() {
 export function MaintenanceView() {
   const [filters, setFilters] = useState<MaintenanceFilter>(defaultFilters);
   const { data, system, error, loading } = useSheetsView<MaintenancePayload>("maintenance");
-  const rows = useMemo(() => (data?.rows?.length ? data.rows.map(maintenanceRecordToCommandRow) : maintenanceRows), [data]);
+  const rows = useMemo(() => (data?.rows ? data.rows.map(maintenanceRecordToCommandRow) : localDevelopmentFallbackAllowed ? maintenanceRows : []), [data]);
   const filteredRows = useMemo(() => rows.filter((row) => matchesFilters(row, filters)), [filters, rows]);
 
   return (
@@ -398,7 +398,6 @@ export function MaintenanceView() {
       <MaintenanceHeader filters={filters} onFiltersChange={setFilters} />
       <SheetsSourcePanel system={system} error={error} loading={loading} />
       <MaintenanceKpis rows={rows} />
-      <MaintenanceHealthEvaluation />
       <MaintenanceFilters filters={filters} onFiltersChange={setFilters} rows={rows} />
 
       <section className="section-block">
@@ -416,10 +415,15 @@ export function MaintenanceView() {
         )}
       </section>
 
-      <MaintenanceActionQueue />
-      <BlockedUntilVerified />
-      <ProofNeeded />
-      <VendorAndTenantTrackers />
+      {localDevelopmentFallbackAllowed ? (
+        <>
+          <MaintenanceHealthEvaluation />
+          <MaintenanceActionQueue />
+          <BlockedUntilVerified />
+          <ProofNeeded />
+          <VendorAndTenantTrackers />
+        </>
+      ) : null}
     </div>
   );
 }

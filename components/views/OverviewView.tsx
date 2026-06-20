@@ -5,6 +5,9 @@ import { AlertTriangle, CheckCircle2, TrendingUp } from "lucide-react";
 import { EmptyState } from "@/components/DataState";
 import { SheetsSourcePanel } from "@/components/SheetsSourcePanel";
 import {
+  localDevelopmentFallbackAllowed
+} from "@/components/views/liveSheetAdapters";
+import {
   computeDashboardHealth,
   maintenanceRows,
   money,
@@ -326,25 +329,27 @@ export function OverviewView() {
   const kpis = useMemo(() => overviewKpis(), []);
   const hasPeriodData = selectedMonth === currentPeriod.monthName && selectedYear === currentPeriod.year;
   const isLive = system?.source === "google-sheets-readonly" && system.dataMode === "live";
-  const dataSourceLabel = isLive ? "Live Google Sheets" : "Sample/Fallback Data";
+  const dataSourceLabel = isLive ? "Live Google Sheets" : "Live data unavailable";
   const lastRefreshLabel = system?.lastSuccessfulRefresh ? new Date(system.lastSuccessfulRefresh).toLocaleString() : "Not available";
+  const showLocalDevelopmentDashboard = localDevelopmentFallbackAllowed && !isLive;
 
   return (
     <div className="view-stack overview-dashboard">
       <FilterBar month={selectedMonth} year={selectedYear} onMonthChange={setSelectedMonth} onYearChange={setSelectedYear} />
       <SheetsSourcePanel system={system} error={error} loading={loading} />
 
-      {!hasPeriodData ? (
+      {!hasPeriodData && showLocalDevelopmentDashboard ? (
         <EmptyState title="No data available for this period." message="Choose May 2026 to view the current operation center dashboard." />
       ) : (
         <>
           <section className="command-health-hero">
             <div>
-              <p className="eyebrow">Operations Evaluation</p>
-              <h2>Property operation health: {health.overallHealth}</h2>
+              <p className="eyebrow">{dataSourceLabel}</p>
+              <h2>{isLive ? "Live Google Sheets dashboard" : "Live Google Sheets data unavailable"}</h2>
               <p>
-                Current status is driven by open mortgage arrears, rent collection balance, maintenance cost, utility cost,
-                and active notice review counts.
+                {isLive
+                  ? "Current status is read from the configured Property Management Master Tracker."
+                  : "The production dashboard does not display sample or local static data when live Google Sheets is unavailable."}
               </p>
               <div className="hero-source-strip">
                 <span>{dataSourceLabel}</span>
@@ -352,39 +357,43 @@ export function OverviewView() {
                 <span>Status dashboard</span>
               </div>
             </div>
-            <div className={`health-score health-${toneForStatus(health.overallHealth)}`}>
-              <span>Health score</span>
-              <strong>{health.overallHealth}</strong>
-              <small>{percent(health.rentCollectionRate)} rent collected</small>
-            </div>
+            {showLocalDevelopmentDashboard ? (
+              <div className={`health-score health-${toneForStatus(health.overallHealth)}`}>
+                <span>Health score</span>
+                <strong>{health.overallHealth}</strong>
+                <small>{percent(health.rentCollectionRate)} rent collected</small>
+              </div>
+            ) : null}
           </section>
 
           <section className="command-kpi-grid">
-            {isLive && data?.kpis?.length ? data.kpis.map((item) => <LiveKpiTile key={item.label} item={item} />) : kpis.map((item) => <KpiTile key={item.label} item={item} />)}
+            {isLive && data?.kpis?.length ? data.kpis.map((item) => <LiveKpiTile key={item.label} item={item} />) : showLocalDevelopmentDashboard ? kpis.map((item) => <KpiTile key={item.label} item={item} />) : null}
           </section>
 
           {isLive && data?.risks?.length ? (
             <LiveRiskGrid risks={data.risks} />
-          ) : (
+          ) : showLocalDevelopmentDashboard ? (
             <section className="health-grid">
               {health.signals.map((signal) => (
                 <HealthCard key={signal.label} label={signal.label} status={signal.status} explanation={signal.explanation} />
               ))}
             </section>
-          )}
+          ) : null}
 
-          <Section eyebrow="Cause of increase/decrease" title="Why totals changed" icon={<AlertTriangle size={20} aria-hidden />}>
-            <div className="cause-grid">
-              {health.causes.map((cause) => (
-                <article key={cause}>
-                  <CheckCircle2 size={17} aria-hidden />
-                  <p>{cause}</p>
-                </article>
-              ))}
-            </div>
-          </Section>
+          {showLocalDevelopmentDashboard ? (
+            <Section eyebrow="Cause of increase/decrease" title="Why totals changed" icon={<AlertTriangle size={20} aria-hidden />}>
+              <div className="cause-grid">
+                {health.causes.map((cause) => (
+                  <article key={cause}>
+                    <CheckCircle2 size={17} aria-hidden />
+                    <p>{cause}</p>
+                  </article>
+                ))}
+              </div>
+            </Section>
+          ) : null}
 
-          {!isLive ? (
+          {showLocalDevelopmentDashboard ? (
             <>
               <div className="chart-grid">
                 <ComparisonChart title="Month Paid vs Projected" projected={rentTotals.projected} collected={rentTotals.collected} />

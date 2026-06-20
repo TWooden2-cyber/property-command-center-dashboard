@@ -7,6 +7,7 @@ import { CheckCircle2, ClipboardList, ShieldCheck } from "lucide-react";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { SheetsRefreshStatus } from "@/components/SheetsRefreshStatus";
 import { StatusBadge } from "@/components/StatusBadge";
+import { localDevelopmentFallbackAllowed } from "@/components/views/liveSheetAdapters";
 import type { SystemStatus } from "@/types/sheets";
 import { useSheetsView } from "@/components/views/useSheetsView";
 
@@ -404,6 +405,26 @@ function liveSheetsStatus(system: SystemStatus | null): { value: string; helper:
 export function FinalIntegrationView() {
   const { system } = useSheetsView<SettingsPayload>("settings");
   const sheetsStatus = liveSheetsStatus(system);
+
+  if (!localDevelopmentFallbackAllowed) {
+    return (
+      <div className="remaining-command-page">
+        <section className="section-card">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">Live data not connected</p>
+              <h2>Final Integration planning data is not enabled</h2>
+            </div>
+            <StatusBadge label="No static planning data shown" />
+          </div>
+          <p>
+            This production page does not display sample migration tables, mock correction rows, or hardcoded launch checklists. Use the
+            live Google Sheets pages and safe health endpoints for operational status.
+          </p>
+        </section>
+      </div>
+    );
+  }
 
   const correctionColumns: DataTableColumn<CorrectionRow>[] = [
     { key: "expectedFolder", header: "Expected Folder", render: (row) => row.expectedFolder },

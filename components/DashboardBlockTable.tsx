@@ -44,7 +44,7 @@ export function DashboardBlockTable({ block, emptyMessage = "No Dashboard range 
         </div>
         <span className="row-count-chip">{block.rows.length} rows</span>
       </div>
-      <p className="source-line">Source: local sample workbook / {block.range}</p>
+      <p className="source-line">Source: Live Google Sheets / {block.range}</p>
       <DataTable rows={block.rows} columns={columns} />
     </section>
   );

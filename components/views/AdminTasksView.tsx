@@ -6,7 +6,7 @@ import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { EmptyState } from "@/components/DataState";
 import { SheetsSourcePanel } from "@/components/SheetsSourcePanel";
 import { StatusBadge } from "@/components/StatusBadge";
-import { adminTaskRecordToControlRow } from "@/components/views/liveSheetAdapters";
+import { adminTaskRecordToControlRow, localDevelopmentFallbackAllowed } from "@/components/views/liveSheetAdapters";
 import { useSheetsView } from "@/components/views/useSheetsView";
 import { copyTextToClipboard } from "@/lib/clipboard";
 import {
@@ -90,7 +90,7 @@ const completionRules = [
   "Drive update only after owner approval.",
   "Calendar/task update only after owner approval.",
   "Legal/payment/tenant actions require separate owner approval.",
-  "Local Sample Mode data is not a live source of truth."
+  "Live Google Sheets is the production source of truth."
 ];
 
 const adminIntakeProcessingRules = {
@@ -700,7 +700,7 @@ const columns: DataTableColumn<AdminTaskControlRow>[] = [
 export function AdminTasksView() {
   const [filters, setFilters] = useState<AdminFilter>(defaultFilters);
   const { data, system, error, loading } = useSheetsView<AdminTasksPayload>("admin-tasks");
-  const rows = useMemo(() => (data?.rows?.length ? data.rows.map(adminTaskRecordToControlRow) : adminTaskControlRows), [data]);
+  const rows = useMemo(() => (data?.rows ? data.rows.map(adminTaskRecordToControlRow) : localDevelopmentFallbackAllowed ? adminTaskControlRows : []), [data]);
   const filteredRows = useMemo(() => rows.filter((row) => matchesFilters(row, filters)), [filters, rows]);
 
   return (
@@ -708,7 +708,7 @@ export function AdminTasksView() {
       <AdminHeader />
       <SheetsSourcePanel system={system} error={error} loading={loading} />
       <AdminKpis rows={rows} />
-      <AdminHealth />
+      {localDevelopmentFallbackAllowed ? <AdminHealth /> : null}
       <AdminFilters filters={filters} setFilters={setFilters} rows={rows} />
       {filteredRows.length ? (
         <DataTable rows={filteredRows} columns={columns} />

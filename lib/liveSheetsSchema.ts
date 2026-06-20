@@ -93,11 +93,11 @@ export function buildLiveSourceChecklist(tabs: Record<string, LiveSheetRead | un
 export function liveSourceWarnings(checklist: LiveSourceTabStatus[]): string[] {
   return checklist.flatMap((status) => {
     if (!status.present) {
-      return [`${status.tab}: required live worksheet tab is missing. Sample fallback remains available.`];
+      return [`${status.tab}: required live worksheet tab is missing.`];
     }
 
     if (status.missingColumns.length > 0) {
-      return [`${status.tab}: missing required columns ${status.missingColumns.join(", ")}. Missing fields fall back to blanks or sample-only status.`];
+      return [`${status.tab}: missing required columns ${status.missingColumns.join(", ")}. Missing fields are left blank or marked unavailable.`];
     }
 
     return [];

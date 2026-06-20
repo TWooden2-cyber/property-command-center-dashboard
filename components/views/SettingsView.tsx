@@ -34,13 +34,13 @@ export function SettingsView() {
   }
 
   if (!data?.system) {
-    return <EmptyState title="No system status" message="Local sample system status is unavailable." />;
+    return <EmptyState title="No system status" message="Live system status is unavailable." />;
   }
 
   const { system } = data;
-  const dataModeLabel = system.dataMode === "live" ? "Live Google Sheets" : "Local Sample";
-  const requestedModeLabel = system.requestedDataMode === "live" ? "Live Google Sheets" : "Local Sample";
-  const sourceLabel = system.source === "google-sheets-readonly" ? "Google Sheets Read-Only" : "Local Sample";
+  const dataModeLabel = system.dataMode === "live" ? "Live Google Sheets" : "Live data unavailable";
+  const requestedModeLabel = system.requestedDataMode === "live" ? "Live Google Sheets" : "Local development sample";
+  const sourceLabel = system.source === "google-sheets-readonly" ? "Google Sheets Read-Only" : "Live data unavailable";
   const liveIssueCount = system.liveSourceChecklist.filter((item) => !item.present || item.missingColumns.length > 0).length;
   const liveConfiguredLabel = !system.liveSheetsConfigured ? "No" : liveIssueCount > 0 ? "Invalid" : "Yes";
   const envEntries = [
@@ -69,11 +69,11 @@ export function SettingsView() {
           <p>Owner password environment variables are required in production and fail closed when missing. Live Google Sheets reads are read-only only.</p>
           <div className="mode-status-list">
             <span>Requested Data Mode: <strong>{requestedModeLabel}</strong></span>
-            <StatusBadge label={system.requestedDataMode === "live" ? "Live requested" : "Sample requested"} />
+            <StatusBadge label={system.requestedDataMode === "live" ? "Live requested" : "Local dev requested"} />
           </div>
           <div className="mode-status-list">
             <span>Resolved Data Mode: <strong>{dataModeLabel}</strong></span>
-            <StatusBadge label={system.dataMode === "live" ? "Live read-only" : "Sample"} />
+            <StatusBadge label={system.dataMode === "live" ? "Live read-only" : "Not connected"} />
           </div>
           <div className="mode-status-list">
             <span>Current Source: <strong>{sourceLabel}</strong></span>
@@ -221,7 +221,7 @@ export function SettingsView() {
         <div className="section-heading">
           <div>
             <p className="eyebrow">Environment</p>
-            <h2>Local-only configuration</h2>
+            <h2>Production configuration</h2>
           </div>
         </div>
         <p className="muted-line">
@@ -259,7 +259,7 @@ export function SettingsView() {
               .filter((item) => !item.present || item.missingColumns.length > 0)
               .map((item) => <span key={item.tab}>{item.present ? `${item.tab}: ${item.missingColumns.length} missing columns` : `${item.tab}: missing tab`}</span>)
           ) : (
-            <p className="muted-line">All required live source tabs and columns are ready, or the dashboard is in Local Sample Mode.</p>
+            <p className="muted-line">All required live source tabs and columns are ready.</p>
           )}
         </div>
       </section>

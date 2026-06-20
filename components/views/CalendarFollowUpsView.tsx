@@ -6,7 +6,7 @@ import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { EmptyState } from "@/components/DataState";
 import { SheetsSourcePanel } from "@/components/SheetsSourcePanel";
 import { StatusBadge } from "@/components/StatusBadge";
-import { flattenCalendarGroups } from "@/components/views/liveSheetAdapters";
+import { flattenCalendarGroups, localDevelopmentFallbackAllowed } from "@/components/views/liveSheetAdapters";
 import { useSheetsView } from "@/components/views/useSheetsView";
 import {
   commandCenterPeriod,
@@ -361,8 +361,8 @@ export function CalendarFollowUpsView() {
   const [filters, setFilters] = useState(defaultFilters);
   const { data, system, error, loading } = useSheetsView<CalendarPayload>("calendar-follow-ups");
   const rows = useMemo(() => {
-    const liveRows = flattenCalendarGroups(data?.groups);
-    return liveRows.length ? liveRows : followUpRows;
+    if (data?.groups) return flattenCalendarGroups(data.groups);
+    return localDevelopmentFallbackAllowed ? followUpRows : [];
   }, [data]);
   const filteredRows = useMemo(() => rows.filter((row) => matchesFilters(row, filters)), [filters, rows]);
 
@@ -389,7 +389,6 @@ export function CalendarFollowUpsView() {
       <CalendarHeader />
       <SheetsSourcePanel system={system} error={error} loading={loading} />
       <CalendarKpis rows={rows} />
-      <CalendarHealthEvaluation />
       <CalendarFilters filters={filters} onChange={setFilters} rows={rows} />
       {filteredRows.length ? (
         <DataTable rows={filteredRows} columns={columns} />
@@ -397,7 +396,12 @@ export function CalendarFollowUpsView() {
         <EmptyState title="No follow-ups match these filters" message="Reset filters or check the live Google Sheets source." />
       )}
       <CalendarQueues rows={rows} />
-      <CalendarBlockedAndPreview rows={rows} />
+      {localDevelopmentFallbackAllowed ? (
+        <>
+          <CalendarHealthEvaluation />
+          <CalendarBlockedAndPreview rows={rows} />
+        </>
+      ) : null}
     </div>
   );
 }

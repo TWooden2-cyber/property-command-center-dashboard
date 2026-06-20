@@ -491,7 +491,7 @@ export function parseWorkbook(snapshot: WorkbookSnapshot): CommandCenterData {
         kpi("Scheduled Rent", formatCurrency(scheduledRent), "Rent due from tracker", "Normal"),
         kpi("Rent Collected", formatCurrency(rentCollected), "Payments recorded", "Stable"),
         kpi("Outstanding Rent", formatCurrency(outstandingRent), "Open balances", outstandingRent > 0 ? "High" : "Stable"),
-        kpi("Net Cash Flow", formatCurrency(detectedNetCashFlow), "From cash flow summary or calculated fallback", detectedNetCashFlow < 0 ? "High" : "Stable"),
+        kpi("Net Cash Flow", formatCurrency(detectedNetCashFlow), "From cash flow summary or calculated from live rows", detectedNetCashFlow < 0 ? "High" : "Stable"),
         kpi("Open Notices", String(openNotices), "Notice cases requiring review", openNotices > 0 ? "High" : "Stable"),
         kpi("Current Arrears", formatCurrency(currentArrears), "Arrears payoff tracker", currentArrears > 0 ? "Critical" : "Stable"),
         kpi("Open Maintenance", String(openMaintenance), "Open work orders", openMaintenance > 0 ? "Watch" : "Stable"),

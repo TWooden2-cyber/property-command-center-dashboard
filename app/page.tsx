@@ -7,7 +7,7 @@ export default async function OverviewPage() {
   await requireOwnerSession();
 
   return (
-    <LuxuryShell title="Owner Command Center" subtitle="Owner-only dashboard with local sample fallback and optional live Google Sheets read-only data.">
+    <LuxuryShell title="Owner Command Center" subtitle="Owner-only dashboard using live Google Sheets read-only data or clear operational errors.">
       <OverviewView />
     </LuxuryShell>
   );

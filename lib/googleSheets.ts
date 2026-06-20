@@ -16,17 +16,30 @@ import { getAuthSetupStatus } from "@/lib/authConfig";
 import { toNumber } from "@/lib/formatters";
 import { buildLiveSourceChecklist, LIVE_SHEET_SCHEMA, liveSourceWarnings, type LiveSheetRead } from "@/lib/liveSheetsSchema";
 import { LIVE_OPERATIONS_AUDIT_HEADERS, LIVE_OPERATIONS_AUDIT_TAB } from "@/lib/liveOperationsAudit";
-import { sampleWorkbookSnapshot } from "@/lib/sampleWorkbook";
 
 const SHEETS_SCOPE = "https://www.googleapis.com/auth/spreadsheets.readonly";
 const SHEETS_WRITE_SCOPE = "https://www.googleapis.com/auth/spreadsheets";
+export const EXPECTED_GOOGLE_SHEET_ID = "14nzzWCKIi0h-zHkCzW0JXmN-NQNcAWZahLpDy3CXK0c";
+export const EXPECTED_SERVICE_ACCOUNT_EMAIL = "property-dashboard-reader@property-management-owner-com.iam.gserviceaccount.com";
 
 function hasEnv(value: string | undefined): boolean {
   return Boolean(value && value.trim().length > 0);
 }
 
+export function isProductionRuntime(): boolean {
+  return process.env.NODE_ENV === "production" || Boolean(process.env.VERCEL);
+}
+
+export function isLocalSampleModeAllowed(): boolean {
+  return !isProductionRuntime() && process.env.DASHBOARD_DATA_MODE?.trim().toLowerCase() === "sample";
+}
+
 export function getDashboardDataMode(): DashboardDataMode {
   const explicitMode = process.env.DASHBOARD_DATA_MODE?.trim().toLowerCase();
+
+  if (isProductionRuntime()) {
+    return "live";
+  }
 
   if (explicitMode === "live") return "live";
   if (explicitMode === "sample") return "sample";
@@ -78,9 +91,14 @@ function hasValidPrivateKeyFormat(privateKey: string): boolean {
 
 function baseSetupErrors(requestedDataMode = getDashboardDataMode(), env = getEnvironmentStatus()): string[] {
   const errors: string[] = [];
+  const explicitMode = process.env.DASHBOARD_DATA_MODE?.trim().toLowerCase();
 
   if (requestedDataMode !== "live") {
     errors.push("DASHBOARD_DATA_MODE missing or not live.");
+  }
+
+  if (isProductionRuntime() && explicitMode === "sample") {
+    errors.push("DASHBOARD_DATA_MODE=sample is not allowed in production.");
   }
 
   if (!env.googleSheetsSpreadsheetId) {
@@ -98,6 +116,21 @@ function baseSetupErrors(requestedDataMode = getDashboardDataMode(), env = getEn
   }
 
   return errors;
+}
+
+export function getMissingLiveSheetsEnvVars(): string[] {
+  const liveEnv = getLiveSheetsEnv();
+  const missing: string[] = [];
+
+  if (!liveEnv.spreadsheetId.detected) missing.push("GOOGLE_SHEET_ID");
+  if (!liveEnv.clientEmail.detected) missing.push("GOOGLE_SERVICE_ACCOUNT_EMAIL");
+  if (!liveEnv.privateKey.detected) missing.push("GOOGLE_PRIVATE_KEY");
+
+  if (liveEnv.privateKey.detected && !hasValidPrivateKeyFormat(normalizePrivateKey(liveEnv.privateKey.value))) {
+    missing.push("GOOGLE_PRIVATE_KEY_VALID_FORMAT");
+  }
+
+  return missing;
 }
 
 export function isLiveSheetsConfigured(): boolean {
@@ -134,6 +167,80 @@ function getSheetsClient(scopes = [SHEETS_SCOPE]) {
   });
 
   return google.sheets({ version: "v4", auth });
+}
+
+export type GoogleSheetsHealth = {
+  ok: boolean;
+  service: "google-sheets";
+  mode: "live";
+  isLive: boolean;
+  spreadsheetId: string | null;
+  serviceAccountEmail: string | null;
+  requiredEnvPresent: boolean;
+  missingEnvVars: string[];
+  checkedAt: string;
+  errorType: string | null;
+  error: string | null;
+};
+
+export async function checkGoogleSheetsHealth(): Promise<GoogleSheetsHealth> {
+  const liveEnv = getLiveSheetsEnv();
+  const missingEnvVars = getMissingLiveSheetsEnvVars();
+  const checkedAt = new Date().toISOString();
+
+  if (missingEnvVars.length > 0) {
+    return {
+      ok: false,
+      service: "google-sheets",
+      mode: "live",
+      isLive: false,
+      spreadsheetId: liveEnv.spreadsheetId.value || null,
+      serviceAccountEmail: liveEnv.clientEmail.value || null,
+      requiredEnvPresent: false,
+      missingEnvVars,
+      checkedAt,
+      errorType: "missing_env",
+      error: `Missing required Google Sheets environment variables: ${missingEnvVars.join(", ")}`
+    };
+  }
+
+  try {
+    const sheets = getSheetsClient();
+    await sheets.spreadsheets.get({
+      spreadsheetId: liveEnv.spreadsheetId.value,
+      fields: "spreadsheetId,properties.title"
+    });
+
+    return {
+      ok: true,
+      service: "google-sheets",
+      mode: "live",
+      isLive: true,
+      spreadsheetId: liveEnv.spreadsheetId.value,
+      serviceAccountEmail: liveEnv.clientEmail.value,
+      requiredEnvPresent: true,
+      missingEnvVars: [],
+      checkedAt,
+      errorType: null,
+      error: null
+    };
+  } catch (error) {
+    const errorMessage = classifySheetsError(error);
+
+    return {
+      ok: false,
+      service: "google-sheets",
+      mode: "live",
+      isLive: false,
+      spreadsheetId: liveEnv.spreadsheetId.value,
+      serviceAccountEmail: liveEnv.clientEmail.value,
+      requiredEnvPresent: true,
+      missingEnvVars: [],
+      checkedAt,
+      errorType: "google_sheets_connection_error",
+      error: errorMessage
+    };
+  }
 }
 
 function quoteTab(tab: string): string {
@@ -239,12 +346,14 @@ export function getLiveDiagnostics(snapshotSystem?: Partial<LiveDiagnostics & { 
   const requestedDataMode = getDashboardDataMode();
   const envDetected = getEnvironmentStatus();
   const setupErrors = snapshotSystem?.setupErrors ?? baseSetupErrors(requestedDataMode, envDetected);
-  const resolvedDataMode = requestedDataMode === "live" && setupErrors.length === 0 && snapshotSystem?.resolvedDataMode === "live" ? "live" : "sample";
+  const liveConfigured = baseSetupErrors("live", envDetected).length === 0;
+  const localSampleAllowed = isLocalSampleModeAllowed();
+  const resolvedDataMode = requestedDataMode === "live" || !localSampleAllowed ? "live" : "sample";
 
   return {
     requestedDataMode,
     resolvedDataMode,
-    liveConfigured: baseSetupErrors("live", envDetected).length === 0,
+    liveConfigured,
     liveAttempted: requestedDataMode === "live",
     source: resolvedDataMode === "live" ? "google-sheets-readonly" : "local-sample",
     setupErrors,
@@ -273,13 +382,20 @@ function liveRows(liveTabs: Record<string, LiveSheetRead | undefined>, tab: stri
   return liveTabs[tab]?.ok ? liveTabs[tab]?.rows ?? [] : [];
 }
 
-function liveRowsOrSample(liveTabs: Record<string, LiveSheetRead | undefined>, liveTab: string, sampleTab: SourceTabName, transform: (row: RawSheetRow) => RawSheetRow): RawSheetRow[] {
+function liveRowsMapped(liveTabs: Record<string, LiveSheetRead | undefined>, liveTab: string, transform: (row: RawSheetRow) => RawSheetRow): RawSheetRow[] {
   const rows = liveRows(liveTabs, liveTab);
-  if (!rows.length && !liveTabs[liveTab]?.ok) {
-    return sampleWorkbookSnapshot.tabs[sampleTab]?.rows ?? [];
-  }
-
   return rows.map(transform);
+}
+
+function emptyTab(tab: SourceTabName, warning?: string): RawSheetTab {
+  return {
+    tab,
+    ok: false,
+    empty: true,
+    headers: [],
+    rows: [],
+    warning
+  };
 }
 
 function buildDashboardBlocksFromLive(liveTabs: Record<string, LiveSheetRead | undefined>, checklist: LiveSourceTabStatus[]): Record<DashboardRangeKey, DashboardRawBlock> {
@@ -417,7 +533,15 @@ function buildDashboardBlocksFromLive(liveTabs: Record<string, LiveSheetRead | u
         ])
       ]
     },
-    gmailIntake: sampleWorkbookSnapshot.dashboardBlocks.gmailIntake,
+    gmailIntake: {
+      key: "gmailIntake",
+      title: "Gmail Intake",
+      range: "Not enabled",
+      ok: false,
+      empty: true,
+      values: [["Message ID", "Thread ID", "Source Type", "Tracker ID", "Review Status", "Safe Category Label", "Safe Action Label"]],
+      warning: "Gmail production read-only integration is not enabled."
+    },
     calendarFollowUps: {
       key: "calendarFollowUps",
       title: "Calendar Follow-Ups",
@@ -442,7 +566,7 @@ function buildDashboardBlocksFromLive(liveTabs: Record<string, LiveSheetRead | u
 
 function buildLegacyTabsFromLive(liveTabs: Record<string, LiveSheetRead | undefined>): Record<SourceTabName, RawSheetTab> {
   const tabs = SOURCE_TABS.reduce<Record<SourceTabName, RawSheetTab>>((acc, tab) => {
-    acc[tab] = legacyTab(tab, sampleWorkbookSnapshot.tabs[tab]?.rows ?? []);
+    acc[tab] = emptyTab(tab, "Live Google Sheets data is not available for this tab.");
     return acc;
   }, {} as Record<SourceTabName, RawSheetTab>);
 
@@ -455,7 +579,7 @@ function buildLegacyTabsFromLive(liveTabs: Record<string, LiveSheetRead | undefi
   );
   tabs["Rent Collection"] = legacyTab(
     "Rent Collection",
-    liveRowsOrSample(liveTabs, "Rent Collection", "Rent Collection", (row) => ({
+    liveRowsMapped(liveTabs, "Rent Collection", (row) => ({
       Property: pickLive(row, "property"),
       Unit: pickLive(row, "unit"),
       Tenant: pickLive(row, "tenantLabel") || pickLive(row, "tenantInitials"),
@@ -469,7 +593,7 @@ function buildLegacyTabsFromLive(liveTabs: Record<string, LiveSheetRead | undefi
   );
   tabs["Maintenance"] = legacyTab(
     "Maintenance",
-    liveRowsOrSample(liveTabs, "Maintenance", "Maintenance", (row) => ({
+    liveRowsMapped(liveTabs, "Maintenance", (row) => ({
       "Date Reported": pickLive(row, "dateOpened"),
       Property: pickLive(row, "property"),
       Unit: pickLive(row, "unit"),
@@ -483,7 +607,7 @@ function buildLegacyTabsFromLive(liveTabs: Record<string, LiveSheetRead | undefi
   );
   tabs["Notices & Evictions"] = legacyTab(
     "Notices & Evictions",
-    liveRowsOrSample(liveTabs, "Notices and Legal Holds", "Notices & Evictions", (row) => ({
+    liveRowsMapped(liveTabs, "Notices and Legal Holds", (row) => ({
       "Date Started": pickLive(row, "draftDate"),
       Property: pickLive(row, "property"),
       Unit: pickLive(row, "unit"),
@@ -498,7 +622,7 @@ function buildLegacyTabsFromLive(liveTabs: Record<string, LiveSheetRead | undefi
   );
   tabs["Mortgage & Allotments"] = legacyTab(
     "Mortgage & Allotments",
-    liveRowsOrSample(liveTabs, "Mortgage and Arrears", "Mortgage & Allotments", (row) => ({
+    liveRowsMapped(liveTabs, "Mortgage and Arrears", (row) => ({
       Property: pickLive(row, "property"),
       "Mortgage Due Monthly": pickLive(row, "monthlyPayment"),
       "Payment Source": pickLive(row, "lender"),
@@ -512,7 +636,7 @@ function buildLegacyTabsFromLive(liveTabs: Record<string, LiveSheetRead | undefi
   );
   tabs["Arrears Payoff Tracker"] = legacyTab(
     "Arrears Payoff Tracker",
-    liveRowsOrSample(liveTabs, "Mortgage and Arrears", "Arrears Payoff Tracker", (row) => ({
+    liveRowsMapped(liveTabs, "Mortgage and Arrears", (row) => ({
       Property: pickLive(row, "property"),
       "Current Arrears": pickLive(row, "arrearsBalance"),
       "Payoff Plan": pickLive(row, "nextAction"),
@@ -522,7 +646,7 @@ function buildLegacyTabsFromLive(liveTabs: Record<string, LiveSheetRead | undefi
   );
   tabs["Utilities"] = legacyTab(
     "Utilities",
-    liveRowsOrSample(liveTabs, "Utilities", "Utilities", (row) => ({
+    liveRowsMapped(liveTabs, "Utilities", (row) => ({
       Property: pickLive(row, "property"),
       "Unit / Common Area": "",
       "Utility Type": pickLive(row, "utilityType"),
@@ -604,12 +728,12 @@ export async function getWorkbookSnapshot(): Promise<WorkbookSnapshot> {
         connectionOk: false,
         connectionMessage: setupErrors.join(" "),
         lastSuccessfulRefresh: null,
-        dataMode: "sample",
+        dataMode: "live",
         requestedDataMode,
-        resolvedDataMode: "sample",
+        resolvedDataMode: "live",
         liveSheetsConfigured,
         liveAttempted: requestedDataMode === "live",
-        source: "local-sample",
+        source: "google-sheets-readonly",
         setupErrors,
         liveSourceChecklist: checklist,
         tabsDetected: [],
@@ -638,12 +762,12 @@ export async function getWorkbookSnapshot(): Promise<WorkbookSnapshot> {
         connectionOk: false,
         connectionMessage: errorMessage,
         lastSuccessfulRefresh: null,
-        dataMode: "sample",
+        dataMode: "live",
         requestedDataMode,
-        resolvedDataMode: "sample",
+        resolvedDataMode: "live",
         liveSheetsConfigured,
         liveAttempted: true,
-        source: "local-sample",
+        source: "google-sheets-readonly",
         setupErrors: [errorMessage],
         liveSourceChecklist: checklist,
         tabsDetected: [],
@@ -712,12 +836,12 @@ export async function getWorkbookSnapshot(): Promise<WorkbookSnapshot> {
         ? "Live Google Sheets read-only connection is active, but workbook tabs or columns need owner review."
         : "Connected to live Google Sheets read-only data.",
       lastSuccessfulRefresh: new Date().toISOString(),
-      dataMode: warnings.length === 0 ? "live" : "sample",
+      dataMode: "live",
       requestedDataMode,
-      resolvedDataMode: warnings.length === 0 ? "live" : "sample",
+      resolvedDataMode: "live",
       liveSheetsConfigured,
       liveAttempted: true,
-      source: warnings.length === 0 ? "google-sheets-readonly" : "local-sample",
+      source: "google-sheets-readonly",
       setupErrors: schemaErrors,
       liveSourceChecklist: checklist,
       tabsDetected: Array.from(detected).sort(),

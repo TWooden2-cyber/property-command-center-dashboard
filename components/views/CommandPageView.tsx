@@ -7,8 +7,9 @@ import { CheckCircle2, Database, Search, ShieldAlert } from "lucide-react";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { EmptyState } from "@/components/DataState";
 import { StatusBadge } from "@/components/StatusBadge";
-import type { CommandPageConfig, CommandTableRow } from "@/lib/remainingCommandCenterData";
+import type { CommandPageConfig, CommandTableRow } from "@/types/commandPage";
 import { commandCenterPeriod, monthOptions, yearOptions, type SignalTone } from "@/lib/propertyCommandCenterData";
+import { localDevelopmentFallbackAllowed } from "@/components/views/liveSheetAdapters";
 
 type FilterState = {
   search: string;
@@ -229,6 +230,26 @@ export function CommandPageView({ config }: { config: CommandPageConfig }) {
       })),
     [config.tableColumns]
   );
+
+  if (!localDevelopmentFallbackAllowed) {
+    return (
+      <div className="remaining-command-page">
+        <section className="section-card">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">Live data not connected</p>
+              <h2>{config.title}</h2>
+            </div>
+            <StatusBadge label="No sample data shown" />
+          </div>
+          <p>
+            This production tab is not yet wired to a verified live Google Sheets parser or approved live Google API. It will not display
+            sample, mock, demo, fallback, hardcoded, or local static records.
+          </p>
+        </section>
+      </div>
+    );
+  }
 
   return (
     <div className="remaining-command-page">

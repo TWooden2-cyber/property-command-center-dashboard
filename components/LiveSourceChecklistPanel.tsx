@@ -40,7 +40,7 @@ export function LiveSourceChecklistPanel() {
 
   const { system } = data;
   const issueCount = system.liveSourceChecklist.filter((item) => !item.present || item.missingColumns.length > 0).length;
-  const modeLabel = system.dataMode === "live" ? "Live Google Sheets" : "Local Sample";
+  const modeLabel = system.dataMode === "live" ? "Live Google Sheets" : "Live data unavailable";
   const rows = system.liveSourceChecklist.map((item) => ({ ...item, id: item.tab }));
 
   return (
@@ -65,12 +65,12 @@ export function LiveSourceChecklistPanel() {
           <span>Workbook Issues: <strong>{issueCount}</strong></span>
           <StatusBadge label={issueCount ? "Needs Review" : "Ready"} />
         </div>
-        <p className="muted-line">Missing tabs or columns are visible only after owner login. Sample mode remains available when live Sheets is not configured.</p>
+        <p className="muted-line">Missing tabs or columns are visible only after owner login. Production does not display sample data when live Sheets is not configured.</p>
       </div>
       {system.liveSourceChecklist.length ? (
         <DataTable rows={rows} columns={columns} />
       ) : (
-        <EmptyState title="Local Sample Mode" message="Turn on DASHBOARD_DATA_MODE=live and configure Sheets variables to validate live tabs and columns." />
+        <EmptyState title="Live source checklist unavailable" message="Configure live Sheets variables to validate tabs and columns." />
       )}
       <div className="setup-guide-box">
         <h3>Owner setup guide</h3>
@@ -79,7 +79,7 @@ export function LiveSourceChecklistPanel() {
           <li>Create the 13 tabs listed above with the exact names shown.</li>
           <li>Add the required columns in row 1 for each tab.</li>
           <li>Share the Sheet with the service account email from GOOGLE_SHEETS_CLIENT_EMAIL as Viewer only.</li>
-          <li>Add Vercel variables: DASHBOARD_DATA_MODE=live, GOOGLE_SHEETS_SPREADSHEET_ID, GOOGLE_SHEETS_CLIENT_EMAIL, and GOOGLE_SHEETS_PRIVATE_KEY.</li>
+          <li>Add Vercel variables: DASHBOARD_DATA_MODE=live, GOOGLE_SHEET_ID, GOOGLE_SERVICE_ACCOUNT_EMAIL, and GOOGLE_PRIVATE_KEY.</li>
           <li>Redeploy Vercel after adding environment variables.</li>
           <li>Refresh the dashboard to pull the latest Google Sheets data.</li>
         </ol>

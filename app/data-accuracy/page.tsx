@@ -2,15 +2,21 @@ import { requireOwnerSession } from "@/lib/auth";
 import { LuxuryShell } from "@/components/LuxuryShell";
 import { LiveSourceChecklistPanel } from "@/components/LiveSourceChecklistPanel";
 import { CommandPageView } from "@/components/views/CommandPageView";
-import { commandPages } from "@/lib/remainingCommandCenterData";
+import { createLiveUnavailableCommandConfig } from "@/lib/liveUnavailableCommandConfig";
+
+const pageConfig = createLiveUnavailableCommandConfig(
+  "data-accuracy",
+  "Data Accuracy / Source Verification",
+  "Live source verification, proof gaps, pending values, and migration readiness"
+);
 
 export default async function DataAccuracyPage() {
   await requireOwnerSession();
 
   return (
-    <LuxuryShell title="Data Accuracy / Source Verification" subtitle="Local sample data review, source-of-truth verification, proof gaps, pending values, and migration readiness">
+    <LuxuryShell title="Data Accuracy / Source Verification" subtitle="Live source verification, proof gaps, pending values, and migration readiness">
       <LiveSourceChecklistPanel />
-      <CommandPageView config={commandPages["data-accuracy"]} />
+      <CommandPageView config={pageConfig} />
     </LuxuryShell>
   );
 }

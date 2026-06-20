@@ -69,7 +69,7 @@ export function LoginPanel({ authReady, callbackUrl, reason, setup }: LoginPanel
           </span>
           <span>
             <ShieldCheck size={16} aria-hidden />
-            Local Sample Mode
+            Live data protected
           </span>
         </div>
         {!authReady ? (

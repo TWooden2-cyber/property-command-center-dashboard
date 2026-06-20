@@ -6,7 +6,9 @@ import {
   getEnvironmentStatus,
   getLiveDiagnostics,
   getLiveSheetsEnv,
+  getMissingLiveSheetsEnvVars,
   getWorkbookSnapshot,
+  isLocalSampleModeAllowed,
   isLiveSheetsConfigured
 } from "@/lib/googleSheets";
 import { getLiveOperationsStatus } from "@/lib/liveOperations";
@@ -103,23 +105,18 @@ export async function GET(request: NextRequest) {
     const env = getEnvironmentStatus();
     const view = (request.nextUrl.searchParams.get("view") || "overview") as SheetsView;
     const liveAttempted = requestedDataMode === "live";
-    const fallbackWarning =
-      requestedDataMode === "live" && !liveSheetsConfigured
-        ? "Live Google Sheets mode was requested, but setup errors prevented live mode. Returning Local Sample Mode."
-        : null;
-    const snapshot = requestedDataMode === "live" ? await getWorkbookSnapshot() : sampleWorkbookSnapshot;
+    const localSampleAllowed = isLocalSampleModeAllowed();
+    const fallbackWarning = localSampleAllowed ? "Local development sample mode is active." : null;
+    const snapshot = localSampleAllowed ? sampleWorkbookSnapshot : await getWorkbookSnapshot();
     const parsed = parseWorkbook(snapshot);
     const authSetup = getAuthSetupStatus();
-    const dataMode = requestedDataMode === "live" ? parsed.system.resolvedDataMode : "sample";
-    const refreshTimestamp = dataMode === "live" ? parsed.system.lastSuccessfulRefresh : new Date().toISOString();
-    const diagnostics = requestedDataMode === "live" ? getLiveDiagnostics(parsed.system) : getLiveDiagnostics({ setupErrors: ["DASHBOARD_DATA_MODE missing or not live."], resolvedDataMode: "sample" });
+    const dataMode = localSampleAllowed ? "sample" : "live";
+    const refreshTimestamp = parsed.system.lastSuccessfulRefresh ?? new Date().toISOString();
+    const diagnostics = localSampleAllowed ? getLiveDiagnostics({ setupErrors: ["Local development sample mode is active."], resolvedDataMode: "sample" }) : getLiveDiagnostics(parsed.system);
     const system: SystemStatus = {
       ...parsed.system,
-      connectionOk: dataMode === "sample" && !liveAttempted ? true : parsed.system.connectionOk,
-      connectionMessage:
-        dataMode === "sample" && !liveAttempted
-          ? fallbackWarning || "Local sample data mode. Live Google Sheets reads are disabled until configured."
-          : parsed.system.connectionMessage,
+      connectionOk: localSampleAllowed ? true : parsed.system.connectionOk,
+      connectionMessage: localSampleAllowed ? fallbackWarning || "Local development sample mode is active." : parsed.system.connectionMessage,
       lastSuccessfulRefresh: refreshTimestamp,
       dataMode,
       resolvedDataMode: dataMode,
@@ -140,9 +137,40 @@ export async function GET(request: NextRequest) {
     };
     const warnings = fallbackWarning ? [...parsed.overview.warnings, fallbackWarning] : parsed.overview.warnings;
     const errors = Array.from(new Set(liveSetupErrors(system, fallbackWarning)));
-    const source = diagnostics.source;
-    const isLive = dataMode === "live" && source === "google-sheets-readonly";
+    const rawSource = diagnostics.source;
+    const isLive = dataMode === "live" && rawSource === "google-sheets-readonly";
     const spreadsheetId = getLiveSheetsEnv().spreadsheetId.value || null;
+    const missingEnvVars = getMissingLiveSheetsEnvVars();
+    const requiredEnvPresent = missingEnvVars.length === 0;
+    const errorType = !requiredEnvPresent
+      ? "missing_env"
+      : !system.lastSuccessfulRefresh && errors.length
+        ? "google_sheets_connection_error"
+        : errors.length
+          ? "google_sheets_schema_warning"
+          : null;
+    const shouldReturnError = !localSampleAllowed && (!requiredEnvPresent || (!system.lastSuccessfulRefresh && errors.length > 0));
+
+    if (shouldReturnError) {
+      return NextResponse.json(
+        {
+          ok: false,
+          view,
+          isLive: false,
+          dataMode: "live",
+          source: "Google Sheets connection error",
+          spreadsheetId,
+          fetchedAt: refreshTimestamp,
+          availableViews,
+          requiredEnvPresent,
+          missingEnvVars,
+          errorType,
+          errors,
+          error: errors[0] || "Live Google Sheets data is unavailable."
+        },
+        { status: 503, headers: protectedCacheHeaders }
+      );
+    }
 
     return NextResponse.json(
       {
@@ -151,11 +179,15 @@ export async function GET(request: NextRequest) {
         dataMode,
         requestedDataMode,
         resolvedDataMode: dataMode,
-        source,
+        source: isLive ? "Live Google Sheets" : "Local Development Sample",
+        rawSource,
         isLive,
         spreadsheetId,
         fetchedAt: refreshTimestamp,
         availableViews,
+        requiredEnvPresent,
+        missingEnvVars,
+        errorType,
         lastRefreshedAt: system.lastSuccessfulRefresh,
         liveConfigured: liveSheetsConfigured,
         liveAttempted,

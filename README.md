@@ -1,202 +1,91 @@
-Deployment trigger: Local Sample Mode reset verified.
 # Property Management Owner Command Center
 
-Private owner dashboard for the Property Command Center reset.
+Private owner dashboard for the Property Command Center.
 
-## Current Mode: Owner Password + Data Mode Switch
+## Production Mode
 
-By default, the dashboard uses a local sample workbook in `lib/sampleWorkbook.ts`. If `DASHBOARD_DATA_MODE=live` and the read-only Google Sheets environment variables are configured outside the repository, `app/api/sheets/route.ts` reads current Google Sheets values on each request.
+Production is live-or-error only.
 
-Current behavior:
+- The dashboard reads live Google Sheets data through `app/api/sheets/route.ts`.
+- Logged-out `/api/sheets` requests return `401` because dashboard data is owner protected.
+- Production never silently falls back to sample, mock, demo, hardcoded, or local static property data.
+- If live Google Sheets cannot be read, pages show a clear operational error or not-connected state.
 
-- Dashboard login: Owner password
-- Required dashboard env var: `DASHBOARD_OWNER_PASSWORD`
-- Optional dashboard env var: `DASHBOARD_SESSION_SECRET`
-- Google Sheets: Sample fallback by default; live read-only when explicitly configured
-- Live Google APIs: Sheets read-only only when explicitly configured
-- Public dashboard access: Disabled
-- Local sample workbook data: Active
-- Dashboard write-back actions: Disabled
-- Tenant emails, notices, filings, Drive actions, Calendar actions, Tasks actions, and Sheets writes: Disabled
-
-Do not add external login provider variables. Dashboard login uses the owner password session only.
-
-## What The Dashboard Shows
-
-The app presents a luxury owner command-center interface with:
-
-- Overview
-- Rent Collection
-- Notices & Evictions
-- Maintenance
-- Utilities
-- Expenses / NOI
-- Mortgage & Arrears
-- Admin Tasks
-- Calendar & Follow-Ups
-- Settings / System Status
-
-The default sample mode proves the app shell, navigation, styling, routing, and dashboard views without depending on Google credentials.
-
-## Source Of Data During Reset
-
-The default source is local sample data:
-
-```text
-lib/sampleWorkbook.ts
-```
-
-The API route remains the same for the frontend:
-
-```text
-app/api/sheets/route.ts
-```
-
-That route returns parsed local sample data unless live mode is explicitly enabled with read-only Google Sheets credentials.
-
-## Local Setup
-
-Use Windows PowerShell from the project folder:
-
-```powershell
-cd "C:\Users\TRS_F\OneDrive\Documents\New project\property-owner-command-center"
-npm.cmd install
-npm.cmd run dev
-```
-
-Open:
-
-```text
-http://localhost:3000
-```
-
-No `.env.local` file is required for local sample fallback mode.
-
-## Vercel Reset Deployment
-
-For sample fallback mode, Vercel only needs the owner password environment variables.
-
-Confirmed reset expectation:
-
-- Project: `property-command-center-dashboard`
-- GitHub repo: `TWooden2-cyber/property-command-center-dashboard`
-- Production branch: `main`
-- Project environment variables for login: `DASHBOARD_OWNER_PASSWORD`, plus `DASHBOARD_SESSION_SECRET` or a signing-secret fallback
-- Project environment variables for live Sheets: only required when enabling `DASHBOARD_DATA_MODE=live`
-
-Deploy Local Sample Mode first. Enable live Google Sheets read-only only after owner approval and Vercel environment setup.
-
-Controlled live operations are separate from live data reads. The live operations center requires owner password session protection, dry-run first, explicit owner approval, and audit logging before an execution endpoint can proceed.
-
-## Verification
-
-Run:
-
-```powershell
-npm.cmd run lint
-npm.cmd run build
-```
-
-Known current lint note:
-
-- `components/views/UtilitiesView.tsx` has a non-blocking React hook dependency warning.
-
-The build should pass without `.env.local` and without Vercel environment variables.
-
-## Safety Boundaries
-
-Sample mode uses local data; live data mode reads Google Sheets. Controlled live operation APIs are disabled unless the explicit production flags are set and the matching service authorization is available.
-
-It does not:
-
-- Use an external OAuth provider for dashboard login
-- Execute any live action without owner password session protection
-- Execute any live action without dry-run first
-- Execute any live action without explicit owner approval confirmation
-- Send email
-- Delete Gmail, Calendar, Tasks, Sheets, or Drive records
-- Delete Sheet rows, columns, or tabs
-- Clear ranges or overwrite full tabs
-- Change Drive permissions
-- Contact tenants
-- Send notices
-- File eviction cases
-- Perform mortgage, legal, financial, or tenant live actions
-
-## Owner Password Login
-
-The dashboard is protected by an owner password stored outside the repository. Add these values in Vercel or local `.env.local` only:
+## Required Vercel Environment Variables
 
 ```env
+DASHBOARD_DATA_MODE=live
+GOOGLE_SHEET_ID=14nzzWCKIi0h-zHkCzW0JXmN-NQNcAWZahLpDy3CXK0c
+GOOGLE_SERVICE_ACCOUNT_EMAIL=property-dashboard-reader@property-management-owner-com.iam.gserviceaccount.com
+GOOGLE_PRIVATE_KEY=
 DASHBOARD_OWNER_PASSWORD=
 DASHBOARD_SESSION_SECRET=
 ```
 
-If `DASHBOARD_SESSION_SECRET` is not set, the app can use `NEXTAUTH_SECRET` or `AUTH_SECRET` for session signing only. If `DASHBOARD_OWNER_PASSWORD` is missing, the dashboard fails closed.
-
-## Google Sheets Read-Only Mode
-
-Google Sheets read-only mode is controlled by Vercel or local `.env.local` values only. Do not add real service account keys, private keys, or owner credentials to this repository.
+`NEXTAUTH_SECRET` or `AUTH_SECRET` may be used as signing-secret fallbacks. The app also supports these older Sheets aliases:
 
 ```env
-DASHBOARD_DATA_MODE=sample
 GOOGLE_SHEETS_SPREADSHEET_ID=
 GOOGLE_SHEETS_CLIENT_EMAIL=
 GOOGLE_SHEETS_PRIVATE_KEY=
 ```
 
-The app also supports the older Vercel variable names below. If both names are present, the `GOOGLE_SHEETS_*` value wins.
+Optional:
 
 ```env
-GOOGLE_SHEET_ID=
-GOOGLE_SERVICE_ACCOUNT_EMAIL=
-GOOGLE_PRIVATE_KEY=
+GOOGLE_HEALTHCHECK_TOKEN=
+NEXTAUTH_URL=
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+APPROVED_OWNER_EMAIL=
 ```
 
-## Controlled Live Operations
+## Safe Health Checks
 
-Live operations use separate flags and remain blocked service-by-service when the needed authorization is missing. Do not commit tokens or secrets.
+Public safe metadata endpoint:
 
-```env
-LIVE_OPERATIONS_ENABLED=false
-GOOGLE_SHEETS_WRITE_ENABLED=false
-GMAIL_READ_ENABLED=false
-GOOGLE_CALENDAR_WRITE_ENABLED=false
-GOOGLE_TASKS_WRITE_ENABLED=false
-GOOGLE_DRIVE_WRITE_ENABLED=false
+```text
+https://property-command-center-dashboard.vercel.app/api/health/google-sheets
 ```
 
-The audit worksheet is `Live Operations Audit` with the headers listed in the live operations center. Every dry-run and execution is logged when Sheets write is enabled. Gmail read, Calendar create, Tasks write, and Drive create/move require their own least-privilege authorization before they move from blocked to executable.
+Expected working result:
 
-Use `DASHBOARD_DATA_MODE=live` only when all three Google Sheets variables are configured. If live mode is requested without the required variables, the API falls back to Local Sample Mode.
+- `ok=true`
+- `isLive=true`
+- `mode=live`
+- `spreadsheetId=14nzzWCKIi0h-zHkCzW0JXmN-NQNcAWZahLpDy3CXK0c`
+- `serviceAccountEmail=property-dashboard-reader@property-management-owner-com.iam.gserviceaccount.com`
+- `missingEnvVars=[]`
 
-Switch modes in Vercel by changing only environment variables:
+Google products summary:
 
-```env
-DASHBOARD_DATA_MODE=live
+```text
+https://property-command-center-dashboard.vercel.app/api/health/google-products
 ```
 
-Return to sample mode with:
+Current expected product behavior:
+
+- Google Sheets: real live read-only connection test.
+- Google Drive: `not_enabled` unless a production read-only Drive integration is built.
+- Google Calendar: `not_enabled` unless a production read-only Calendar integration is built.
+- Gmail: `not_enabled` unless a production read-only Gmail integration is built.
+- Google Tasks: `not_enabled` unless a production read-only Tasks integration is built.
+
+If `GOOGLE_HEALTHCHECK_TOKEN` is set, pass `?token=<token>` or header `x-healthcheck-token`.
+
+## Local Development
+
+Local development may use explicit sample mode only when `NODE_ENV` is not production:
 
 ```env
 DASHBOARD_DATA_MODE=sample
 ```
 
-The `/api/sheets` response is owner-session protected and returns no-cache headers so a browser refresh can pull the latest Google Sheets values:
+Production ignores/rejects sample mode and requires live Sheets.
 
-```text
-Cache-Control: no-store, no-cache, must-revalidate
-Pragma: no-cache
-Expires: 0
-```
+## Workbook Structure
 
-The service account must have read access to the workbook. Store `GOOGLE_SHEETS_PRIVATE_KEY` or `GOOGLE_PRIVATE_KEY` only in Vercel or local `.env.local`. The app accepts multiline keys, escaped `\n` keys, and accidentally quoted key values, then normalizes them at runtime without displaying the key.
-
-Authenticated `/api/sheets` responses include safe diagnostic booleans only: requested mode, resolved mode, whether live was attempted, whether each required variable was detected, whether aliases are being used, and owner-safe setup errors. Secret values are never returned.
-
-## Google Sheets Workbook Structure
-
-Live mode expects the workbook to contain these tabs and columns. Missing tabs or columns are reported to the authenticated owner in Settings and Data Accuracy. Missing live tabs keep the dashboard safe by using sample fallback or blank mapped fields instead of crashing.
+Live mode expects the workbook to contain these tabs and columns:
 
 | Tab | Required columns |
 | --- | --- |
@@ -214,19 +103,32 @@ Live mode expects the workbook to contain these tabs and columns. Missing tabs o
 | Source Data Exports | source, exportDate, fileName, reviewed, imported, notes |
 | Owner Approvals | approvalId, category, item, status, requestedDate, approvedDate, notes |
 
-Placeholder variables for session signing compatibility:
+Missing tabs or columns are reported as live workbook/schema issues. They do not trigger fake data.
 
-```env
-NEXTAUTH_SECRET=
-AUTH_SECRET=
+## Safety Boundaries
+
+The portal does not:
+
+- Write to Google Sheets.
+- Move, rename, delete, or modify Google Drive files.
+- Send or read Gmail message bodies.
+- Create, update, complete, or delete Calendar events.
+- Create, update, complete, or delete Google Tasks.
+- Contact tenants, vendors, lenders, courts, attorneys, HACP, utilities, or anyone else.
+- Send notices, file legal documents, sign leases, or make payments.
+
+## Validation
+
+Run:
+
+```powershell
+npm.cmd run typecheck
+npm.cmd run lint
+npm.cmd run build
 ```
 
-## Git And Deployment Guardrails
+Production verification:
 
-Before committing, pushing, or deploying:
-
-1. Confirm the app builds locally.
-2. Confirm no real secrets are present in tracked files.
-3. Confirm the dashboard still opens in Local Sample Mode.
-4. Confirm `/api/sheets?view=overview` returns local sample data.
-5. Get explicit approval for commit, push, or deployment.
+1. Open `/api/health/google-sheets` and confirm `ok=true` and `isLive=true`.
+2. Confirm logged-out `/api/sheets?view=overview` returns `401`.
+3. Log in as owner and confirm the dashboard pages show `Live Google Sheets` or a clear operational error.

@@ -8,8 +8,8 @@ type SheetsRefreshStatusProps = {
 
 export function SheetsRefreshStatus({ system }: SheetsRefreshStatusProps) {
   const refreshLabel = system?.lastSuccessfulRefresh ? new Date(system.lastSuccessfulRefresh).toLocaleString() : "Not connected";
-  const sourceLabel = system?.source === "google-sheets-readonly" ? "Live Google Sheets" : "Local sample data";
-  const statusLabel = system?.dataMode === "live" ? "Live Sheets read-only" : "Local sample active";
+  const sourceLabel = system?.source === "google-sheets-readonly" ? "Live Google Sheets" : "Live data unavailable";
+  const statusLabel = system?.dataMode === "live" ? "Live Sheets read-only" : "Not connected";
 
   return (
     <section className="section-block sheets-refresh-status">

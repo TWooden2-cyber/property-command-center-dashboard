@@ -6,7 +6,7 @@ import { Providers } from "@/components/Providers";
 
 export const metadata: Metadata = {
   title: "Property Management Owner Command Center",
-  description: "Private owner command center running in local sample mode."
+  description: "Private owner command center using live Google Sheets read-only data or operational errors."
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {

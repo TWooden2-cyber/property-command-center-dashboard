@@ -6,7 +6,7 @@ import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { EmptyState } from "@/components/DataState";
 import { SheetsSourcePanel, sheetSourceLabel } from "@/components/SheetsSourcePanel";
 import { StatusBadge } from "@/components/StatusBadge";
-import { rentRecordToCommandRow } from "@/components/views/liveSheetAdapters";
+import { localDevelopmentFallbackAllowed, rentRecordToCommandRow } from "@/components/views/liveSheetAdapters";
 import { useSheetsView } from "@/components/views/useSheetsView";
 import {
   commandCenterPeriod,
@@ -366,13 +366,13 @@ function CollectionRateGauge({ rows }: { rows: RentCollectionRow[] }) {
 
 function RentCharts({ rows }: { rows: RentCollectionRow[] }) {
   const totals = totalsForRows(rows);
-  const projectedYtd = monthlyRentTrend.reduce((total, row) => total + row.projected, 0);
-  const collectedYtd = monthlyRentTrend.reduce((total, row) => total + row.collected, 0);
+  const projectedYtd = localDevelopmentFallbackAllowed ? monthlyRentTrend.reduce((total, row) => total + row.projected, 0) : 0;
+  const collectedYtd = localDevelopmentFallbackAllowed ? monthlyRentTrend.reduce((total, row) => total + row.collected, 0) : 0;
 
   return (
     <section className="rent-chart-grid">
       <PaidProjectedChart title="Current Rows Paid vs Projected" projected={totals.projected} collected={totals.collected} />
-      <PaidProjectedChart title="Year-to-Date Paid vs Projected" projected={projectedYtd} collected={collectedYtd} />
+      {localDevelopmentFallbackAllowed ? <PaidProjectedChart title="Year-to-Date Paid vs Projected" projected={projectedYtd} collected={collectedYtd} /> : null}
       <BalanceByUnitChart rows={rows} />
       <CollectionRateGauge rows={rows} />
     </section>
@@ -542,7 +542,7 @@ function BlockedUntilVerified() {
 export function RentCollectionView() {
   const [filters, setFilters] = useState<RentFilter>(defaultFilters);
   const { data, system, error, loading } = useSheetsView<RentPayload>("rent-collection");
-  const rows = useMemo(() => (data?.rows?.length ? data.rows.map(rentRecordToCommandRow) : rentRows), [data]);
+  const rows = useMemo(() => (data?.rows ? data.rows.map(rentRecordToCommandRow) : localDevelopmentFallbackAllowed ? rentRows : []), [data]);
   const filteredRows = useMemo(() => rows.filter((row) => matchesFilters(row, filters)), [filters, rows]);
   const sourceLabel = sheetSourceLabel(system, error);
 
@@ -551,7 +551,6 @@ export function RentCollectionView() {
       <RentCommandHeader filters={filters} onFiltersChange={setFilters} sourceLabel={sourceLabel} />
       <SheetsSourcePanel system={system} error={error} loading={loading} />
       <RentKpiCards rows={rows} />
-      <RentHealthEvaluation />
       <RentCharts rows={rows} />
       <RentFilters filters={filters} onFiltersChange={setFilters} rows={rows} />
 
@@ -570,8 +569,13 @@ export function RentCollectionView() {
         )}
       </section>
 
-      <RentActionQueue />
-      <BlockedUntilVerified />
+      {localDevelopmentFallbackAllowed ? (
+        <>
+          <RentHealthEvaluation />
+          <RentActionQueue />
+          <BlockedUntilVerified />
+        </>
+      ) : null}
     </div>
   );
 }
