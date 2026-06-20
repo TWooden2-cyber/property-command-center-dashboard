@@ -22,6 +22,10 @@ function text(value: string | undefined, fallback = "Not provided") {
 }
 
 function moneyText(value: number) {
+  if (!Number.isFinite(value)) {
+    return "Live value unavailable";
+  }
+
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(value);
 }
 
@@ -100,7 +104,7 @@ export function mortgageRecordToCommandRow(row: MortgageArrearsRecord): Mortgage
     mortgageDueMonthly: row.mortgageDueMonthly,
     paymentSource: row.paymentSource,
     allotmentStatus: row.allotmentStatus,
-    paidThisMonth: 0,
+    paidThisMonth: Number.NaN,
     currentArrears: row.currentArrears,
     payoffPlan: row.payoffPlan,
     dueDate: row.dueDate,

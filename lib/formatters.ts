@@ -11,21 +11,52 @@ export function toNumber(value: unknown): number {
     return value;
   }
 
-  const cleaned = String(value ?? "")
+  const raw = String(value ?? "").trim();
+  if (!raw) {
+    return Number.NaN;
+  }
+
+  const currencyPattern = raw.includes("$") ? /-?\$\s*\(?\d[\d,]*(?:\.\d+)?\)?/g : /-?\(?\d[\d,]*(?:\.\d+)?\)?/g;
+  const currencyMatches = raw.match(currencyPattern);
+  if (currencyMatches?.length) {
+    const parsedValues = currencyMatches
+      .map((match) => {
+        const negative = /\(.*\)/.test(match) || match.trim().startsWith("-");
+        const cleanedMatch = match.replace(/[$,\s()]/g, "").replace(/^-/, "");
+        const parsed = Number(cleanedMatch);
+        return Number.isFinite(parsed) ? (negative ? -parsed : parsed) : Number.NaN;
+      })
+      .filter(Number.isFinite);
+
+    if (parsedValues.length > 1 && raw.includes("$")) {
+      return parsedValues.reduce((sum, item) => sum + item, 0);
+    }
+
+    if (parsedValues.length === 1) {
+      return parsedValues[0];
+    }
+  }
+
+  const cleaned = raw
     .replace(/\((.*)\)/, "-$1")
     .replace(/[$,%\s,]/g, "")
     .trim();
 
   const parsed = Number(cleaned);
-  return Number.isFinite(parsed) ? parsed : 0;
+  return Number.isFinite(parsed) ? parsed : Number.NaN;
 }
 
 export function formatCurrency(value: number): string {
+  if (!Number.isFinite(value)) {
+    return "Live value unavailable";
+  }
+
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
-    maximumFractionDigits: 0
-  }).format(value || 0);
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(value);
 }
 
 export function formatDate(value: string): string {

@@ -374,8 +374,33 @@ function legacyTab(tab: SourceTabName, rows: RawSheetRow[], warning?: string): R
   };
 }
 
-function pickLive(row: RawSheetRow, key: string): string {
-  return row[key] ?? "";
+function pickLive(row: RawSheetRow, ...aliases: string[]): string {
+  const normalizedEntries = Object.entries(row).map(([key, value]) => [key, value, key.replace(/[^a-z0-9]/gi, "").toLowerCase()] as const);
+
+  for (const alias of aliases) {
+    const direct = row[alias];
+    if (direct !== undefined && direct !== null && String(direct).trim()) {
+      return direct;
+    }
+
+    const normalizedAlias = alias.replace(/[^a-z0-9]/gi, "").toLowerCase();
+    const match = normalizedEntries.find(([, value, normalizedKey]) => normalizedKey === normalizedAlias && String(value ?? "").trim());
+    if (match) {
+      return match[1] ?? "";
+    }
+  }
+
+  return "";
+}
+
+function sumLiveMoney(rows: RawSheetRow[], aliases: string[]): number {
+  const values = rows.map((row) => toNumber(pickLive(row, ...aliases))).filter(Number.isFinite);
+  return values.length ? values.reduce((sum, value) => sum + value, 0) : Number.NaN;
+}
+
+function sumLiveCount(rows: RawSheetRow[], aliases: string[]): number {
+  const values = rows.map((row) => toNumber(pickLive(row, ...aliases))).filter(Number.isFinite);
+  return values.length ? values.reduce((sum, value) => sum + value, 0) : 0;
 }
 
 function liveRows(liveTabs: Record<string, LiveSheetRead | undefined>, tab: string): RawSheetRow[] {
@@ -404,9 +429,9 @@ function buildDashboardBlocksFromLive(liveTabs: Record<string, LiveSheetRead | u
   const maintenanceRows = liveRows(liveTabs, "Maintenance");
   const mortgageRows = liveRows(liveTabs, "Mortgage and Arrears");
   const approvalRows = liveRows(liveTabs, "Owner Approvals");
-  const totalRent = rentRows.reduce((sum, row) => sum + toNumber(pickLive(row, "rentAmount")), 0);
-  const totalBalance = rentRows.reduce((sum, row) => sum + toNumber(pickLive(row, "balance")), 0);
-  const openIssues = overviewRows.reduce((sum, row) => sum + toNumber(pickLive(row, "openIssues")), 0);
+  const totalRent = sumLiveMoney(rentRows, ["rentAmount", "Rent Amount", "Rent Due", "Monthly Rent", "Projected Rent", "Scheduled Rent"]);
+  const totalBalance = sumLiveMoney(rentRows, ["balance", "Balance", "Outstanding Balance", "Outstanding Rent", "Rent Balance"]);
+  const openIssues = sumLiveCount(overviewRows, ["openIssues", "Open Issues", "Open Items"]);
   const missingSchemaItems = checklist.filter((item) => !item.present || item.missingColumns.length > 0).length;
   const generatedAt = new Date().toISOString();
 
@@ -430,8 +455,8 @@ function buildDashboardBlocksFromLive(liveTabs: Record<string, LiveSheetRead | u
       empty: false,
       values: [
         ["Metric", "Value"],
-        ["Projected Rent", String(totalRent)],
-        ["Outstanding Balance", String(totalBalance)],
+        ["Projected Rent", Number.isFinite(totalRent) ? String(totalRent) : "Live value unavailable"],
+        ["Outstanding Balance", Number.isFinite(totalBalance) ? String(totalBalance) : "Live value unavailable"],
         ["Open Issues", String(openIssues)],
         ["Schema Items Needing Review", String(missingSchemaItems)]
       ]
@@ -446,11 +471,11 @@ function buildDashboardBlocksFromLive(liveTabs: Record<string, LiveSheetRead | u
         ["Tracker ID", "Status", "Priority", "Owner Decision Required", "Workflow Stage", "Follow-Up Date", "Google Task ID", "Calendar Event ID", "Communication Ledger ID", "Google Drive Intake Row"],
         ...overviewRows.map((row, index) => [
           `OV-${index + 1}`,
-          pickLive(row, "status"),
-          toNumber(pickLive(row, "openIssues")) > 0 ? "High" : "Normal",
-          pickLive(row, "ownerDecisionRequired"),
-          pickLive(row, "maintenanceStatus") || pickLive(row, "rentStatus"),
-          pickLive(row, "nextFollowUpDate"),
+          pickLive(row, "status", "Status"),
+          toNumber(pickLive(row, "openIssues", "Open Issues", "Open Items")) > 0 ? "High" : "Normal",
+          pickLive(row, "ownerDecisionRequired", "Owner Decision Required", "Owner Approval Required"),
+          pickLive(row, "maintenanceStatus", "Maintenance Status") || pickLive(row, "rentStatus", "Rent Status"),
+          pickLive(row, "nextFollowUpDate", "Next Follow-Up Date", "Follow-Up Date"),
           "",
           "",
           "",
@@ -467,16 +492,16 @@ function buildDashboardBlocksFromLive(liveTabs: Record<string, LiveSheetRead | u
       values: [
         ["Tracker ID", "Status", "Priority", "Owner Decision Required", "Workflow Stage", "Follow-Up Date", "Safe Category Label", "Safe Action Label", "Approval Gate", "Review Status"],
         ...approvalRows.map((row) => [
-          pickLive(row, "approvalId"),
-          pickLive(row, "status"),
+          pickLive(row, "approvalId", "Approval ID"),
+          pickLive(row, "status", "Status"),
           "High",
           "Yes",
-          pickLive(row, "category"),
-          pickLive(row, "requestedDate"),
-          pickLive(row, "category"),
-          pickLive(row, "item"),
+          pickLive(row, "category", "Category"),
+          pickLive(row, "requestedDate", "Requested Date", "Date Requested"),
+          pickLive(row, "category", "Category"),
+          pickLive(row, "item", "Item", "Approval Item"),
           "Owner password session required",
-          pickLive(row, "status")
+          pickLive(row, "status", "Status")
         ])
       ]
     },
@@ -489,8 +514,8 @@ function buildDashboardBlocksFromLive(liveTabs: Record<string, LiveSheetRead | u
       values: [
         ["Tracker ID", "Urgency", "Priority", "Emergency Flag", "Overdue Flag", "Safe Action Label", "Approval Required", "Review Status"],
         ...overviewRows
-          .filter((row) => pickLive(row, "ownerDecisionRequired").toLowerCase().includes("yes") || toNumber(pickLive(row, "openIssues")) > 0)
-          .map((row, index) => [`URG-${index + 1}`, "Review", "High", "No", "No", pickLive(row, "status"), "Yes", "Needs Review"])
+          .filter((row) => pickLive(row, "ownerDecisionRequired", "Owner Decision Required", "Owner Approval Required").toLowerCase().includes("yes") || toNumber(pickLive(row, "openIssues", "Open Issues", "Open Items")) > 0)
+          .map((row, index) => [`URG-${index + 1}`, "Review", "High", "No", "No", pickLive(row, "status", "Status"), "Yes", "Needs Review"])
       ]
     },
     maintenance: {
@@ -502,12 +527,12 @@ function buildDashboardBlocksFromLive(liveTabs: Record<string, LiveSheetRead | u
       values: [
         ["Tracker ID", "Status", "Priority", "Owner Decision Required", "Workflow Stage", "Follow-Up Date", "Google Task ID", "Calendar Event ID", "Communication Ledger ID", "Google Drive Intake Row"],
         ...maintenanceRows.map((row) => [
-          pickLive(row, "workOrderId"),
-          pickLive(row, "status"),
-          pickLive(row, "priority"),
-          pickLive(row, "proofRequired"),
-          pickLive(row, "issue"),
-          pickLive(row, "nextFollowUpDate"),
+          pickLive(row, "workOrderId", "Work Order ID", "Tracker ID"),
+          pickLive(row, "status", "Status"),
+          pickLive(row, "priority", "Priority"),
+          pickLive(row, "proofRequired", "Proof Required"),
+          pickLive(row, "issue", "Issue"),
+          pickLive(row, "nextFollowUpDate", "Next Follow-Up Date", "Follow-Up Date"),
           "",
           "",
           "",
@@ -525,11 +550,11 @@ function buildDashboardBlocksFromLive(liveTabs: Record<string, LiveSheetRead | u
         ["Row", "Source Type", "Tracker ID", "Review Status", "Proof Status Label", "Safe Action Label"],
         ...liveRows(liveTabs, "Proof Archive").map((row, index) => [
           String(index + 1),
-          pickLive(row, "proofType"),
-          pickLive(row, "relatedItem"),
-          pickLive(row, "proofStatus"),
-          pickLive(row, "proofStatus"),
-          pickLive(row, "driveFolder")
+          pickLive(row, "proofType", "Proof Type"),
+          pickLive(row, "relatedItem", "Related Item"),
+          pickLive(row, "proofStatus", "Proof Status"),
+          pickLive(row, "proofStatus", "Proof Status"),
+          pickLive(row, "driveFolder", "Drive Folder", "Folder")
         ])
       ]
     },
@@ -552,11 +577,11 @@ function buildDashboardBlocksFromLive(liveTabs: Record<string, LiveSheetRead | u
         ["Tracker ID", "Follow-Up Date", "Calendar Event ID", "Google Task ID", "Status", "Safe Follow-Up Label", "Approval Gate"],
         ...overviewRows.map((row, index) => [
           `FU-${index + 1}`,
-          pickLive(row, "nextFollowUpDate"),
+          pickLive(row, "nextFollowUpDate", "Next Follow-Up Date", "Follow-Up Date"),
           "",
           "",
-          pickLive(row, "status"),
-          `${pickLive(row, "propertyName")} ${pickLive(row, "unit")}`.trim(),
+          pickLive(row, "status", "Status"),
+          `${pickLive(row, "propertyName", "Property Name", "Property")} ${pickLive(row, "unit", "Unit")}`.trim(),
           "Preview only"
         ])
       ]
@@ -573,137 +598,147 @@ function buildLegacyTabsFromLive(liveTabs: Record<string, LiveSheetRead | undefi
   tabs["Dashboard"] = legacyTab(
     "Dashboard",
     liveRows(liveTabs, "Overview").map((row) => ({
-      Metric: `${pickLive(row, "propertyName")} ${pickLive(row, "unit")}`.trim(),
-      Value: pickLive(row, "status")
+      Metric: `${pickLive(row, "propertyName", "Property Name", "Property")} ${pickLive(row, "unit", "Unit")}`.trim(),
+      Value: pickLive(row, "status", "Status")
     }))
   );
   tabs["Rent Collection"] = legacyTab(
     "Rent Collection",
     liveRowsMapped(liveTabs, "Rent Collection", (row) => ({
-      Property: pickLive(row, "property"),
-      Unit: pickLive(row, "unit"),
-      Tenant: pickLive(row, "tenantLabel") || pickLive(row, "tenantInitials"),
-      "Rent Due": pickLive(row, "rentAmount"),
-      Balance: pickLive(row, "balance"),
-      "Due Date": pickLive(row, "dueDate"),
-      "Date Paid": pickLive(row, "paidDate"),
-      Status: pickLive(row, "status"),
-      Notes: pickLive(row, "notes")
+      Property: pickLive(row, "property", "Property", "Address"),
+      Unit: pickLive(row, "unit", "Unit"),
+      Tenant: pickLive(row, "tenantLabel", "Tenant Label", "Tenant", "Resident") || pickLive(row, "tenantInitials", "Tenant Initials"),
+      "Rent Due": pickLive(row, "rentAmount", "Rent Amount", "Rent Due", "Monthly Rent", "Projected Rent", "Scheduled Rent"),
+      "Amount Paid": pickLive(row, "amountPaid", "Amount Paid", "Paid", "Collected", "Rent Collected"),
+      Balance: pickLive(row, "balance", "Balance", "Outstanding Balance", "Outstanding Rent", "Rent Balance"),
+      "Due Date": pickLive(row, "dueDate", "Due Date", "Rent Due Date"),
+      "Date Paid": pickLive(row, "paidDate", "Paid Date", "Date Paid"),
+      Status: pickLive(row, "status", "Status"),
+      Notes: pickLive(row, "notes", "Notes")
     }))
   );
   tabs["Maintenance"] = legacyTab(
     "Maintenance",
     liveRowsMapped(liveTabs, "Maintenance", (row) => ({
-      "Date Reported": pickLive(row, "dateOpened"),
-      Property: pickLive(row, "property"),
-      Unit: pickLive(row, "unit"),
-      Issue: pickLive(row, "issue"),
-      Category: pickLive(row, "priority"),
-      "Assigned Vendor": pickLive(row, "vendor"),
-      Status: pickLive(row, "status"),
-      "Date Completed": pickLive(row, "dateCompleted"),
-      Notes: [pickLive(row, "proofRequired"), pickLive(row, "proofReceived"), pickLive(row, "nextFollowUpDate")].filter(Boolean).join(" | ")
+      "Date Reported": pickLive(row, "dateOpened", "Date Opened", "Date Reported", "Reported Date", "Date"),
+      Property: pickLive(row, "property", "Property", "Address"),
+      Unit: pickLive(row, "unit", "Unit"),
+      Issue: pickLive(row, "issue", "Issue", "Maintenance Issue", "Request"),
+      Category: pickLive(row, "priority", "Priority", "Category"),
+      "Assigned Vendor": pickLive(row, "vendor", "Vendor", "Assigned Vendor"),
+      "Estimated Cost": pickLive(row, "estimatedCost", "Estimated Cost", "Estimate"),
+      "Actual Cost": pickLive(row, "actualCost", "Actual Cost", "Cost"),
+      Status: pickLive(row, "status", "Status"),
+      "Date Completed": pickLive(row, "dateCompleted", "Date Completed", "Completed Date"),
+      Notes: [pickLive(row, "proofRequired", "Proof Required"), pickLive(row, "proofReceived", "Proof Received"), pickLive(row, "nextFollowUpDate", "Next Follow-Up Date", "Follow-Up Date")].filter(Boolean).join(" | ")
     }))
   );
   tabs["Notices & Evictions"] = legacyTab(
     "Notices & Evictions",
     liveRowsMapped(liveTabs, "Notices and Legal Holds", (row) => ({
-      "Date Started": pickLive(row, "draftDate"),
-      Property: pickLive(row, "property"),
-      Unit: pickLive(row, "unit"),
-      "Notice Type": pickLive(row, "noticeType"),
-      "Notice Date": pickLive(row, "draftDate"),
-      "Proof Saved": pickLive(row, "proofStatus"),
-      "Court/Filing Status": pickLive(row, "status"),
-      Notes: pickLive(row, "nextAction"),
-      "Case Stage": pickLive(row, "status"),
-      "Next Owner Action": pickLive(row, "nextAction")
+      "Date Started": pickLive(row, "draftDate", "Draft Date", "Date Started", "Started"),
+      Property: pickLive(row, "property", "Property", "Address"),
+      Unit: pickLive(row, "unit", "Unit"),
+      Tenant: pickLive(row, "tenant", "Tenant", "Resident"),
+      "Notice Type": pickLive(row, "noticeType", "Notice Type", "Type"),
+      "Amount Owed": pickLive(row, "amountOwed", "Amount Owed", "Balance", "Rent Balance"),
+      "Notice Date": pickLive(row, "draftDate", "Draft Date", "Notice Date", "Date Served"),
+      "Proof Saved": pickLive(row, "proofStatus", "Proof Status", "Proof Saved", "Proof of Service Saved"),
+      "Court/Filing Status": pickLive(row, "status", "Status", "Court/Filing Status", "Court Filing Status", "Filing Status"),
+      Notes: pickLive(row, "nextAction", "Next Action", "Notes"),
+      "Case Stage": pickLive(row, "status", "Status", "Case Stage"),
+      "Next Owner Action": pickLive(row, "nextAction", "Next Action", "Next Owner Action")
     }))
   );
   tabs["Mortgage & Allotments"] = legacyTab(
     "Mortgage & Allotments",
     liveRowsMapped(liveTabs, "Mortgage and Arrears", (row) => ({
-      Property: pickLive(row, "property"),
-      "Mortgage Due Monthly": pickLive(row, "monthlyPayment"),
-      "Payment Source": pickLive(row, "lender"),
-      "Allotment Status": pickLive(row, "allotmentStatus") || pickLive(row, "paymentStatus"),
-      "Current Arrears": pickLive(row, "arrearsBalance"),
-      "Payoff Plan": pickLive(row, "nextAction"),
-      "Due Date": pickLive(row, "dueDate"),
-      "Confirmation Saved": pickLive(row, "paymentStatus"),
-      Notes: pickLive(row, "nextFollowUpDate")
+      Property: pickLive(row, "property", "Property", "Address"),
+      "Mortgage Due Monthly": pickLive(row, "monthlyPayment", "Monthly Payment", "Mortgage Due Monthly", "Monthly Mortgage", "Mortgage Due"),
+      "Payment Source": pickLive(row, "lender", "Lender", "Payment Source", "Source"),
+      "Allotment Status": pickLive(row, "allotmentStatus", "Allotment Status") || pickLive(row, "paymentStatus", "Payment Status", "Status"),
+      "Current Arrears": pickLive(row, "arrearsBalance", "Arrears Balance", "Current Arrears", "Arrears", "Balance"),
+      "Payoff Plan": pickLive(row, "nextAction", "Next Action", "Payoff Plan", "Plan"),
+      "Due Date": pickLive(row, "dueDate", "Due Date"),
+      "Last Paid Date": pickLive(row, "lastPaidDate", "Last Paid Date", "Last Paid"),
+      "Confirmation Saved": pickLive(row, "paymentStatus", "Payment Status", "Confirmation Saved", "Confirmation"),
+      Notes: pickLive(row, "nextFollowUpDate", "Next Follow-Up Date", "Notes")
     }))
   );
   tabs["Arrears Payoff Tracker"] = legacyTab(
     "Arrears Payoff Tracker",
     liveRowsMapped(liveTabs, "Mortgage and Arrears", (row) => ({
-      Property: pickLive(row, "property"),
-      "Current Arrears": pickLive(row, "arrearsBalance"),
-      "Payoff Plan": pickLive(row, "nextAction"),
-      "Due Date": pickLive(row, "dueDate"),
-      Notes: pickLive(row, "lender")
+      Property: pickLive(row, "property", "Property", "Address"),
+      "Current Arrears": pickLive(row, "arrearsBalance", "Arrears Balance", "Current Arrears", "Arrears", "Balance"),
+      "Payoff Plan": pickLive(row, "nextAction", "Next Action", "Payoff Plan", "Plan"),
+      "Due Date": pickLive(row, "dueDate", "Due Date"),
+      Notes: pickLive(row, "lender", "Lender", "Notes")
     }))
   );
   tabs["Utilities"] = legacyTab(
     "Utilities",
     liveRowsMapped(liveTabs, "Utilities", (row) => ({
-      Property: pickLive(row, "property"),
-      "Unit / Common Area": "",
-      "Utility Type": pickLive(row, "utilityType"),
-      Provider: pickLive(row, "provider"),
-      "Account Number": pickLive(row, "accountLabel"),
-      "Total Cost": pickLive(row, "amountDue"),
-      "Due Date": pickLive(row, "dueDate"),
-      "Payment Status": pickLive(row, "status"),
-      "Usage Spike?": pickLive(row, "shutoffRisk"),
-      "Review Status": pickLive(row, "nextAction"),
-      Notes: pickLive(row, "nextAction")
+      Property: pickLive(row, "property", "Property", "Address"),
+      "Unit / Common Area": pickLive(row, "unit", "Unit", "Unit / Common Area", "Common Area"),
+      "Utility Type": pickLive(row, "utilityType", "Utility Type", "Type"),
+      Provider: pickLive(row, "provider", "Provider", "Utility Provider"),
+      "Account Number": pickLive(row, "accountLabel", "Account Label", "Account Number"),
+      "Total Cost": pickLive(row, "amountDue", "Amount Due", "Total Cost", "Cost", "Bill Amount"),
+      "Due Date": pickLive(row, "dueDate", "Due Date"),
+      "Payment Status": pickLive(row, "status", "Status", "Payment Status"),
+      "Usage Spike?": pickLive(row, "shutoffRisk", "Shutoff Risk", "Usage Spike?", "Usage Spike"),
+      "Review Status": pickLive(row, "nextAction", "Next Action", "Review Status"),
+      Notes: pickLive(row, "nextAction", "Next Action", "Notes")
     }))
   );
   tabs["Admin Task Log"] = legacyTab(
     "Admin Task Log",
     liveRows(liveTabs, "Owner Approvals").map((row) => ({
-      "Date Created": pickLive(row, "requestedDate"),
-      "Task Area": pickLive(row, "category"),
-      Task: pickLive(row, "item"),
-      Priority: pickLive(row, "status").toLowerCase().includes("approved") ? "Normal" : "High",
+      "Date Created": pickLive(row, "requestedDate", "Requested Date", "Date Created", "Date"),
+      "Task Area": pickLive(row, "category", "Category", "Task Area"),
+      Task: pickLive(row, "item", "Item", "Task"),
+      Priority: pickLive(row, "status", "Status").toLowerCase().includes("approved") ? "Normal" : "High",
       Owner: "Owner",
-      "Due Date": pickLive(row, "requestedDate"),
-      Status: pickLive(row, "status"),
-      Notes: pickLive(row, "notes")
+      "Due Date": pickLive(row, "requestedDate", "Requested Date", "Due Date"),
+      Status: pickLive(row, "status", "Status"),
+      Notes: pickLive(row, "notes", "Notes")
     }))
   );
   tabs["Calendar & Follow-Ups"] = legacyTab(
     "Calendar & Follow-Ups",
     [
       ...liveRows(liveTabs, "Overview").map((row) => ({
-        Date: pickLive(row, "nextFollowUpDate"),
-        Property: pickLive(row, "propertyName"),
-        Unit: pickLive(row, "unit"),
-        Item: pickLive(row, "status"),
+        Date: pickLive(row, "nextFollowUpDate", "Next Follow-Up Date", "Follow-Up Date"),
+        Property: pickLive(row, "propertyName", "Property Name", "Property"),
+        Unit: pickLive(row, "unit", "Unit"),
+        Item: pickLive(row, "status", "Status"),
         Category: "Overview",
-        Status: pickLive(row, "rentStatus") || pickLive(row, "maintenanceStatus"),
-        Notes: pickLive(row, "ownerDecisionRequired")
+        Status: pickLive(row, "rentStatus", "Rent Status") || pickLive(row, "maintenanceStatus", "Maintenance Status"),
+        Notes: pickLive(row, "ownerDecisionRequired", "Owner Decision Required")
       })),
       ...liveRows(liveTabs, "Maintenance").map((row) => ({
-        Date: pickLive(row, "nextFollowUpDate"),
-        Property: pickLive(row, "property"),
-        Unit: pickLive(row, "unit"),
-        Item: pickLive(row, "issue"),
+        Date: pickLive(row, "nextFollowUpDate", "Next Follow-Up Date", "Follow-Up Date"),
+        Property: pickLive(row, "property", "Property", "Address"),
+        Unit: pickLive(row, "unit", "Unit"),
+        Item: pickLive(row, "issue", "Issue"),
         Category: "Maintenance",
-        Status: pickLive(row, "status"),
-        Notes: pickLive(row, "proofRequired")
+        Status: pickLive(row, "status", "Status"),
+        Notes: pickLive(row, "proofRequired", "Proof Required")
       }))
     ]
   );
   tabs["Cash Flow Summary"] = legacyTab("Cash Flow Summary", [
     {
       Metric: "Projected Rent",
-      Value: String(liveRows(liveTabs, "Rent Collection").reduce((sum, row) => sum + toNumber(pickLive(row, "rentAmount")), 0))
+      Value: Number.isFinite(sumLiveMoney(liveRows(liveTabs, "Rent Collection"), ["rentAmount", "Rent Amount", "Rent Due", "Monthly Rent", "Projected Rent", "Scheduled Rent"]))
+        ? String(sumLiveMoney(liveRows(liveTabs, "Rent Collection"), ["rentAmount", "Rent Amount", "Rent Due", "Monthly Rent", "Projected Rent", "Scheduled Rent"]))
+        : "Live value unavailable"
     },
     {
       Metric: "Outstanding Rent",
-      Value: String(liveRows(liveTabs, "Rent Collection").reduce((sum, row) => sum + toNumber(pickLive(row, "balance")), 0))
+      Value: Number.isFinite(sumLiveMoney(liveRows(liveTabs, "Rent Collection"), ["balance", "Balance", "Outstanding Balance", "Outstanding Rent", "Rent Balance"]))
+        ? String(sumLiveMoney(liveRows(liveTabs, "Rent Collection"), ["balance", "Balance", "Outstanding Balance", "Outstanding Rent", "Rent Balance"]))
+        : "Live value unavailable"
     }
   ]);
   tabs["Property Manager Reports"] = legacyTab("Property Manager Reports", liveRows(liveTabs, "Weekly Command Reviews"));

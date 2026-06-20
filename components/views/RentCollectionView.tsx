@@ -8,9 +8,9 @@ import { SheetsSourcePanel, sheetSourceLabel } from "@/components/SheetsSourcePa
 import { StatusBadge } from "@/components/StatusBadge";
 import { localDevelopmentFallbackAllowed, rentRecordToCommandRow } from "@/components/views/liveSheetAdapters";
 import { useSheetsView } from "@/components/views/useSheetsView";
+import { formatCurrency } from "@/lib/formatters";
 import {
   commandCenterPeriod,
-  money,
   monthOptions,
   monthlyRentTrend,
   percent,
@@ -26,15 +26,25 @@ type RentPayload = {
 };
 
 function totalsForRows(rows: RentCollectionRow[]) {
-  return rows.reduce(
-    (totals, row) => ({
-      projected: totals.projected + row.rentDue,
-      collected: totals.collected + row.paid,
-      balance: totals.balance + row.balance,
-      lateFees: totals.lateFees + row.lateFee
-    }),
-    { projected: 0, collected: 0, balance: 0, lateFees: 0 }
-  );
+  const sum = (selector: (row: RentCollectionRow) => number) => {
+    const values = rows.map(selector).filter(Number.isFinite);
+    return values.length ? values.reduce((total, value) => total + value, 0) : Number.NaN;
+  };
+
+  return {
+    projected: sum((row) => row.rentDue),
+    collected: sum((row) => row.paid),
+    balance: sum((row) => row.balance),
+    lateFees: sum((row) => row.lateFee)
+  };
+}
+
+function liveMoney(value: number) {
+  return formatCurrency(value);
+}
+
+function livePercent(value: number) {
+  return Number.isFinite(value) ? percent(value) : "Live value unavailable";
 }
 
 type RentFilter = {
@@ -176,16 +186,16 @@ function statusTone(row: RentCollectionRow): SignalTone {
 
 function RentKpiCards({ rows }: { rows: RentCollectionRow[] }) {
   const totals = totalsForRows(rows);
-  const collectionRate = totals.projected ? totals.collected / totals.projected : 0;
+  const collectionRate = Number.isFinite(totals.projected) && totals.projected > 0 && Number.isFinite(totals.collected) ? totals.collected / totals.projected : Number.NaN;
   const paidUnits = rows.filter((row) => row.balance <= 0).length;
   const unitsWithBalance = rows.filter((row) => row.balance > 0).length;
   const verificationIssues = rows.filter((row) => verificationFlag(row) !== "Clear").length;
   const kpis = [
-    { label: "Total Projected Rent", value: money(totals.projected), helper: "Current sheet rows", tone: "green" as SignalTone },
-    { label: "Total Rent Collected", value: money(totals.collected), helper: `${percent(collectionRate)} collection rate`, tone: collectionRate >= 1 ? "green" as SignalTone : "yellow" as SignalTone },
-    { label: "Total Balance", value: money(totals.balance), helper: "Balances and verification issues remain", tone: totals.balance > 0 ? "red" as SignalTone : "green" as SignalTone },
-    { label: "Total Late Fees", value: money(totals.lateFees), helper: "Late fee total in ledger", tone: totals.lateFees > 0 ? "yellow" as SignalTone : "green" as SignalTone },
-    { label: "Collection Rate", value: percent(collectionRate), helper: "Collected / projected", tone: collectionRate >= 1 ? "green" as SignalTone : collectionRate > 0.5 ? "yellow" as SignalTone : "red" as SignalTone },
+    { label: "Total Projected Rent", value: liveMoney(totals.projected), helper: "Current sheet rows", tone: Number.isFinite(totals.projected) ? "green" as SignalTone : "yellow" as SignalTone },
+    { label: "Total Rent Collected", value: liveMoney(totals.collected), helper: `${livePercent(collectionRate)} collection rate`, tone: collectionRate >= 1 ? "green" as SignalTone : "yellow" as SignalTone },
+    { label: "Total Balance", value: liveMoney(totals.balance), helper: "Balances and verification issues remain", tone: totals.balance > 0 ? "red" as SignalTone : "green" as SignalTone },
+    { label: "Total Late Fees", value: liveMoney(totals.lateFees), helper: "Late fee total in ledger", tone: totals.lateFees > 0 ? "yellow" as SignalTone : "green" as SignalTone },
+    { label: "Collection Rate", value: livePercent(collectionRate), helper: "Collected / projected", tone: collectionRate >= 1 ? "green" as SignalTone : collectionRate > 0.5 ? "yellow" as SignalTone : "red" as SignalTone },
     { label: "Units Paid", value: String(paidUnits), helper: "Rows with zero balance", tone: "green" as SignalTone },
     { label: "Units With Balance", value: String(unitsWithBalance), helper: "Needs follow-up or verification", tone: unitsWithBalance > 0 ? "red" as SignalTone : "green" as SignalTone },
     { label: "Verification Issues", value: String(verificationIssues), helper: "Ledger, HAP, UPMC, or arrangement checks", tone: verificationIssues > 0 ? "yellow" as SignalTone : "green" as SignalTone }
@@ -282,7 +292,7 @@ function RentHealthEvaluation() {
 }
 
 function PaidProjectedChart({ title, projected, collected }: { title: string; projected: number; collected: number }) {
-  const max = Math.max(projected, collected, 1);
+  const max = Math.max(...[projected, collected].filter(Number.isFinite), 1);
   const bars = [
     { label: "Projected", value: projected, tone: "projected" },
     { label: "Collected", value: collected, tone: "collected" }
@@ -302,9 +312,9 @@ function PaidProjectedChart({ title, projected, collected }: { title: string; pr
           <div key={bar.label} className="rent-chart-row">
             <span>{bar.label}</span>
             <div className="bar-track">
-              <div className={`bar-fill rent-${bar.tone}`} style={{ "--bar-width": `${Math.max((bar.value / max) * 100, 4)}%` } as CSSProperties} />
+              <div className={`bar-fill rent-${bar.tone}`} style={{ "--bar-width": `${Number.isFinite(bar.value) ? Math.max((bar.value / max) * 100, 4) : 4}%` } as CSSProperties} />
             </div>
-            <strong>{money(bar.value)}</strong>
+            <strong>{liveMoney(bar.value)}</strong>
           </div>
         ))}
       </div>
@@ -332,7 +342,7 @@ function BalanceByUnitChart({ rows: sourceRows }: { rows: RentCollectionRow[] })
             <div className="bar-track">
               <div className="bar-fill rent-balance" style={{ "--bar-width": `${Math.max((row.balance / max) * 100, 4)}%` } as CSSProperties} />
             </div>
-            <strong>{money(row.balance)}</strong>
+            <strong>{liveMoney(row.balance)}</strong>
           </div>
         ))}
       </div>
@@ -354,9 +364,9 @@ function CollectionRateGauge({ rows }: { rows: RentCollectionRow[] }) {
         <CheckCircle2 size={18} aria-hidden />
       </div>
       <div className="rent-rate-gauge">
-        <strong>{percent(rate)}</strong>
+        <strong>{livePercent(rate)}</strong>
         <div className="bar-track">
-          <div className="bar-fill" style={{ "--bar-width": `${Math.min(rate * 100, 100)}%` } as CSSProperties} />
+          <div className="bar-fill" style={{ "--bar-width": `${Number.isFinite(rate) ? Math.min(rate * 100, 100) : 4}%` } as CSSProperties} />
         </div>
         <p>Above 50%, but verification issues keep the ledger in Watch status.</p>
       </div>
@@ -482,13 +492,13 @@ const columns: DataTableColumn<RentCollectionRow>[] = [
   { key: "property", header: "Property", render: (row) => row.property },
   { key: "unit", header: "Unit", render: (row) => row.unit },
   { key: "tenant", header: "Tenant Name", render: (row) => row.tenant },
-  { key: "rentDue", header: "Rent Due", render: (row) => money(row.rentDue), className: "numeric" },
-  { key: "paid", header: "Amount Paid", render: (row) => money(row.paid), className: "numeric" },
-  { key: "balance", header: "Balance", render: (row) => money(row.balance), className: "numeric" },
+  { key: "rentDue", header: "Rent Due", render: (row) => liveMoney(row.rentDue), className: "numeric" },
+  { key: "paid", header: "Amount Paid", render: (row) => liveMoney(row.paid), className: "numeric" },
+  { key: "balance", header: "Balance", render: (row) => liveMoney(row.balance), className: "numeric" },
   { key: "dueDate", header: "Due Date", render: (row) => row.dueDate || "May 1" },
   { key: "datePaid", header: "Date Paid", render: (row) => row.datePaid || "Not paid" },
   { key: "method", header: "Payment Method", render: (row) => row.method || "Not set" },
-  { key: "lateFee", header: "Late Fee", render: (row) => money(row.lateFee), className: "numeric" },
+  { key: "lateFee", header: "Late Fee", render: (row) => liveMoney(row.lateFee), className: "numeric" },
   { key: "status", header: "Status", render: (row) => <StatusBadge label={row.status} /> },
   { key: "reminder", header: "Reminder Sent", render: (row) => <StatusBadge label={row.reminder} /> },
   { key: "flag", header: "Verification Flag", render: (row) => <StatusBadge label={verificationFlag(row)} /> },

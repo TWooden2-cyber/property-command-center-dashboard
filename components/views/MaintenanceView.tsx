@@ -8,10 +8,10 @@ import { SheetsSourcePanel } from "@/components/SheetsSourcePanel";
 import { StatusBadge } from "@/components/StatusBadge";
 import { localDevelopmentFallbackAllowed, maintenanceRecordToCommandRow } from "@/components/views/liveSheetAdapters";
 import { useSheetsView } from "@/components/views/useSheetsView";
+import { formatCurrency } from "@/lib/formatters";
 import {
   commandCenterPeriod,
   maintenanceRows,
-  money,
   monthOptions,
   yearOptions,
   type MaintenanceCommandRow,
@@ -133,8 +133,12 @@ function MaintenanceKpis({ rows }: { rows: MaintenanceCommandRow[] }) {
   const assignedCount = rows.filter(vendorAssigned).length;
   const proofMissing = rows.filter((row) => proofStatus(row) === "Missing").length;
   const updatesNeeded = rows.filter(tenantUpdateNeeded).length;
-  const estimatedCost = rows.reduce((total, row) => total + row.estimatedCost, 0);
-  const actualCost = rows.reduce((total, row) => total + (row.actualCost ?? 0), 0);
+  const sum = (selector: (row: MaintenanceCommandRow) => number) => {
+    const values = rows.map(selector).filter(Number.isFinite);
+    return values.length ? values.reduce((total, value) => total + value, 0) : Number.NaN;
+  };
+  const estimatedCost = sum((row) => row.estimatedCost);
+  const actualCost = sum((row) => row.actualCost ?? Number.NaN);
   const completionRate = rows.length ? rows.filter((row) => row.status === "Complete").length / rows.length : 0;
   const kpis = [
     { label: "Open Maintenance Items", value: String(openItems), helper: "Open or waiting local work orders", tone: openItems ? "yellow" as SignalTone : "green" as SignalTone },
@@ -142,8 +146,8 @@ function MaintenanceKpis({ rows }: { rows: MaintenanceCommandRow[] }) {
     { label: "Vendor Assigned", value: String(assignedCount), helper: "Rows with named vendor/crew", tone: assignedCount ? "green" as SignalTone : "yellow" as SignalTone },
     { label: "Proof Missing", value: String(proofMissing), helper: "Photos, invoice, or confirmation needed", tone: proofMissing ? "red" as SignalTone : "green" as SignalTone },
     { label: "Tenant Update Needed", value: String(updatesNeeded), helper: "No approved/logged update yet", tone: updatesNeeded ? "yellow" as SignalTone : "green" as SignalTone },
-    { label: "Estimated Cost", value: money(estimatedCost), helper: "Current tracker estimate total", tone: "yellow" as SignalTone },
-    { label: "Actual Cost", value: money(actualCost), helper: "Known actual cost only", tone: actualCost > 500 ? "red" as SignalTone : "green" as SignalTone },
+    { label: "Estimated Cost", value: formatCurrency(estimatedCost), helper: "Current tracker estimate total", tone: Number.isFinite(estimatedCost) ? "yellow" as SignalTone : "red" as SignalTone },
+    { label: "Actual Cost", value: formatCurrency(actualCost), helper: "Known actual cost only", tone: actualCost > 500 ? "red" as SignalTone : Number.isFinite(actualCost) ? "green" as SignalTone : "red" as SignalTone },
     { label: "Completion Rate", value: `${Math.round(completionRate * 100)}%`, helper: "Complete items / all items", tone: completionRate === 1 ? "green" as SignalTone : "yellow" as SignalTone }
   ];
 
@@ -263,8 +267,8 @@ const columns: DataTableColumn<MaintenanceCommandRow>[] = [
   { key: "issue", header: "Issue", render: (row) => row.issue },
   { key: "priority", header: "Priority", render: (row) => <StatusBadge label={row.priority} /> },
   { key: "assignedVendor", header: "Assigned Vendor", render: (row) => row.assignedVendor || "Not assigned" },
-  { key: "estimatedCost", header: "Estimated Cost", render: (row) => money(row.estimatedCost), className: "numeric" },
-  { key: "actualCost", header: "Actual Cost", render: (row) => row.actualCost === undefined ? "Unknown" : money(row.actualCost), className: "numeric" },
+  { key: "estimatedCost", header: "Estimated Cost", render: (row) => formatCurrency(row.estimatedCost), className: "numeric" },
+  { key: "actualCost", header: "Actual Cost", render: (row) => formatCurrency(row.actualCost ?? Number.NaN), className: "numeric" },
   { key: "status", header: "Status", render: (row) => <StatusBadge label={row.status} /> },
   { key: "dateCompleted", header: "Date Completed", render: (row) => row.dateCompleted || "Open" },
   { key: "tenantUpdateSent", header: "Tenant Update Sent", render: (row) => <StatusBadge label={row.tenantUpdateSent} /> },

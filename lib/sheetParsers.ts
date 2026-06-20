@@ -56,6 +56,15 @@ function money(row: RawSheetRow, aliases: string[]): number {
   return toNumber(pick(row, aliases));
 }
 
+function finiteValues(values: number[]): number[] {
+  return values.filter(Number.isFinite);
+}
+
+function sumFinite(values: number[]): number {
+  const valid = finiteValues(values);
+  return valid.length ? valid.reduce((sum, value) => sum + value, 0) : Number.NaN;
+}
+
 function rowId(tab: SourceTabName, index: number, row: RawSheetRow): string {
   const anchor = [pick(row, ["Property"]), pick(row, ["Unit", "Unit / Common Area"]), pick(row, ["Tenant"]), pick(row, ["Task", "Issue", "Utility Type"])]
     .filter(Boolean)
@@ -172,10 +181,10 @@ function parseMonthIdentity(month: string, fallbackStart: string, fallbackEnd: s
 
 export function parseRentCollection(snapshot: WorkbookSnapshot): RentRecord[] {
   return rows(snapshot, "Rent Collection").map((row, index) => {
-    const amountPaid = money(row, ["Amount Paid", "Paid", "Collected"]);
+    const amountPaid = money(row, ["Amount Paid", "Paid", "Collected", "Rent Collected"]);
     const balance = money(row, ["Balance", "Outstanding", "Outstanding Rent", "Rent Balance"]);
     const dueDate = pick(row, ["Due Date", "Rent Due Date"]);
-    const status = getRentStatus(amountPaid, balance, dueDate);
+    const status = (pick(row, ["Status", "Payment Status"]) as RentRecord["status"]) || getRentStatus(amountPaid, balance, dueDate);
 
     return {
       id: rowId("Rent Collection", index, row),
@@ -286,13 +295,14 @@ export function parseMortgageArrears(snapshot: WorkbookSnapshot): MortgageArrear
   return sourceRows.map((row, index) => {
     const property = pick(row, ["Property", "Address"]);
     const arrears = arrearsByProperty.get(normalizeKey(property));
-    const currentArrears = money(row, ["Current Arrears", "Arrears", "Balance"]) || arrears?.currentArrears || 0;
+    const rowCurrentArrears = money(row, ["Current Arrears", "Arrears", "Balance"]);
+    const currentArrears = Number.isFinite(rowCurrentArrears) ? rowCurrentArrears : arrears?.currentArrears ?? Number.NaN;
     const allotmentStatus = pick(row, ["Allotment Status", "Status"]);
 
     return {
       id: rowId("Mortgage & Allotments", index, row),
       property,
-      mortgageDueMonthly: money(row, ["Mortgage Due Monthly", "Monthly Mortgage", "Mortgage Due"]),
+      mortgageDueMonthly: money(row, ["Mortgage Due Monthly", "Monthly Mortgage", "Mortgage Due", "Monthly Payment"]),
       paymentSource: pick(row, ["Payment Source", "Source"]),
       allotmentStatus,
       currentArrears,
@@ -407,14 +417,14 @@ function findMetric(rowsToSearch: RawSheetRow[], labels: string[]): number {
 
     const numeric = entries
       .map(([, value]) => toNumber(value))
-      .find((value) => Number.isFinite(value) && value !== 0);
+      .find((value) => Number.isFinite(value));
 
-    if (numeric) {
+    if (numeric !== undefined) {
       return numeric;
     }
   }
 
-  return 0;
+  return Number.NaN;
 }
 
 function kpi(label: string, value: string, helper: string, tone: KpiMetric["tone"] = "Normal"): KpiMetric {
@@ -441,11 +451,11 @@ export function parseWorkbook(snapshot: WorkbookSnapshot): CommandCenterData {
   const calendarFollowUps = parseCalendarFollowUps(snapshot);
   const utilities = parseUtilities(snapshot);
 
-  const scheduledRent = rentCollection.reduce((sum, row) => sum + row.rentDue, 0);
-  const rentCollected = rentCollection.reduce((sum, row) => sum + row.amountPaid, 0);
-  const outstandingRent = rentCollection.reduce((sum, row) => sum + row.balance, 0);
+  const scheduledRent = sumFinite(rentCollection.map((row) => row.rentDue));
+  const rentCollected = sumFinite(rentCollection.map((row) => row.amountPaid));
+  const outstandingRent = sumFinite(rentCollection.map((row) => row.balance));
   const openNotices = noticesEvictions.filter((row) => row.caseStage !== "Resolved").length;
-  const currentArrears = mortgageArrears.reduce((sum, row) => sum + row.currentArrears, 0);
+  const currentArrears = sumFinite(mortgageArrears.map((row) => row.currentArrears));
   const openMaintenance = maintenance.filter((row) => {
     const status = row.status.trim().toLowerCase();
     return !["complete", "completed", "closed", "resolved"].includes(status);
@@ -455,15 +465,16 @@ export function parseWorkbook(snapshot: WorkbookSnapshot): CommandCenterData {
   const filingPrepScheduled = noticesEvictions.filter((row) => row.caseStage === "Prepare Filing Packet").length;
   const dashboardRows = rows(snapshot, "Dashboard");
   const cashFlowRows = rows(snapshot, "Cash Flow Summary");
-  const maintenanceCosts = maintenance.reduce((sum, row) => sum + row.actualCost, 0);
-  const mortgageDue = mortgageArrears.reduce((sum, row) => sum + row.mortgageDueMonthly, 0);
-  const detectedNetCashFlow =
-    findMetric([...dashboardRows, ...cashFlowRows], ["Net Cash Flow", "Cash Flow", "Net"]) ||
-    rentCollected - maintenanceCosts - mortgageDue;
+  const maintenanceCosts = sumFinite(maintenance.map((row) => row.actualCost));
+  const mortgageDue = sumFinite(mortgageArrears.map((row) => row.mortgageDueMonthly));
+  const detectedMetric = findMetric([...dashboardRows, ...cashFlowRows], ["Net Cash Flow", "Cash Flow", "Net"]);
+  const calculatedNetCashFlow =
+    [rentCollected, maintenanceCosts, mortgageDue].every(Number.isFinite) ? rentCollected - maintenanceCosts - mortgageDue : Number.NaN;
+  const detectedNetCashFlow = Number.isFinite(detectedMetric) ? detectedMetric : calculatedNetCashFlow;
 
   const ownerDecision = getOwnerDecision({
     mortgageAllotmentsNeedingSetup,
-    outstandingRent,
+          outstandingRent: Number.isFinite(outstandingRent) ? outstandingRent : 0,
     openNotices,
     openMaintenance
   });
@@ -510,7 +521,7 @@ export function parseWorkbook(snapshot: WorkbookSnapshot): CommandCenterData {
         openNotices,
         filingPrepScheduled,
         mortgageAllotmentsNeedingSetup,
-        currentArrears,
+        currentArrears: Number.isFinite(currentArrears) ? currentArrears : 0,
         openMaintenance,
         criticalAdminTasks
       }),

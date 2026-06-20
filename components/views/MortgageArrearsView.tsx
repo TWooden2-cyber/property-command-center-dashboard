@@ -8,6 +8,7 @@ import { SheetsSourcePanel } from "@/components/SheetsSourcePanel";
 import { StatusBadge } from "@/components/StatusBadge";
 import { localDevelopmentFallbackAllowed, mortgageRecordToCommandRow } from "@/components/views/liveSheetAdapters";
 import { useSheetsView } from "@/components/views/useSheetsView";
+import { formatCurrency } from "@/lib/formatters";
 import {
   commandCenterPeriod,
   money,
@@ -180,15 +181,19 @@ function MortgageHeader() {
 }
 
 function MortgageKpis({ rows }: { rows: MortgageCommandRow[] }) {
-  const totalDue = rows.reduce((total, row) => total + row.mortgageDueMonthly, 0);
-  const requested = rows.reduce((total, row) => total + row.paidThisMonth, 0);
-  const arrears = rows.reduce((total, row) => total + row.currentArrears, 0);
+  const sum = (selector: (row: MortgageCommandRow) => number) => {
+    const values = rows.map(selector).filter(Number.isFinite);
+    return values.length ? values.reduce((total, value) => total + value, 0) : Number.NaN;
+  };
+  const totalDue = sum((row) => row.mortgageDueMonthly);
+  const requested = sum((row) => row.paidThisMonth);
+  const arrears = sum((row) => row.currentArrears);
   const proofCount = proofChecklist.length;
 
   const cards = [
-    { label: "Total Monthly Mortgage Due", value: money(totalDue), helper: "7-Unit: $2,500.00 / 4-Unit: $2,000.00", tone: "yellow" as SignalTone },
-    { label: "Mortgage Payments Paid / Requested", value: money(requested), helper: "Payment requests accepted; final lender posting pending", tone: "yellow" as SignalTone },
-    { label: "Current Arrears", value: money(arrears), helper: "7-Unit: $12,745.90 / 4-Unit: $0.00", tone: "red" as SignalTone },
+    { label: "Total Monthly Mortgage Due", value: formatCurrency(totalDue), helper: "Summed from live mortgage rows", tone: Number.isFinite(totalDue) ? "yellow" as SignalTone : "red" as SignalTone },
+    { label: "Mortgage Payments Paid / Requested", value: formatCurrency(requested), helper: "Live payment amount field, if mapped", tone: Number.isFinite(requested) ? "yellow" as SignalTone : "red" as SignalTone },
+    { label: "Current Arrears", value: formatCurrency(arrears), helper: "Summed from live arrears rows", tone: arrears > 0 ? "red" as SignalTone : Number.isFinite(arrears) ? "green" as SignalTone : "red" as SignalTone },
     { label: "Confirmation Status", value: "Pending", helper: "Email confirmations found / final posting pending", tone: "red" as SignalTone },
     { label: "Allotment Setup", value: "Needs setup", helper: "7-Unit and 4-Unit payment automation not verified", tone: "yellow" as SignalTone },
     { label: "Mortgage Risk", value: "Critical", helper: "7-Unit arrears and posting proof remain unresolved", tone: "red" as SignalTone },
@@ -435,10 +440,10 @@ export function MortgageArrearsView() {
 
   const columns: DataTableColumn<MortgageCommandRow>[] = [
     { key: "property", header: "Property", render: (row) => row.property },
-    { key: "mortgageDueMonthly", header: "Mortgage Due Monthly", render: (row) => money(row.mortgageDueMonthly), className: "numeric" },
+    { key: "mortgageDueMonthly", header: "Mortgage Due Monthly", render: (row) => formatCurrency(row.mortgageDueMonthly), className: "numeric" },
     { key: "paymentSource", header: "Payment Source", render: (row) => row.paymentSource },
     { key: "allotmentStatus", header: "Allotment Status", render: (row) => <StatusBadge label={row.allotmentStatus} /> },
-    { key: "currentArrears", header: "Current Arrears", render: (row) => money(row.currentArrears), className: "numeric" },
+    { key: "currentArrears", header: "Current Arrears", render: (row) => formatCurrency(row.currentArrears), className: "numeric" },
     { key: "payoffPlan", header: "Payoff Plan", render: (row) => row.payoffPlan },
     { key: "dueDate", header: "Due Date", render: (row) => row.dueDate },
     { key: "lastPaidDate", header: "Last Paid Date", render: (row) => row.lastPaidDate || "Unknown / verify" },

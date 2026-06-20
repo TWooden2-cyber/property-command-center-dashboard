@@ -43,7 +43,7 @@ const tableColumns: DataTableColumn<UtilityRecord>[] = [
   { key: "unitCommonArea", header: "Unit / Common Area", render: (row) => row.unitCommonArea || "Not set" },
   { key: "utilityType", header: "Utility Type", render: (row) => row.utilityType || "Not set" },
   { key: "provider", header: "Provider", render: (row) => row.provider || "Not set" },
-  { key: "usageAmount", header: "Usage Amount", render: (row) => row.usageAmount.toLocaleString(), className: "numeric" },
+  { key: "usageAmount", header: "Usage Amount", render: (row) => Number.isFinite(row.usageAmount) ? row.usageAmount.toLocaleString() : "Live value unavailable", className: "numeric" },
   { key: "usageUnit", header: "Usage Unit", render: (row) => row.usageUnit || "Not set" },
   { key: "totalCost", header: "Total Cost", render: (row) => formatCurrency(row.totalCost), className: "numeric" },
   { key: "costPerUnit", header: "Cost Per Unit", render: (row) => formatCostPerUnit(row.costPerUnit), className: "numeric" },
@@ -56,12 +56,16 @@ const tableColumns: DataTableColumn<UtilityRecord>[] = [
 ];
 
 function formatCostPerUnit(value: number): string {
+  if (!Number.isFinite(value)) {
+    return "Live value unavailable";
+  }
+
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
     minimumFractionDigits: value > 0 && value < 1 ? 4 : 2,
     maximumFractionDigits: value > 0 && value < 1 ? 4 : 2
-  }).format(value || 0);
+  }).format(value);
 }
 
 function ExternalValue({ value }: { value: string }) {
@@ -87,13 +91,17 @@ function uniqueValues(rows: UtilityRecord[], key: keyof UtilityRecord): string[]
 }
 
 function sum(rows: UtilityRecord[], selector: (row: UtilityRecord) => number): number {
-  return rows.reduce((total, row) => total + selector(row), 0);
+  const values = rows.map(selector).filter(Number.isFinite);
+  return values.length ? values.reduce((total, value) => total + value, 0) : Number.NaN;
 }
 
 function groupBySum(rows: UtilityRecord[], labelFor: (row: UtilityRecord) => string, valueFor: (row: UtilityRecord) => number): ChartDatum[] {
   const grouped = rows.reduce<Record<string, number>>((acc, row) => {
     const label = labelFor(row) || "Not set";
-    acc[label] = (acc[label] ?? 0) + valueFor(row);
+    const value = valueFor(row);
+    if (Number.isFinite(value)) {
+      acc[label] = (acc[label] ?? 0) + value;
+    }
     return acc;
   }, {});
 
@@ -105,8 +113,11 @@ function groupBySum(rows: UtilityRecord[], labelFor: (row: UtilityRecord) => str
 function groupMonthlyCost(rows: UtilityRecord[]): ChartDatum[] {
   const grouped = rows.reduce<Record<string, { label: string; value: number }>>((acc, row) => {
     const key = row.monthKey || row.monthLabel || "unknown";
-    acc[key] = acc[key] ?? { label: row.monthLabel || row.month || "Not set", value: 0 };
-    acc[key].value += row.totalCost;
+    const value = row.totalCost;
+    if (Number.isFinite(value)) {
+      acc[key] = acc[key] ?? { label: row.monthLabel || row.month || "Not set", value: 0 };
+      acc[key].value += value;
+    }
     return acc;
   }, {});
 
