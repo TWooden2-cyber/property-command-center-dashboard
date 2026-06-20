@@ -26,7 +26,18 @@ function hasEnv(value: string | undefined): boolean {
 }
 
 export function getDashboardDataMode(): DashboardDataMode {
-  return process.env.DASHBOARD_DATA_MODE?.trim().toLowerCase() === "live" ? "live" : "sample";
+  const explicitMode = process.env.DASHBOARD_DATA_MODE?.trim().toLowerCase();
+
+  if (explicitMode === "live") return "live";
+  if (explicitMode === "sample") return "sample";
+
+  const hasSheetsReadEnv = [
+    process.env.GOOGLE_SHEETS_SPREADSHEET_ID || process.env.GOOGLE_SHEET_ID,
+    process.env.GOOGLE_SHEETS_CLIENT_EMAIL || process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+    process.env.GOOGLE_SHEETS_PRIVATE_KEY || process.env.GOOGLE_PRIVATE_KEY
+  ].every((value) => Boolean(value?.trim()));
+
+  return hasSheetsReadEnv ? "live" : "sample";
 }
 
 function cleanEnvValue(value: string | undefined): string {
