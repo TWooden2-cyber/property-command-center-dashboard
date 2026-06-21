@@ -1,6 +1,6 @@
 import { google } from "googleapis";
 import { checkGoogleSheetsHealth } from "@/lib/googleSheets";
-import { getGoogleOAuthConfig, getOAuthClient, isEnabledFlag, readEnv, tokenScopeWarning } from "@/lib/googleReadOnlyAuth";
+import { getGoogleOAuthConfig, getOAuthClient, readEnv, tokenScopeWarning } from "@/lib/googleReadOnlyAuth";
 import type { GoogleProductStatus } from "@/types/googleProducts";
 
 const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.metadata.readonly";
@@ -77,6 +77,14 @@ function missingStatus(product: GoogleProductStatus["product"], flagName: string
   };
 }
 
+function readFlag(name: string): string {
+  return readEnv(name).value.trim().toLowerCase();
+}
+
+function isExplicitlyDisabled(flagName: string): boolean {
+  return readFlag(flagName) === "false";
+}
+
 function notConfigured(product: GoogleProductStatus["product"], missingEnvVars: string[], mode: string): GoogleProductStatus {
   return {
     product,
@@ -135,11 +143,11 @@ export async function getSheetsProductStatus(): Promise<GoogleProductStatus> {
 }
 
 export async function getDriveProductStatus(): Promise<GoogleProductStatus> {
-  if (!isEnabledFlag("GOOGLE_DRIVE_READONLY_ENABLED")) {
-    return missingStatus("Google Drive", "GOOGLE_DRIVE_READONLY_ENABLED", "Drive read-only production integration is built but not enabled.");
+  if (isExplicitlyDisabled("GOOGLE_DRIVE_READONLY_ENABLED")) {
+    return missingStatus("Google Drive", "GOOGLE_DRIVE_READONLY_ENABLED", "Drive read-only production integration is explicitly disabled.");
   }
 
-  const config = getGoogleOAuthConfig("GOOGLE_DRIVE_READONLY_TOKEN", ["GOOGLE_DRIVE_TOKEN"]);
+  const config = getGoogleOAuthConfig("GOOGLE_DRIVE_READONLY_TOKEN", ["GOOGLE_DRIVE_TOKEN", "GOOGLE_DRIVE_WRITE_TOKEN"]);
   const folderId = readEnv("GOOGLE_DRIVE_ROOT_FOLDER_ID", ["GOOGLE_DRIVE_FOLDER_ID"]).value || DRIVE_ROOT_FOLDER_ID;
   if (config.missingEnvVars.length > 0) {
     return notConfigured("Google Drive", config.missingEnvVars, "read-only metadata");
@@ -204,11 +212,11 @@ export async function getDriveProductStatus(): Promise<GoogleProductStatus> {
 }
 
 export async function getCalendarProductStatus(): Promise<GoogleProductStatus> {
-  if (!isEnabledFlag("GOOGLE_CALENDAR_READONLY_ENABLED")) {
-    return missingStatus("Google Calendar", "GOOGLE_CALENDAR_READONLY_ENABLED", "Calendar read-only production integration is built but not enabled.");
+  if (isExplicitlyDisabled("GOOGLE_CALENDAR_READONLY_ENABLED")) {
+    return missingStatus("Google Calendar", "GOOGLE_CALENDAR_READONLY_ENABLED", "Calendar read-only production integration is explicitly disabled.");
   }
 
-  const config = getGoogleOAuthConfig("GOOGLE_CALENDAR_READONLY_TOKEN", ["GOOGLE_CALENDAR_TOKEN"]);
+  const config = getGoogleOAuthConfig("GOOGLE_CALENDAR_READONLY_TOKEN", ["GOOGLE_CALENDAR_TOKEN", "GOOGLE_CALENDAR_WRITE_TOKEN"]);
   if (config.missingEnvVars.length > 0) {
     return notConfigured("Google Calendar", config.missingEnvVars, "read-only");
   }
@@ -258,8 +266,8 @@ export async function getCalendarProductStatus(): Promise<GoogleProductStatus> {
 }
 
 export async function getGmailProductStatus(): Promise<GoogleProductStatus> {
-  if (!isEnabledFlag("GOOGLE_GMAIL_READONLY_ENABLED")) {
-    return missingStatus("Gmail", "GOOGLE_GMAIL_READONLY_ENABLED", "Gmail metadata-only production integration is built but not enabled.");
+  if (isExplicitlyDisabled("GOOGLE_GMAIL_READONLY_ENABLED")) {
+    return missingStatus("Gmail", "GOOGLE_GMAIL_READONLY_ENABLED", "Gmail metadata-only production integration is explicitly disabled.");
   }
 
   const config = getGoogleOAuthConfig("GOOGLE_GMAIL_METADATA_TOKEN", ["GMAIL_METADATA_TOKEN", "GOOGLE_GMAIL_READONLY_TOKEN", "GMAIL_READONLY_TOKEN"]);
@@ -317,11 +325,11 @@ export async function getGmailProductStatus(): Promise<GoogleProductStatus> {
 }
 
 export async function getTasksProductStatus(): Promise<GoogleProductStatus> {
-  if (!isEnabledFlag("GOOGLE_TASKS_READONLY_ENABLED")) {
-    return missingStatus("Google Tasks", "GOOGLE_TASKS_READONLY_ENABLED", "Google Tasks read-only production integration is built but not enabled.");
+  if (isExplicitlyDisabled("GOOGLE_TASKS_READONLY_ENABLED")) {
+    return missingStatus("Google Tasks", "GOOGLE_TASKS_READONLY_ENABLED", "Google Tasks read-only production integration is explicitly disabled.");
   }
 
-  const config = getGoogleOAuthConfig("GOOGLE_TASKS_READONLY_TOKEN", ["GOOGLE_TASKS_TOKEN"]);
+  const config = getGoogleOAuthConfig("GOOGLE_TASKS_READONLY_TOKEN", ["GOOGLE_TASKS_TOKEN", "GOOGLE_TASKS_WRITE_TOKEN"]);
   if (config.missingEnvVars.length > 0) {
     return notConfigured("Google Tasks", config.missingEnvVars, "read-only");
   }

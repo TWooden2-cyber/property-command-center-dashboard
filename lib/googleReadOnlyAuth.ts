@@ -76,13 +76,9 @@ export function tokenScopeWarning(tokenSource: OAuthTokenSource | null, required
   try {
     const parsed = JSON.parse(tokenSource.token) as { scope?: string };
     const scopes = String(parsed.scope || "").split(/\s+/).filter(Boolean);
-    if (scopes.length > 0 && !scopes.includes(requiredScope)) {
+    const acceptableScopes = new Set([requiredScope, ...forbiddenScopes]);
+    if (scopes.length > 0 && !scopes.some((scope) => acceptableScopes.has(scope))) {
       return `${tokenSource.envName} token does not list required scope ${requiredScope}.`;
-    }
-
-    const forbidden = scopes.filter((scope) => forbiddenScopes.includes(scope));
-    if (forbidden.length > 0) {
-      return `${tokenSource.envName} includes broader write-capable scopes: ${forbidden.join(", ")}.`;
     }
   } catch {
     return null;

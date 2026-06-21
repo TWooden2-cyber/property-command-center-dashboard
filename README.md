@@ -58,6 +58,13 @@ GOOGLE_TASKS_READONLY_ENABLED=false
 GOOGLE_TASKS_READONLY_TOKEN=
 ```
 
+Enable flag behavior:
+
+- If a `*_READONLY_ENABLED` variable is explicitly set to `false`, that product stays disabled.
+- If the flag is omitted and a supported token env exists, the app attempts the read-only status check.
+- Existing legacy token names are accepted as aliases for read-only checks only: `GOOGLE_DRIVE_WRITE_TOKEN`, `GOOGLE_CALENDAR_WRITE_TOKEN`, `GMAIL_READONLY_TOKEN`, and `GOOGLE_TASKS_WRITE_TOKEN`.
+- Those tokens are never used for write calls by the status routes.
+
 Required read-only scopes:
 
 - Google Drive: `https://www.googleapis.com/auth/drive.metadata.readonly`
