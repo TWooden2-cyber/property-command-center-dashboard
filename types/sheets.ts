@@ -2,6 +2,7 @@ export const SOURCE_TABS = [
   "Dashboard",
   "Rent Collection",
   "Maintenance",
+  "Lease Violations",
   "Notices & Evictions",
   "Mortgage & Allotments",
   "Admin Task Log",

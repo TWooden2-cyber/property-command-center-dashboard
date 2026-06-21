@@ -13,32 +13,48 @@ export type LiveSheetRead = {
 
 export const LIVE_SHEET_SCHEMA = [
   {
+    tab: "Dashboard",
+    columns: ["Tracker ID", "Status", "Priority", "Owner Decision Required", "Workflow Stage", "Follow-Up Date"]
+  },
+  {
     tab: "Overview",
-    columns: ["propertyName", "unit", "status", "rentAmount", "rentStatus", "maintenanceStatus", "openIssues", "ownerDecisionRequired", "nextFollowUpDate"]
+    columns: ["Metric", "Value", "Source", "Status / Notes"]
   },
   {
     tab: "Rent Collection",
-    columns: ["property", "unit", "tenantLabel", "rentAmount", "dueDate", "paidDate", "balance", "status", "followUpNeeded", "notes"]
+    columns: ["Property", "Unit", "Tenant Name", "Rent Due", "Amount Paid", "Balance", "Due Date", "Status", "Notes"]
   },
   {
     tab: "Maintenance",
-    columns: ["workOrderId", "property", "unit", "issue", "priority", "status", "vendor", "dateOpened", "dateCompleted", "proofRequired", "proofReceived", "nextFollowUpDate"]
+    columns: ["Date Reported", "Property", "Unit", "Issue", "Priority", "Status", "Assigned Vendor", "Actual Cost", "Notes"]
   },
   {
-    tab: "Mortgage and Arrears",
-    columns: ["property", "lender", "monthlyPayment", "dueDate", "paymentStatus", "arrearsBalance", "allotmentStatus", "nextAction", "nextFollowUpDate"]
+    tab: "Mortgage & Allotments",
+    columns: ["Property", "Mortgage Due Monthly", "Payment Source", "Allotment Status", "Current Arrears", "Payoff Plan", "Due Date", "Notes"]
   },
   {
-    tab: "Notices and Legal Holds",
-    columns: ["property", "unit", "noticeType", "status", "draftDate", "sentDate", "proofStatus", "ownerApprovalRequired", "nextAction"]
+    tab: "Arrears Payoff Tracker",
+    columns: ["Date", "Property", "Starting Arrears", "Payment Made", "Remaining Balance", "Payment Source", "Status", "Notes"]
+  },
+  {
+    tab: "Notices & Evictions",
+    columns: ["Date Started", "Property", "Unit", "Tenant", "Notice Type", "Amount Owed", "Notice Date", "Proof Saved", "Court/Filing Status", "Case Stage", "Next Owner Action"]
   },
   {
     tab: "Utilities",
-    columns: ["property", "utilityType", "provider", "accountLabel", "dueDate", "amountDue", "status", "shutoffRisk", "nextAction"]
+    columns: ["Month", "Property", "Utility Type", "Provider", "Total Cost", "Due Date", "Payment Status", "Review Status"]
   },
   {
     tab: "Lease Violations",
-    columns: ["property", "unit", "violationType", "dateReported", "status", "proofStatus", "tenantResponse", "nextAction"]
+    columns: ["Date", "Property", "Unit", "Tenant", "Violation Type", "Description", "Status", "Notes"]
+  },
+  {
+    tab: "Admin Task Log",
+    columns: ["Date Created", "Task Area", "Property", "Unit", "Task", "Priority", "Owner", "Due Date", "Status", "Notes"]
+  },
+  {
+    tab: "Calendar & Follow-Ups",
+    columns: ["Follow-Up Date", "Property", "Unit", "Follow-Up Type", "Reason", "Status", "Next Follow-Up", "Notes"]
   },
   {
     tab: "Tenant Communications",
@@ -62,7 +78,15 @@ export const LIVE_SHEET_SCHEMA = [
   },
   {
     tab: "Owner Approvals",
-    columns: ["approvalId", "category", "item", "status", "requestedDate", "approvedDate", "notes"]
+    columns: ["Approval ID", "Property/unit", "Item name", "Trigger/issue summary", "Approval level", "Required proof", "Current status", "Owner decision needed", "Next action"]
+  },
+  {
+    tab: "Expense Import Summary",
+    columns: ["Source File", "Export Date", "Property", "Month", "Management Fees", "Cleaning and Maintenance", "Repairs", "Utilities", "Total Imported Expenses", "Notes"]
+  },
+  {
+    tab: "4-Unit Expense Database",
+    columns: ["Date", "Month", "Property", "Unit", "Vendor / Payee", "Category", "Description", "Amount", "Database Status", "Notes"]
   }
 ] as const;
 

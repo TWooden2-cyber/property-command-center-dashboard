@@ -5,6 +5,8 @@ import type { CalendarFollowUpRecord, CommandCenterData, KpiMetric, SystemStatus
 type QaTabStatus = {
   tab: string;
   sourceStatus: "Live Google Sheets" | "Not Enabled" | "Error";
+  actualHeaders: string[];
+  expectedHeaders: string[];
   rowCount: number;
   cardCount: number;
   mappedFieldsCount: number;
@@ -78,6 +80,10 @@ function cardCount(value: unknown): number {
   return 0;
 }
 
+function sourceStatus(system: SystemStatus | null, tabName: string) {
+  return system?.liveSourceChecklist.find((item) => item.tab === tabName);
+}
+
 function collectWarnings(system: SystemStatus | null, tabName: string): string[] {
   if (!system) return [];
   return system.liveSourceChecklist
@@ -94,9 +100,12 @@ function hasLiveRefresh(system: SystemStatus | null): boolean {
 
 function mappedTab(tab: string, sourceTab: string, payload: unknown, system: SystemStatus | null): QaTabStatus {
   const zeros = zeroCurrencyCount(payload);
+  const source = sourceStatus(system, sourceTab);
   return {
     tab,
     sourceStatus: hasLiveRefresh(system) ? "Live Google Sheets" : "Error",
+    actualHeaders: source?.presentColumns ?? [],
+    expectedHeaders: source?.requiredColumns ?? [],
     rowCount: rowCount(payload),
     cardCount: cardCount(payload),
     mappedFieldsCount: countMappedFields(payload),
@@ -113,6 +122,8 @@ function notEnabledTab(tab: string, reason: string): QaTabStatus {
   return {
     tab,
     sourceStatus: "Not Enabled",
+    actualHeaders: [],
+    expectedHeaders: [],
     rowCount: 0,
     cardCount: 1,
     mappedFieldsCount: 0,
@@ -173,15 +184,15 @@ export async function buildQaDashboardStatus(): Promise<QaDashboardStatus> {
     tabs: [
       mappedTab("Overview", "Overview", { kpis: parsed.overview.kpis, dashboardBlocks: parsed.dashboardBlocks }, system),
       mappedTab("Rent Collection", "Rent Collection", { rows: parsed.rentCollection }, system),
-      mappedTab("Mortgage / Arrears", "Mortgage and Arrears", { rows: parsed.mortgageArrears }, system),
+      mappedTab("Mortgage / Arrears", "Mortgage & Allotments", { rows: parsed.mortgageArrears }, system),
       mappedTab("Maintenance", "Maintenance", { rows: parsed.maintenance, dashboardBlock: parsed.dashboardBlocks.maintenance }, system),
       mappedTab("Utilities", "Utilities", { rows: parsed.utilities }, system),
-      mappedTab("Notices & Evictions", "Notices and Legal Holds", { rows: parsed.noticesEvictions }, system),
-      mappedTab("Admin Tasks", "Owner Approvals", { rows: parsed.adminTasks }, system),
-      mappedTab("Calendar & Follow-Ups", "Overview", groupedFollowUps(parsed.calendarFollowUps), system),
-      notEnabledTab("Lease Violations", "Lease Violations live parser is not enabled; production shows a no-sample-data message."),
+      mappedTab("Notices & Evictions", "Notices & Evictions", { rows: parsed.noticesEvictions }, system),
+      mappedTab("Admin Tasks", "Admin Task Log", { rows: parsed.adminTasks }, system),
+      mappedTab("Calendar & Follow-Ups", "Calendar & Follow-Ups", groupedFollowUps(parsed.calendarFollowUps), system),
+      mappedTab("Lease Violations", "Lease Violations", { rows: snapshot.tabs["Lease Violations"]?.rows ?? [] }, system),
       notEnabledTab("Draft Status", "Draft Status live parser is not enabled; production shows a no-sample-data message."),
-      notEnabledTab("Expenses / NOI", "Expenses / NOI live parser is not enabled; production shows a live parser not enabled message."),
+      mappedTab("Expenses / NOI", "Expense Import Summary", { rows: snapshot.tabs["Expense Import Summary"]?.rows ?? [] }, system),
       notEnabledTab("Live Operations", "Live Operations production write/workflow integration is not enabled; production shows no mock operation data.")
     ]
   };
