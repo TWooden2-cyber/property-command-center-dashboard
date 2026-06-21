@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { checkGoogleSheetsHealth } from "@/lib/googleSheets";
+import { authorizeHealthcheck } from "@/lib/healthcheckAuth";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -16,15 +17,6 @@ type ProductStatus = {
   message: string;
 };
 
-function authorized(request: NextRequest) {
-  const token = process.env.GOOGLE_HEALTHCHECK_TOKEN?.trim();
-  if (!token) return true;
-
-  const queryToken = request.nextUrl.searchParams.get("token")?.trim();
-  const headerToken = request.headers.get("x-healthcheck-token")?.trim();
-  return queryToken === token || headerToken === token;
-}
-
 function notEnabled(product: string, message: string, checkedAt: string): ProductStatus {
   return {
     product,
@@ -40,14 +32,15 @@ function notEnabled(product: string, message: string, checkedAt: string): Produc
 }
 
 export async function GET(request: NextRequest) {
-  if (!authorized(request)) {
+  const auth = authorizeHealthcheck(request);
+  if (!auth.ok) {
     return NextResponse.json(
       {
         ok: false,
-        errorType: "unauthorized",
-        error: "Health check token is required."
+        errorType: auth.errorType,
+        error: auth.error
       },
-      { status: 401, headers: { "Cache-Control": "no-store" } }
+      { status: auth.status, headers: { "Cache-Control": "no-store" } }
     );
   }
 
