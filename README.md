@@ -37,8 +37,35 @@ GOOGLE_HEALTHCHECK_TOKEN=
 NEXTAUTH_URL=
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
+GOOGLE_REDIRECT_URI=
 APPROVED_OWNER_EMAIL=
 ```
+
+Read-only Google product integrations are controlled separately from write operations:
+
+```env
+GOOGLE_DRIVE_READONLY_ENABLED=false
+GOOGLE_DRIVE_READONLY_TOKEN=
+GOOGLE_DRIVE_ROOT_FOLDER_ID=1200_qPBmBz6KHjZY59HTPMpvXTCt5bGt
+
+GOOGLE_CALENDAR_READONLY_ENABLED=false
+GOOGLE_CALENDAR_READONLY_TOKEN=
+
+GOOGLE_GMAIL_READONLY_ENABLED=false
+GOOGLE_GMAIL_METADATA_TOKEN=
+
+GOOGLE_TASKS_READONLY_ENABLED=false
+GOOGLE_TASKS_READONLY_TOKEN=
+```
+
+Required read-only scopes:
+
+- Google Drive: `https://www.googleapis.com/auth/drive.metadata.readonly`
+- Google Calendar: `https://www.googleapis.com/auth/calendar.readonly`
+- Gmail: `https://www.googleapis.com/auth/gmail.metadata`
+- Google Tasks: `https://www.googleapis.com/auth/tasks.readonly`
+
+These integrations only check safe metadata/status. They do not create, update, delete, move, send, complete, or modify Google data.
 
 ## Safe Health Checks
 
@@ -63,15 +90,25 @@ Google products summary:
 https://property-command-center-dashboard.vercel.app/api/health/google-products
 ```
 
-Current expected product behavior:
+Product behavior:
 
 - Google Sheets: real live read-only connection test.
-- Google Drive: `not_enabled` unless a production read-only Drive integration is built.
-- Google Calendar: `not_enabled` unless a production read-only Calendar integration is built.
-- Gmail: `not_enabled` unless a production read-only Gmail integration is built.
-- Google Tasks: `not_enabled` unless a production read-only Tasks integration is built.
+- Google Drive: `live`, `not_enabled`, `not_configured`, or `error` using read-only Drive metadata.
+- Google Calendar: `live`, `not_enabled`, `not_configured`, or `error` using read-only Calendar access.
+- Gmail: `live`, `not_enabled`, `not_configured`, or `error` using Gmail metadata only.
+- Google Tasks: `live`, `not_enabled`, `not_configured`, or `error` using read-only Tasks access.
 
 If `GOOGLE_HEALTHCHECK_TOKEN` is set, pass `?token=<token>` or header `x-healthcheck-token`.
+
+Owner-authenticated product status routes:
+
+```text
+/api/google/drive/status
+/api/google/calendar/status
+/api/google/gmail/status
+/api/google/tasks/status
+/api/google/products/status
+```
 
 ## Local Development
 

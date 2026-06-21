@@ -475,6 +475,69 @@ button {
   margin-top: 0;
 }
 
+.source-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.source-card {
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: rgba(255, 255, 255, 0.035);
+  border-radius: 8px;
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.source-card > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.source-card p,
+.source-card small {
+  margin: 0;
+  color: var(--muted);
+}
+
+.source-card small {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+}
+
+.live-table-wrap {
+  overflow-x: auto;
+}
+
+.live-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 720px;
+}
+
+.live-table th,
+.live-table td {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 10px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.live-table th {
+  color: var(--muted);
+  font-size: 0.76rem;
+  text-transform: uppercase;
+}
+
+.error-text {
+  color: #fecaca;
+}
+
 .brief-actions {
   display: grid;
   gap: 10px;

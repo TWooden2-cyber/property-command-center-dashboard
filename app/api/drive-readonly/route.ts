@@ -20,7 +20,7 @@ export async function GET() {
             ...status,
             connected: false,
             disabled: true,
-            reason: "Drive read-only listing is disabled in production/Vercel. Run local preflight and listing scripts from the owner machine."
+            reason: "Use /api/google/drive/status for production read-only Drive metadata status. This legacy listing route remains disabled in production."
           }
         },
         { headers: protectedCacheHeaders }

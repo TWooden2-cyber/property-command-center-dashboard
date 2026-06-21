@@ -39,9 +39,24 @@ type NavItem = {
 type ProductHealth = {
   product: string;
   connected: boolean;
-  status: "live" | "error" | "not_enabled";
+  mode: string;
+  status: "live" | "error" | "not_enabled" | "not_configured";
   message: string;
 };
+
+function productLabel(product: ProductHealth) {
+  if (product.connected && product.product === "Gmail") return "Live metadata";
+  if (product.connected) return "Live read-only";
+  if (product.status === "not_configured") return "Not configured";
+  if (product.status === "not_enabled") return "Not enabled";
+  return "Error";
+}
+
+function productTone(product: ProductHealth) {
+  if (product.connected) return "green";
+  if (product.status === "error") return "red";
+  return "yellow";
+}
 
 const navigation = [
   { href: "/", label: "Overview", icon: Gauge },
@@ -86,11 +101,11 @@ export function LuxuryShell({
 
     async function loadHealth() {
       try {
-        const response = await fetch("/api/health/google-products", { cache: "no-store" });
+        const response = await fetch("/api/google/products/status", { cache: "no-store" });
         const payload = (await response.json()) as { products?: ProductHealth[]; error?: string };
         if (!mounted) return;
         setProducts(payload.products ?? []);
-        setHealthMessage(response.ok ? "Operational source status checked." : payload.error ?? "Google product health check reported an error.");
+        setHealthMessage(response.ok ? "Operational source status checked." : payload.error ?? "Google product status check reported an error.");
       } catch (error) {
         if (!mounted) return;
         setHealthMessage(error instanceof Error ? error.message : "Unable to load Google product health.");
@@ -151,8 +166,8 @@ export function LuxuryShell({
           <span>{healthMessage}</span>
           <div className="source-badges">
             {products.map((product) => (
-              <span key={product.product} className={`status-pill ${product.connected ? "green" : product.status === "not_enabled" ? "yellow" : "red"}`}>
-                {product.product}: {product.connected ? "Live" : product.status === "not_enabled" ? "Not enabled" : "Error"}
+              <span key={product.product} className={`status-pill ${productTone(product)}`} title={product.message}>
+                {product.product}: {productLabel(product)}
               </span>
             ))}
           </div>

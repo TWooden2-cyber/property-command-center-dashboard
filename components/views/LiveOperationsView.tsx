@@ -16,6 +16,7 @@ import {
   XCircle
 } from "lucide-react";
 import { EmptyState, ErrorState, LoadingState } from "@/components/DataState";
+import { GoogleProductsStatusPanel } from "@/components/GoogleProductsStatusPanel";
 import { localDevelopmentFallbackAllowed } from "@/components/views/liveSheetAdapters";
 import type { LiveOperationServiceKey, LiveOperationsStatus } from "@/types/sheets";
 
@@ -923,19 +924,7 @@ export function LiveOperationsView() {
   if (!localDevelopmentFallbackAllowed) {
     return (
       <div className="command-page">
-        <section className="section-card">
-          <div className="section-heading">
-            <div>
-              <p className="eyebrow">Live operations not enabled</p>
-              <h2>No mock operation center data shown</h2>
-            </div>
-            <span className="status-pill red">Disabled in production</span>
-          </div>
-          <p>
-            Live Operations is not connected to approved production Google APIs. This page will not display mock files, mock Gmail items,
-            mock task sync data, or generated operation plans in production.
-          </p>
-        </section>
+        <GoogleProductsStatusPanel title="Live Operations Read-Only Status" />
       </div>
     );
   }
