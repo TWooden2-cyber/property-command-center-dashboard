@@ -117,6 +117,29 @@ Owner-authenticated product status routes:
 /api/google/products/status
 ```
 
+## Read-Only OAuth Token Rotation
+
+Use the local setup helper when Drive, Calendar, Gmail metadata, or Tasks returns `invalid_grant` or a missing-scope error.
+
+```bash
+node scripts/google-readonly-oauth-setup.cjs auth-url
+```
+
+Open the printed Google consent URL while signed into the owner Google account. The script requests only:
+
+- `https://www.googleapis.com/auth/drive.metadata.readonly`
+- `https://www.googleapis.com/auth/calendar.readonly`
+- `https://www.googleapis.com/auth/gmail.metadata`
+- `https://www.googleapis.com/auth/tasks.readonly`
+
+After Google returns the authorization code:
+
+```bash
+node scripts/google-readonly-oauth-setup.cjs exchange --code <AUTHORIZATION_CODE>
+```
+
+The exchange writes `.tmp-google-readonly-oauth-env.json`, which is ignored by Git and contains the Vercel env var names/values to add. Do not commit or print that file. After adding the variables to Vercel Production, delete the file and redeploy.
+
 ## Local Development
 
 Local development may use explicit sample mode only when `NODE_ENV` is not production:
