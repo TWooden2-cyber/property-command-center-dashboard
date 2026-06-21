@@ -1,10 +1,12 @@
 import { getWorkbookSnapshot } from "@/lib/googleSheets";
+import { getGoogleProductsStatus } from "@/lib/googleProductStatus";
 import { parseWorkbook } from "@/lib/sheetParsers";
+import type { GoogleProductStatus } from "@/types/googleProducts";
 import type { CalendarFollowUpRecord, CommandCenterData, KpiMetric, SystemStatus } from "@/types/sheets";
 
 type QaTabStatus = {
   tab: string;
-  sourceStatus: "Live Google Sheets" | "Not Enabled" | "Error";
+  sourceStatus: "Live Google Sheets" | "Live Read-Only Google Products" | "Not Enabled" | "Error";
   actualHeaders: string[];
   expectedHeaders: string[];
   rowCount: number;
@@ -140,6 +142,57 @@ function groupedFollowUps(groups: Record<CalendarFollowUpRecord["group"], Calend
   return { groups };
 }
 
+function buildDraftStatusRows(parsed: CommandCenterData) {
+  const includesDraftText = (...values: string[]) => {
+    const text = values.join(" ").toLowerCase();
+    return ["draft", "packet", "notice", "email", "document", "form", "filing"].some((term) => text.includes(term));
+  };
+
+  return [
+    ...parsed.adminTasks
+      .filter((task) => includesDraftText(task.task, task.notes, task.status, task.emailNeeded, task.driveLink))
+      .map((task) => ({
+        source: "Admin Task Log",
+        property: task.property,
+        unit: task.unit,
+        item: task.task,
+        status: task.status,
+        nextAction: task.notes || task.emailNeeded || "Owner review required"
+      })),
+    ...parsed.noticesEvictions
+      .filter((notice) => includesDraftText(notice.noticeType, notice.courtFilingStatus, notice.notes, notice.nextOwnerAction, notice.mailingNotes))
+      .map((notice) => ({
+        source: "Notices & Evictions",
+        property: notice.property,
+        unit: notice.unit,
+        item: `${notice.tenant} - ${notice.noticeType}`,
+        status: notice.courtFilingStatus || notice.caseStage,
+        nextAction: notice.nextOwnerAction || notice.notes || "Owner review required"
+      }))
+  ];
+}
+
+function liveOperationsTab(products: GoogleProductStatus[]): QaTabStatus {
+  const payload = { rows: products };
+  const unavailable = products.filter((product) => !product.connected && product.status !== "not_enabled").map((product) => product.product);
+
+  return {
+    tab: "Live Operations",
+    sourceStatus: "Live Read-Only Google Products",
+    actualHeaders: ["product", "status", "connected", "configured", "mode", "missingEnvVars"],
+    expectedHeaders: ["product", "status", "connected", "configured", "mode", "missingEnvVars"],
+    rowCount: products.length,
+    cardCount: products.length,
+    mappedFieldsCount: countMappedFields(payload),
+    missingFields: unavailable,
+    liveValueUnavailableCount: unavailableCount(payload),
+    notMappedCount: notMappedCount(payload),
+    zeroCurrencyCount: zeroCurrencyCount(payload),
+    defaultZeroWarningCount: 0,
+    parserWarnings: unavailable.length > 0 ? unavailable.map((product) => `${product}: read-only integration is not live.`) : []
+  };
+}
+
 function systemFromSnapshot(snapshot: Awaited<ReturnType<typeof getWorkbookSnapshot>>): SystemStatus {
   return {
     ...snapshot.system,
@@ -170,6 +223,7 @@ export async function buildQaDashboardStatus(): Promise<QaDashboardStatus> {
   const snapshot = await getWorkbookSnapshot();
   const parsed: CommandCenterData = parseWorkbook(snapshot);
   const system = systemFromSnapshot(snapshot);
+  const products = await getGoogleProductsStatus();
   const isLive = hasLiveRefresh(system);
   const source = isLive ? "Live Google Sheets" : "Google Sheets connection error";
 
@@ -191,9 +245,9 @@ export async function buildQaDashboardStatus(): Promise<QaDashboardStatus> {
       mappedTab("Admin Tasks", "Admin Task Log", { rows: parsed.adminTasks }, system),
       mappedTab("Calendar & Follow-Ups", "Calendar & Follow-Ups", groupedFollowUps(parsed.calendarFollowUps), system),
       mappedTab("Lease Violations", "Lease Violations", { rows: snapshot.tabs["Lease Violations"]?.rows ?? [] }, system),
-      notEnabledTab("Draft Status", "Draft Status live parser is not enabled; production shows a no-sample-data message."),
+      mappedTab("Draft Status", "Admin Task Log", { rows: buildDraftStatusRows(parsed) }, system),
       mappedTab("Expenses / NOI", "Expense Import Summary", { rows: snapshot.tabs["Expense Import Summary"]?.rows ?? [] }, system),
-      notEnabledTab("Live Operations", "Live Operations production write/workflow integration is not enabled; production shows no mock operation data.")
+      liveOperationsTab(products)
     ]
   };
 }
