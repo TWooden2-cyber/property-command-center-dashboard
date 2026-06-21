@@ -88,11 +88,15 @@ function collectWarnings(system: SystemStatus | null, tabName: string): string[]
     });
 }
 
+function hasLiveRefresh(system: SystemStatus | null): boolean {
+  return Boolean(system?.lastSuccessfulRefresh && system.source === "google-sheets-readonly");
+}
+
 function mappedTab(tab: string, sourceTab: string, payload: unknown, system: SystemStatus | null): QaTabStatus {
   const zeros = zeroCurrencyCount(payload);
   return {
     tab,
-    sourceStatus: system?.connectionOk ? "Live Google Sheets" : "Error",
+    sourceStatus: hasLiveRefresh(system) ? "Live Google Sheets" : "Error",
     rowCount: rowCount(payload),
     cardCount: cardCount(payload),
     mappedFieldsCount: countMappedFields(payload),
@@ -155,14 +159,15 @@ export async function buildQaDashboardStatus(): Promise<QaDashboardStatus> {
   const snapshot = await getWorkbookSnapshot();
   const parsed: CommandCenterData = parseWorkbook(snapshot);
   const system = systemFromSnapshot(snapshot);
-  const source = system.connectionOk && system.source === "google-sheets-readonly" ? "Live Google Sheets" : "Google Sheets connection error";
+  const isLive = hasLiveRefresh(system);
+  const source = isLive ? "Live Google Sheets" : "Google Sheets connection error";
 
   return {
-    ok: system.connectionOk && source === "Live Google Sheets",
+    ok: isLive,
     checkedAt: new Date().toISOString(),
     dataMode: "live",
     source,
-    isLive: system.connectionOk && system.source === "google-sheets-readonly",
+    isLive,
     spreadsheetId: process.env.GOOGLE_SHEETS_SPREADSHEET_ID || process.env.GOOGLE_SHEET_ID || null,
     errors: system.setupErrors,
     tabs: [
