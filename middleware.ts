@@ -9,6 +9,7 @@ function isPublicPath(pathname: string) {
     publicPaths.has(pathname) ||
     pathname === "/api/login" ||
     pathname.startsWith("/api/health") ||
+    pathname === "/api/qa/dashboard-live-status" ||
     pathname.startsWith("/api/auth") ||
     pathname.startsWith("/_next/static") ||
     pathname.startsWith("/_next/image") ||
