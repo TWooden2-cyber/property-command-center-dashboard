@@ -398,7 +398,6 @@ export function OwnerApprovalsView() {
       <main className="approval-workspace">
         <header className="approval-workspace-header">
           <div>
-            <div className="approval-version-label">OWNER APPROVAL QUEUE UPDATED VERSION</div>
             <h1>Owner Approval Queue <span>{records.length}</span></h1>
             <p>Review all pending items and provide approval instructions</p>
             {confirmation ? <div className="approval-confirmation">{confirmation}</div> : null}
