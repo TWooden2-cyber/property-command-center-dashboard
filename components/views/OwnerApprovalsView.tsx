@@ -12,16 +12,20 @@ import {
   ChevronUp,
   ClipboardList,
   Copy,
+  Edit3,
+  Eye,
   FileText,
   Filter,
   Gauge,
   Home,
   RefreshCw,
+  Save,
   Settings,
   SlidersHorizontal,
   UserRound,
   UsersRound,
-  Wrench
+  Wrench,
+  X
 } from "lucide-react";
 import {
   defaultOwnerInstruction,
@@ -31,14 +35,24 @@ import {
   type OwnerApprovalDecision,
   type OwnerApprovalPriority,
   type OwnerApprovalRecord,
-  type OwnerApprovalStatus
+  type OwnerApprovalStatus,
+  type OwnerApprovalStatusHistoryEntry
 } from "@/lib/ownerApprovals";
 import { money } from "@/lib/propertyCommandCenterData";
 
-const storageKey = "owner-command-center.owner-approval-queue.mockup.v2";
+const storageKey = "owner-command-center.owner-approval-queue.mockup.v3";
 
 type CategoryFilter = "All Categories" | OwnerApprovalCategory;
 type PropertyFilter = "All Properties" | string;
+type EditableSectionKey = "reviewSummary" | "documents" | "draftResponse" | "recommendedAction" | "estimatedCost" | "deadline";
+
+type IntakeSyncResponse = {
+  ok: boolean;
+  checkedAt: string;
+  items: OwnerApprovalRecord[];
+  safety: string;
+  statuses?: Array<{ product: string; connected: boolean; message: string; errorCode?: string | null }>;
+};
 
 const navItems = [
   { label: "Owner Approvals", icon: CheckCircle2, href: "/owner-approvals", active: true },
@@ -86,7 +100,7 @@ function priorityTone(priority: OwnerApprovalPriority) {
 
 function sourceMark(source: OwnerApprovalRecord["source"]) {
   if (source === "Gmail") return <span className="source-logo gmail">M</span>;
-  if (source === "Google Voice") return <span className="source-logo voice">☎</span>;
+  if (source === "Google Voice") return <span className="source-logo voice">GV</span>;
   if (source === "RentRedi") return <span className="source-logo rentredi">R</span>;
   if (source === "Photos") return <span className="source-logo photos">P</span>;
   return <span className="source-logo documents">D</span>;
@@ -96,7 +110,135 @@ function Pill({ children, tone }: { children: ReactNode; tone: string }) {
   return <span className={`mock-pill ${tone}`}>{children}</span>;
 }
 
-function StatusSection({ title, records, tone }: { title: string; records: OwnerApprovalRecord[]; tone: string }) {
+function normalizeRecord(record: OwnerApprovalRecord): OwnerApprovalRecord {
+  return {
+    ...record,
+    sourceMode: record.sourceMode || "Sample",
+    connectorStatus: record.connectorStatus || "Sample approval queue record. Run Check Gmail & Voice Intake for live availability.",
+    statusHistory: record.statusHistory || []
+  };
+}
+
+function historyEntry(record: OwnerApprovalRecord, decision: OwnerApprovalDecision, nextStatus: OwnerApprovalStatus): OwnerApprovalStatusHistoryEntry {
+  return {
+    decision,
+    status: nextStatus,
+    instructions: record.ownerInstructions,
+    timestamp: new Date().toISOString(),
+    priorStatus: record.status
+  };
+}
+
+function serializeRecordSection(record: OwnerApprovalRecord, section: EditableSectionKey) {
+  if (section === "reviewSummary") return record.reviewSummary.join("\n");
+  if (section === "documents") return record.documents.map((document) => `${document.name} | ${document.type} | ${document.size}`).join("\n");
+  if (section === "recommendedAction") return [record.recommendedAction, record.vendorSuggestion, record.eta].join("\n");
+  if (section === "estimatedCost") return [String(record.estimatedCost), record.costRange, record.costNote].join("\n");
+  if (section === "deadline") return [record.deadlineLabel, record.deadline, record.tenantExpectation, String(record.daysOpen)].join("\n");
+  return record.draftResponse;
+}
+
+function applySectionValue(record: OwnerApprovalRecord, section: EditableSectionKey, value: string): OwnerApprovalRecord {
+  const lines = value.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  if (section === "reviewSummary") return { ...record, reviewSummary: lines.length ? lines : ["Owner review summary needed."] };
+  if (section === "documents") {
+    return {
+      ...record,
+      documents: lines.map((line) => {
+        const [name = "Document", type = "Document", size = "Unknown"] = line.split("|").map((part) => part.trim());
+        return { name, type, size };
+      })
+    };
+  }
+  if (section === "recommendedAction") {
+    return {
+      ...record,
+      recommendedAction: lines[0] || "",
+      vendorSuggestion: lines[1] || "",
+      eta: lines[2] || ""
+    };
+  }
+  if (section === "estimatedCost") {
+    return {
+      ...record,
+      estimatedCost: Number(lines[0] || 0),
+      costRange: lines[1] || "$0",
+      costNote: lines[2] || ""
+    };
+  }
+  if (section === "deadline") {
+    return {
+      ...record,
+      deadlineLabel: lines[0] || "Deadline:",
+      deadline: lines[1] || "",
+      tenantExpectation: lines[2] || "N/A",
+      daysOpen: Number(lines[3] || 0)
+    };
+  }
+  return { ...record, draftResponse: value };
+}
+
+function DetailCard({
+  title,
+  children,
+  action,
+  editValue,
+  isEditing,
+  onView,
+  onEdit,
+  onSave,
+  onCancel,
+  onEditValue
+}: {
+  title: string;
+  children: ReactNode;
+  action?: ReactNode;
+  editValue?: string;
+  isEditing?: boolean;
+  onView?: () => void;
+  onEdit?: () => void;
+  onSave?: () => void;
+  onCancel?: () => void;
+  onEditValue?: (value: string) => void;
+}) {
+  return (
+    <article className="queue-detail-card">
+      <header>
+        <h3>{title}</h3>
+        <div className="detail-card-controls">
+          {onView ? <button type="button" onClick={onView}><Eye size={14} aria-hidden />View</button> : null}
+          {isEditing ? (
+            <>
+              {onSave ? <button type="button" onClick={onSave}><Save size={14} aria-hidden />Save</button> : null}
+              {onCancel ? <button type="button" onClick={onCancel}><X size={14} aria-hidden />Cancel</button> : null}
+            </>
+          ) : onEdit ? (
+            <button type="button" onClick={onEdit}><Edit3 size={14} aria-hidden />Edit</button>
+          ) : null}
+          <ChevronUp size={15} aria-hidden />
+        </div>
+      </header>
+      <div className="queue-detail-card-body">
+        {isEditing ? (
+          <textarea className="section-edit-textarea" value={editValue || ""} onChange={(event) => onEditValue?.(event.target.value)} />
+        ) : children}
+      </div>
+      {action ? <footer>{action}</footer> : null}
+    </article>
+  );
+}
+
+function StatusSection({
+  title,
+  records,
+  tone,
+  onOpen
+}: {
+  title: string;
+  records: OwnerApprovalRecord[];
+  tone: string;
+  onOpen: (id: string) => void;
+}) {
   return (
     <article className={`approval-status-section ${tone}`}>
       <header>
@@ -106,11 +248,11 @@ function StatusSection({ title, records, tone }: { title: string; records: Owner
       {records.length ? (
         <div className="approval-status-list">
           {records.slice(0, 4).map((record) => (
-            <div key={record.id}>
+            <button type="button" key={record.id} onClick={() => onOpen(record.id)}>
               <strong>{record.id}</strong>
               <span>{record.title}</span>
               {record.ownerInstructions ? <small>{record.ownerInstructions}</small> : null}
-            </div>
+            </button>
           ))}
         </div>
       ) : (
@@ -120,37 +262,24 @@ function StatusSection({ title, records, tone }: { title: string; records: Owner
   );
 }
 
-function DetailCard({ title, children, action }: { title: string; children: ReactNode; action?: ReactNode }) {
-  return (
-    <article className="queue-detail-card">
-      <header>
-        <h3>{title}</h3>
-        <ChevronUp size={15} aria-hidden />
-      </header>
-      <div className="queue-detail-card-body">{children}</div>
-      {action ? <footer>{action}</footer> : null}
-    </article>
-  );
-}
-
 function buildMassPrompt(records: OwnerApprovalRecord[]) {
   const approved = records.filter((record) => record.status === "Approved");
 
-  if (!approved.length) {
-    return "No approved owner approval queue items are ready for Codex execution.";
-  }
+  if (!approved.length) return "No approved owner approval queue items are ready for Codex execution.";
 
   const lines = [
     "Run one Owner Approval Queue execution batch using only the approved items below.",
     "",
-    "After each approved task is executed, automatically update:",
+    "Safety rule: do not send emails, write Google files/sheets, move documents, close tasks, update calendars, file legal documents, make payments, or contact anyone unless the approved item below explicitly authorizes that exact action.",
+    "",
+    "After each approved task is executed, automatically update only the approved status surfaces:",
     "- Owner Approval Queue status",
     "- Dashboard",
-    "- Rent ledger, if rent-related",
-    "- Maintenance tracker, if maintenance-related",
-    "- Legal tracker, if legal-related",
-    "- Utility tracker, if utility-related",
-    "- Calendar/task reminders, if deadline-related",
+    "- Rent ledger, if rent-related and approved",
+    "- Maintenance tracker, if maintenance-related and approved",
+    "- Legal tracker, if legal-related and approved",
+    "- Utility tracker, if utility-related and approved",
+    "- Calendar/task reminders, if deadline-related and approved",
     "- Activity log",
     ""
   ];
@@ -160,6 +289,7 @@ function buildMassPrompt(records: OwnerApprovalRecord[]) {
       `Approved Item ${index + 1}`,
       `Task ID: ${record.id}`,
       `Source: ${record.source}`,
+      `Source mode: ${record.sourceMode || "Sample"}`,
       `Property / Unit: ${record.propertyUnit}`,
       `Category: ${record.category}`,
       `Approved action: ${record.approvedAction}`,
@@ -167,6 +297,7 @@ function buildMassPrompt(records: OwnerApprovalRecord[]) {
       `Draft response: ${record.draftResponse || "No draft response included."}`,
       `Deadline: ${record.deadline}`,
       `Estimated cost: ${money(record.estimatedCost)}`,
+      `Decision history: ${(record.statusHistory || []).map((entry) => `${entry.timestamp} ${entry.priorStatus} -> ${entry.status}`).join(" | ") || "No prior decisions."}`,
       `Dashboard/tracker updates required: ${record.dashboardUpdatesRequired.join("; ")}`,
       ""
     );
@@ -177,13 +308,31 @@ function buildMassPrompt(records: OwnerApprovalRecord[]) {
 
 function ExpandedTask({
   record,
+  editingSection,
+  editValue,
+  onStartEdit,
+  onView,
+  onEditValue,
+  onSaveSection,
+  onCancelEdit,
   onDecision,
-  onInstructionChange
+  onInstructionChange,
+  onCollapse
 }: {
   record: OwnerApprovalRecord;
+  editingSection: EditableSectionKey | null;
+  editValue: string;
+  onStartEdit: (section: EditableSectionKey) => void;
+  onView: (section: EditableSectionKey) => void;
+  onEditValue: (value: string) => void;
+  onSaveSection: () => void;
+  onCancelEdit: () => void;
   onDecision: (id: string, decision: OwnerApprovalDecision) => void;
   onInstructionChange: (id: string, instructions: string) => void;
+  onCollapse: () => void;
 }) {
+  const history = record.statusHistory || [];
+
   return (
     <section className="queue-expanded-task">
       <div className="expanded-task-heading">
@@ -193,16 +342,29 @@ function ExpandedTask({
           <Pill tone={categoryTone(record.category)}>{record.category}</Pill>
           <span>•</span>
           <span>{record.propertyUnit}</span>
+          <Pill tone={record.sourceMode === "Sample" ? "amber" : record.sourceMode === "Blocked" ? "red" : "green"}>{record.sourceMode || "Sample"}</Pill>
         </div>
-        <button type="button">
+        <button type="button" onClick={onCollapse}>
           <ChevronUp size={14} aria-hidden />
           Collapse
           <ChevronUp size={14} aria-hidden />
         </button>
       </div>
 
+      <p className="connector-status-note">{record.connectorStatus}</p>
+
       <div className="queue-detail-grid">
-        <DetailCard title="Review Summary" action={<button type="button">View Original Message</button>}>
+        <DetailCard
+          title="Review Summary"
+          editValue={editValue}
+          isEditing={editingSection === "reviewSummary"}
+          onView={() => onView("reviewSummary")}
+          onEdit={() => onStartEdit("reviewSummary")}
+          onEditValue={onEditValue}
+          onSave={onSaveSection}
+          onCancel={onCancelEdit}
+          action={<button type="button" onClick={() => onView("reviewSummary")}>View Original Message</button>}
+        >
           {record.reviewSummary.map((line) => <p key={line}>{line}</p>)}
           <dl className="summary-meta">
             <div><dt>Tenant:</dt><dd>{record.tenant}</dd></div>
@@ -212,11 +374,21 @@ function ExpandedTask({
           </dl>
         </DetailCard>
 
-        <DetailCard title={`Supporting Documents (${record.documents.length})`} action={<button type="button">View All Documents</button>}>
+        <DetailCard
+          title={`Supporting Documents (${record.documents.length})`}
+          editValue={editValue}
+          isEditing={editingSection === "documents"}
+          onView={() => onView("documents")}
+          onEdit={() => onStartEdit("documents")}
+          onEditValue={onEditValue}
+          onSave={onSaveSection}
+          onCancel={onCancelEdit}
+          action={<button type="button" onClick={() => onView("documents")}>View All Documents</button>}
+        >
           <div className="supporting-documents-list">
             {record.documents.map((document) => (
               <article key={document.name}>
-                <span className="pdf-icon">PDF</span>
+                <span className="pdf-icon">{document.type.slice(0, 3).toUpperCase()}</span>
                 <div>
                   <strong>{document.name}</strong>
                   <small>{document.type} • {document.size}</small>
@@ -226,23 +398,23 @@ function ExpandedTask({
           </div>
         </DetailCard>
 
-        <DetailCard title="Draft Response" action={<button type="button">Edit Draft</button>}>
+        <DetailCard title="Draft Response" editValue={editValue} isEditing={editingSection === "draftResponse"} onView={() => onView("draftResponse")} onEdit={() => onStartEdit("draftResponse")} onEditValue={onEditValue} onSave={onSaveSection} onCancel={onCancelEdit} action={<button type="button" onClick={() => onStartEdit("draftResponse")}>Edit Draft</button>}>
           <pre className="draft-response-box">{record.draftResponse || "No draft response needed for this task."}</pre>
         </DetailCard>
 
-        <DetailCard title="Recommended Action" action={<button type="button">Change Recommendation</button>}>
+        <DetailCard title="Recommended Action" editValue={editValue} isEditing={editingSection === "recommendedAction"} onView={() => onView("recommendedAction")} onEdit={() => onStartEdit("recommendedAction")} onEditValue={onEditValue} onSave={onSaveSection} onCancel={onCancelEdit} action={<button type="button" onClick={() => onStartEdit("recommendedAction")}>Change Recommendation</button>}>
           <p>{record.recommendedAction}</p>
           <p><strong>Vendor Suggestion:</strong><br />{record.vendorSuggestion}</p>
           <p><strong>ETA:</strong> {record.eta}</p>
         </DetailCard>
 
-        <DetailCard title="Estimated Cost" action={<button type="button">View Estimate</button>}>
+        <DetailCard title="Estimated Cost" editValue={editValue} isEditing={editingSection === "estimatedCost"} onView={() => onView("estimatedCost")} onEdit={() => onStartEdit("estimatedCost")} onEditValue={onEditValue} onSave={onSaveSection} onCancel={onCancelEdit} action={<button type="button" onClick={() => onStartEdit("estimatedCost")}>View Estimate</button>}>
           <strong className="estimated-cost">{money(record.estimatedCost)}</strong>
           <p>Range: {record.costRange}</p>
           <p>{record.costNote}</p>
         </DetailCard>
 
-        <DetailCard title="Deadline" action={<button type="button">Edit Deadline</button>}>
+        <DetailCard title="Deadline" editValue={editValue} isEditing={editingSection === "deadline"} onView={() => onView("deadline")} onEdit={() => onStartEdit("deadline")} onEditValue={onEditValue} onSave={onSaveSection} onCancel={onCancelEdit} action={<button type="button" onClick={() => onStartEdit("deadline")}>Edit Deadline</button>}>
           <p>{record.deadlineLabel}</p>
           <strong>{record.deadline}</strong>
           <p>Tenant Expectation:</p>
@@ -256,27 +428,20 @@ function ExpandedTask({
         <div className="approval-radio-panel">
           <h3>Approval & Instructions</h3>
           <div className="approval-radio-group">
-            <label className="approve">
-              <input type="radio" checked={record.ownerDecision === "Approve"} onChange={() => onDecision(record.id, "Approve")} />
-              Approve
-            </label>
-            <label className="return">
-              <input type="radio" checked={record.ownerDecision === "Return for Changes"} onChange={() => onDecision(record.id, "Return for Changes")} />
-              Return for Changes
-            </label>
-            <label className="reject">
-              <input type="radio" checked={record.ownerDecision === "Reject"} onChange={() => onDecision(record.id, "Reject")} />
-              Reject
-            </label>
+            <label className="approve"><input type="radio" checked={record.ownerDecision === "Approve"} onChange={() => onDecision(record.id, "Approve")} />Approve</label>
+            <label className="return"><input type="radio" checked={record.ownerDecision === "Return for Changes"} onChange={() => onDecision(record.id, "Return for Changes")} />Return for Changes</label>
+            <label className="reject"><input type="radio" checked={record.ownerDecision === "Reject"} onChange={() => onDecision(record.id, "Reject")} />Reject</label>
+          </div>
+          <div className="decision-history">
+            <strong>Prior Status History</strong>
+            {history.length ? history.slice(-4).map((entry) => (
+              <small key={`${entry.timestamp}-${entry.status}`}>{new Date(entry.timestamp).toLocaleString()} · {entry.priorStatus} → {entry.status}</small>
+            )) : <small>No status changes saved yet.</small>}
           </div>
         </div>
         <label className="codex-instructions-box">
           <span>Your Instructions to Codex</span>
-          <textarea
-            value={record.ownerInstructions}
-            onChange={(event) => onInstructionChange(record.id, event.target.value)}
-            placeholder="Provide specific instructions for Codex..."
-          />
+          <textarea value={record.ownerInstructions} onChange={(event) => onInstructionChange(record.id, event.target.value)} placeholder="Provide specific instructions for Codex..." />
           <small>Example: &quot;{defaultOwnerInstruction}&quot;</small>
         </label>
       </section>
@@ -285,13 +450,17 @@ function ExpandedTask({
 }
 
 export function OwnerApprovalsView() {
-  const [records, setRecords] = useState<OwnerApprovalRecord[]>(ownerApprovalRecords);
+  const [records, setRecords] = useState<OwnerApprovalRecord[]>(ownerApprovalRecords.map(normalizeRecord));
   const [loaded, setLoaded] = useState(false);
   const [openId, setOpenId] = useState(ownerApprovalRecords[0]?.id ?? "");
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("All Categories");
   const [propertyFilter, setPropertyFilter] = useState<PropertyFilter>("All Properties");
   const [massPrompt, setMassPrompt] = useState("");
   const [confirmation, setConfirmation] = useState("");
+  const [editingSection, setEditingSection] = useState<EditableSectionKey | null>(null);
+  const [editValue, setEditValue] = useState("");
+  const [syncing, setSyncing] = useState(false);
+  const [connectionWarning, setConnectionWarning] = useState("");
 
   const propertyOptions = useMemo(() => Array.from(new Set(records.map((record) => record.propertyUnit.split(" - ")[0]))), [records]);
   const needsReviewRecords = useMemo(
@@ -304,6 +473,7 @@ export function OwnerApprovalsView() {
     [categoryFilter, propertyFilter, records]
   );
 
+  const openRecord = records.find((record) => record.id === openId);
   const pendingRecords = records.filter((record) => record.status === "Needs Review");
   const readyRecords = records.filter((record) => record.status === "Approved");
   const returnedRecords = records.filter((record) => record.status === "Returned / Needs More Information");
@@ -316,9 +486,9 @@ export function OwnerApprovalsView() {
   useEffect(() => {
     try {
       const saved = window.localStorage.getItem(storageKey);
-      if (saved) setRecords(JSON.parse(saved) as OwnerApprovalRecord[]);
+      if (saved) setRecords((JSON.parse(saved) as OwnerApprovalRecord[]).map(normalizeRecord));
     } catch {
-      setRecords(ownerApprovalRecords);
+      setRecords(ownerApprovalRecords.map(normalizeRecord));
     } finally {
       setLoaded(true);
     }
@@ -328,10 +498,30 @@ export function OwnerApprovalsView() {
     if (loaded) window.localStorage.setItem(storageKey, JSON.stringify(records));
   }, [loaded, records]);
 
+  function startEdit(section: EditableSectionKey) {
+    if (!openRecord) return;
+    setEditingSection(section);
+    setEditValue(serializeRecordSection(openRecord, section));
+    setConfirmation(`${section} opened for editing.`);
+  }
+
+  function saveSection() {
+    if (!openRecord || !editingSection) return;
+    setRecords((current) => current.map((record) => (record.id === openRecord.id ? applySectionValue(record, editingSection, editValue) : record)));
+    setConfirmation("Section update saved.");
+    setEditingSection(null);
+    setEditValue("");
+  }
+
+  function viewSection(section: EditableSectionKey) {
+    if (!openRecord) return;
+    setEditingSection(null);
+    setEditValue(serializeRecordSection(openRecord, section));
+    setConfirmation(`${section} opened for review. Use Edit to update it.`);
+  }
+
   function updateDecision(id: string, decision: OwnerApprovalDecision) {
     const nextStatus = statusForDecision(decision);
-    const nextOpen = records.find((record) => record.id !== id && record.status === "Needs Review");
-
     setRecords((current) =>
       current.map((record) =>
         record.id === id
@@ -339,14 +529,15 @@ export function OwnerApprovalsView() {
               ...record,
               ownerDecision: decision,
               status: nextStatus,
-              rejectionReason: decision === "Reject" ? record.ownerInstructions : ""
+              rejectionReason: decision === "Reject" ? record.ownerInstructions : "",
+              statusHistory: [...(record.statusHistory || []), historyEntry(record, decision, nextStatus)]
             }
           : record
       )
     );
+    setOpenId(id);
     setConfirmation(confirmationForDecision(decision));
     setMassPrompt("");
-    setOpenId(nextOpen?.id ?? "");
   }
 
   function updateInstructions(id: string, instructions: string) {
@@ -354,11 +545,41 @@ export function OwnerApprovalsView() {
     setConfirmation("Owner instructions saved.");
   }
 
+  async function checkIntake() {
+    setSyncing(true);
+    setConnectionWarning("");
+    setConfirmation("Checking Gmail metadata and Google Voice workaround sources...");
+    try {
+      const response = await fetch("/api/owner-approvals/intake", { cache: "no-store" });
+      const data = (await response.json()) as IntakeSyncResponse;
+      const gmailStatus = data.statuses?.find((status) => status.product === "Gmail");
+      const driveStatus = data.statuses?.find((status) => status.product === "Google Drive");
+      if (gmailStatus && !gmailStatus.connected) setConnectionWarning("Gmail disconnected — reconnect required");
+      else if (driveStatus && !driveStatus.connected) setConnectionWarning("Google Drive disconnected — reconnect required");
+
+      const incoming = (data.items || []).map(normalizeRecord);
+      setRecords((current) => {
+        const byId = new Map(current.map((record) => [record.id, record]));
+        incoming.forEach((record) => byId.set(record.id, { ...record, statusHistory: byId.get(record.id)?.statusHistory || record.statusHistory || [] }));
+        return Array.from(byId.values());
+      });
+      setConfirmation(`${incoming.length} intake item(s) checked. ${data.safety}`);
+      if (incoming[0]) setOpenId(incoming[0].id);
+    } catch (error) {
+      setConnectionWarning("Gmail disconnected — reconnect required");
+      setConfirmation(error instanceof Error ? `Intake check blocked: ${error.message}` : "Intake check blocked.");
+    } finally {
+      setSyncing(false);
+    }
+  }
+
   function refreshQueue() {
-    setRecords(ownerApprovalRecords);
-    setOpenId(ownerApprovalRecords[0]?.id ?? "");
+    const reset = ownerApprovalRecords.map(normalizeRecord);
+    setRecords(reset);
+    setOpenId(reset[0]?.id ?? "");
     setMassPrompt("");
-    setConfirmation("Queue refreshed.");
+    setEditingSection(null);
+    setConfirmation("Queue refreshed to sample records. Run Check Gmail & Voice Intake for connector status.");
     window.localStorage.removeItem(storageKey);
   }
 
@@ -369,10 +590,7 @@ export function OwnerApprovalsView() {
       <aside className="mockup-sidebar">
         <div className="mockup-brand">
           <Home size={36} aria-hidden />
-          <div>
-            <strong>PROPERTY</strong>
-            <span>MANAGEMENT SYSTEM</span>
-          </div>
+          <div><strong>PROPERTY</strong><span>MANAGEMENT SYSTEM</span></div>
         </div>
         <nav aria-label="Owner approval navigation">
           {navItems.map((item) => {
@@ -386,13 +604,7 @@ export function OwnerApprovalsView() {
             );
           })}
         </nav>
-        <div className="mockup-user">
-          <span>TW</span>
-          <div>
-            <strong>Timothy Wooden</strong>
-            <small>Owner</small>
-          </div>
-        </div>
+        <div className="mockup-user"><span>TW</span><div><strong>Timothy Wooden</strong><small>Owner</small></div></div>
       </aside>
 
       <main className="approval-workspace">
@@ -400,6 +612,7 @@ export function OwnerApprovalsView() {
           <div>
             <h1>Owner Approval Queue <span>{records.length}</span></h1>
             <p>Review all pending items and provide approval instructions</p>
+            {connectionWarning ? <div className="approval-connection-warning">{connectionWarning}</div> : null}
             {confirmation ? <div className="approval-confirmation">{confirmation}</div> : null}
           </div>
           <div className="workspace-actions">
@@ -413,6 +626,7 @@ export function OwnerApprovalsView() {
             </select>
             <button type="button"><Filter size={17} aria-hidden />Filters</button>
             <button type="button" onClick={refreshQueue}><RefreshCw size={17} aria-hidden />Refresh</button>
+            <button type="button" onClick={checkIntake} disabled={syncing}><RefreshCw size={17} aria-hidden />{syncing ? "Checking..." : "Check Gmail & Voice Intake"}</button>
           </div>
         </header>
 
@@ -420,86 +634,62 @@ export function OwnerApprovalsView() {
           <table className="approval-mock-table">
             <thead>
               <tr>
-                <th>ID</th>
-                <th>Source</th>
-                <th>Category</th>
-                <th>Property / Unit</th>
-                <th>Title / Summary</th>
-                <th>Received</th>
-                <th>Priority</th>
-                <th>Status</th>
-                <th>Actions</th>
+                <th>ID</th><th>Source</th><th>Category</th><th>Property / Unit</th><th>Title / Summary</th><th>Received</th><th>Priority</th><th>Status</th><th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {needsReviewRecords.slice(0, 5).map((record) => (
+              {needsReviewRecords.slice(0, 8).map((record) => (
                 <tr key={record.id}>
                   <td><button type="button" className="id-link" onClick={() => setOpenId(record.id)}>{record.id}</button></td>
-                  <td><span className="source-cell">{sourceMark(record.source)}{record.source}</span></td>
+                  <td><span className="source-cell">{sourceMark(record.source)}{record.source}</span><br /><small>{record.sourceMode}</small></td>
                   <td><Pill tone={categoryTone(record.category)}>{record.category}</Pill></td>
                   <td>{record.propertyUnit}</td>
                   <td>{record.summary}</td>
                   <td>{record.receivedDate}<br /><span>{record.receivedTime}</span></td>
                   <td><Pill tone={priorityTone(record.priority)}>{record.priority}</Pill></td>
-                  <td><Pill tone="status-blue">{record.status}</Pill></td>
-                  <td>
-                    <button className="row-collapse-button" type="button" onClick={() => setOpenId(openId === record.id ? "" : record.id)}>
-                      {openId === record.id ? <ChevronUp size={16} aria-hidden /> : <ChevronDown size={16} aria-hidden />}
-                    </button>
-                  </td>
+                  <td><Pill tone={record.sourceMode === "Blocked" ? "red" : "status-blue"}>{record.status}</Pill></td>
+                  <td><button className="row-collapse-button" type="button" onClick={() => setOpenId(openId === record.id ? "" : record.id)}>{openId === record.id ? <ChevronUp size={16} aria-hidden /> : <ChevronDown size={16} aria-hidden />}</button></td>
                 </tr>
               ))}
-              {!needsReviewRecords.length ? (
-                <tr>
-                  <td colSpan={9} className="approval-empty-row">No items currently need owner approval.</td>
-                </tr>
-              ) : null}
+              {!needsReviewRecords.length ? <tr><td colSpan={9} className="approval-empty-row">No items currently need owner approval. Approved, returned, and rejected items can be reopened below.</td></tr> : null}
             </tbody>
           </table>
         </section>
 
-        {needsReviewRecords.filter((record) => record.id === openId).map((record) => (
-          <ExpandedTask key={record.id} record={record} onDecision={updateDecision} onInstructionChange={updateInstructions} />
-        ))}
+        {openRecord ? (
+          <ExpandedTask
+            record={openRecord}
+            editingSection={editingSection}
+            editValue={editValue}
+            onStartEdit={startEdit}
+            onView={viewSection}
+            onEditValue={setEditValue}
+            onSaveSection={saveSection}
+            onCancelEdit={() => { setEditingSection(null); setEditValue(""); }}
+            onDecision={updateDecision}
+            onInstructionChange={updateInstructions}
+            onCollapse={() => setOpenId("")}
+          />
+        ) : null}
 
         <section className="approval-status-sections" aria-label="Approval status sections">
-          <StatusSection title="Approved" records={readyRecords} tone="approved" />
-          <StatusSection title="Returned / Needs More Information" records={returnedRecords} tone="returned" />
-          <StatusSection title="Rejected" records={rejectedRecords} tone="rejected" />
+          <StatusSection title="Approved" records={readyRecords} tone="approved" onOpen={setOpenId} />
+          <StatusSection title="Returned / Needs More Information" records={returnedRecords} tone="returned" onOpen={setOpenId} />
+          <StatusSection title="Rejected" records={rejectedRecords} tone="rejected" onOpen={setOpenId} />
         </section>
 
         {massPrompt ? (
           <section className="mass-prompt-preview mockup-prompt-preview">
-            <div>
-              <h3>Generated Mass Prompt</h3>
-              <button type="button" onClick={() => navigator.clipboard?.writeText(prompt)}>
-                <Copy size={16} aria-hidden />
-                Copy
-              </button>
-            </div>
+            <div><h3>Generated Mass Prompt</h3><button type="button" onClick={() => navigator.clipboard?.writeText(prompt)}><Copy size={16} aria-hidden />Copy</button></div>
             <pre>{prompt}</pre>
           </section>
         ) : null}
 
         <footer className="mockup-summary-bar">
-          <div>
-            <span>Items Pending Approval</span>
-            <strong>{pendingRecords.length} <small>Total</small></strong>
-            <p><em className="high">{highCount} High</em><em className="medium">{mediumCount} Medium</em><em className="low">{lowCount} Low</em></p>
-          </div>
-          <div>
-            <span>Ready for Execution</span>
-            <strong>{readyRecords.length} <small>Items Selected</small></strong>
-          </div>
-          <div>
-            <span>Estimated Cost (Selected)</span>
-            <strong>{money(selectedCost)}</strong>
-          </div>
-          <button type="button" onClick={() => setMassPrompt(buildMassPrompt(records))}>
-            <BriefcaseBusiness size={20} aria-hidden />
-            Generate Mass Prompt
-            <small>Copy all approved instructions for Codex</small>
-          </button>
+          <div><span>Items Pending Approval</span><strong>{pendingRecords.length} <small>Total</small></strong><p><em className="high">{highCount} High</em><em className="medium">{mediumCount} Medium</em><em className="low">{lowCount} Low</em></p></div>
+          <div><span>Ready for Execution</span><strong>{readyRecords.length} <small>Items Selected</small></strong></div>
+          <div><span>Estimated Cost (Selected)</span><strong>{money(selectedCost)}</strong></div>
+          <button type="button" onClick={() => setMassPrompt(buildMassPrompt(records))}><BriefcaseBusiness size={20} aria-hidden />Generate Mass Prompt<small>Copy all approved instructions for Codex</small></button>
         </footer>
       </main>
     </div>

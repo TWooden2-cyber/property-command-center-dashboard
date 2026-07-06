@@ -27,6 +27,7 @@ import {
   Database,
   ListChecks,
   RadioTower,
+  PlugZap,
   HardDrive
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -43,11 +44,12 @@ type ProductHealth = {
   mode: string;
   status: "live" | "error" | "not_enabled" | "not_configured";
   message: string;
+  errorCode?: string | null;
 };
 
 function productLabel(product: ProductHealth) {
-  if (product.connected && product.product === "Gmail") return "Live metadata";
   if (product.connected) return "Live read-only";
+  if (product.errorCode) return product.errorCode;
   if (product.status === "not_configured") return "Not configured";
   if (product.status === "not_enabled") return "Not enabled";
   return "Error";
@@ -74,6 +76,7 @@ const navigation = [
   { href: "/draft-status", label: "Draft Status", icon: FileText },
   { href: "/drive-update-center", label: "Drive Update Center", icon: FolderUp },
   { href: "/drive-readonly", label: "Drive Read-Only", icon: HardDrive },
+  { href: "/google-connection-center", label: "Google Connections", icon: PlugZap },
   { href: "/final-integration", label: "Final Integration", icon: ClipboardList },
   { href: "/gmail-follow-ups", label: "Gmail Tracking", icon: Mail },
   { href: "/reports", label: "Reports", icon: BarChart3 },
@@ -97,6 +100,7 @@ export function LuxuryShell({
   const pathname = usePathname();
   const [products, setProducts] = useState<ProductHealth[]>([]);
   const [healthMessage, setHealthMessage] = useState("Checking Google product status...");
+  const brokenProducts = products.filter((product) => !product.connected);
 
   useEffect(() => {
     let mounted = true;
@@ -163,17 +167,22 @@ export function LuxuryShell({
           </div>
           <div className="security-chip">Read-only live data mode</div>
         </header>
-        <section className="local-mode-banner" aria-label="Google products operational status">
-          <strong>Operational Sources</strong>
-          <span>{healthMessage}</span>
-          <div className="source-badges">
-            {products.map((product) => (
-              <span key={product.product} className={`status-pill ${productTone(product)}`} title={product.message}>
-                {product.product}: {productLabel(product)}
-              </span>
-            ))}
-          </div>
-        </section>
+        {brokenProducts.length ? (
+          <section className="local-mode-banner" aria-label="Google products operational status">
+            <strong>Google connection issue</strong>
+            <span>{healthMessage} {brokenProducts.map((product) => `${product.product} disconnected — reconnect required`).join(" · ")}</span>
+            <div className="source-badges">
+              {products.map((product) => (
+                <span key={product.product} className={`status-pill ${productTone(product)}`} title={product.message}>
+                  {product.product}: {productLabel(product)}
+                </span>
+              ))}
+              <Link className="status-pill blue" href="/google-connection-center">
+                Open Connection Center
+              </Link>
+            </div>
+          </section>
+        ) : null}
         {children}
       </main>
     </div>

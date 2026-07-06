@@ -10,7 +10,7 @@ export async function GET() {
   if (auth.response) return auth.response;
 
   const products = await getGoogleProductsStatus();
-  const ok = products.every((product) => product.connected || product.status === "not_enabled" || product.status === "not_configured");
+  const ok = products.every((product) => product.connected);
 
   return NextResponse.json(
     {

@@ -8,6 +8,15 @@ export type OwnerApprovalCategory = (typeof ownerApprovalCategories)[number];
 export type OwnerApprovalStatus = (typeof ownerApprovalStatuses)[number];
 export type OwnerApprovalPriority = (typeof ownerApprovalPriorities)[number];
 export type OwnerApprovalDecision = "None" | "Approve" | "Return for Changes" | "Reject";
+export type OwnerApprovalDataMode = "Sample" | "Live Metadata" | "Live Gmail Read" | "Drive Workaround" | "Blocked";
+
+export type OwnerApprovalStatusHistoryEntry = {
+  decision: OwnerApprovalDecision;
+  status: OwnerApprovalStatus;
+  instructions: string;
+  timestamp: string;
+  priorStatus: OwnerApprovalStatus;
+};
 
 export type OwnerApprovalDocument = {
   name: string;
@@ -47,6 +56,11 @@ export type OwnerApprovalRecord = {
   approvedAction: string;
   dashboardUpdatesRequired: string[];
   rejectionReason: string;
+  sourceMode?: OwnerApprovalDataMode;
+  connectorStatus?: string;
+  statusHistory?: OwnerApprovalStatusHistoryEntry[];
+  sourceMessageId?: string;
+  sourceThreadId?: string;
 };
 
 export const defaultOwnerInstruction =

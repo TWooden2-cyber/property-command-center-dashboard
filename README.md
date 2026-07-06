@@ -41,20 +41,20 @@ GOOGLE_REDIRECT_URI=
 APPROVED_OWNER_EMAIL=
 ```
 
-Read-only Google product integrations are controlled separately from write operations:
+Read-only Google product integrations are controlled separately from write operations. The same all-scope read-only OAuth token may be copied into each token variable so every service can refresh from the same owner consent grant:
 
 ```env
-GOOGLE_DRIVE_READONLY_ENABLED=false
+GOOGLE_DRIVE_READONLY_ENABLED=true
 GOOGLE_DRIVE_READONLY_TOKEN=
 GOOGLE_DRIVE_ROOT_FOLDER_ID=1200_qPBmBz6KHjZY59HTPMpvXTCt5bGt
 
-GOOGLE_CALENDAR_READONLY_ENABLED=false
+GOOGLE_CALENDAR_READONLY_ENABLED=true
 GOOGLE_CALENDAR_READONLY_TOKEN=
 
-GOOGLE_GMAIL_READONLY_ENABLED=false
-GOOGLE_GMAIL_METADATA_TOKEN=
+GOOGLE_GMAIL_READONLY_ENABLED=true
+GOOGLE_GMAIL_READONLY_TOKEN=
 
-GOOGLE_TASKS_READONLY_ENABLED=false
+GOOGLE_TASKS_READONLY_ENABLED=true
 GOOGLE_TASKS_READONLY_TOKEN=
 ```
 
@@ -69,10 +69,53 @@ Required read-only scopes:
 
 - Google Drive: `https://www.googleapis.com/auth/drive.metadata.readonly`
 - Google Calendar: `https://www.googleapis.com/auth/calendar.readonly`
-- Gmail: `https://www.googleapis.com/auth/gmail.metadata`
+- Gmail: `https://www.googleapis.com/auth/gmail.readonly`
 - Google Tasks: `https://www.googleapis.com/auth/tasks.readonly`
 
-These integrations only check safe metadata/status. They do not create, update, delete, move, send, complete, or modify Google data.
+These integrations only read safe owner-approved source data. They do not create, update, delete, move, send, complete, or modify Google data.
+
+## Google Connection Center Checklist
+
+The owner portal includes `/google-connection-center` for permanent connection health and recovery. It checks Gmail, Drive, Calendar, Tasks, and Sheets and reports exact failure classes: `token expired`, `refresh token missing`, `scope missing`, `env var missing`, `API disabled`, `permission denied`, and `Vercel production env mismatch`.
+
+Local `.env.local` must include:
+
+```env
+DASHBOARD_DATA_MODE=live
+DASHBOARD_OWNER_PASSWORD=
+DASHBOARD_SESSION_SECRET=
+GOOGLE_SHEET_ID=14nzzWCKIi0h-zHkCzW0JXmN-NQNcAWZahLpDy3CXK0c
+GOOGLE_SERVICE_ACCOUNT_EMAIL=property-dashboard-reader@property-management-owner-com.iam.gserviceaccount.com
+GOOGLE_PRIVATE_KEY=
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+GOOGLE_REDIRECT_URI=http://localhost:3000/api/google/reconnect/callback
+GOOGLE_DRIVE_READONLY_ENABLED=true
+GOOGLE_DRIVE_READONLY_TOKEN=
+GOOGLE_DRIVE_ROOT_FOLDER_ID=1200_qPBmBz6KHjZY59HTPMpvXTCt5bGt
+GOOGLE_CALENDAR_READONLY_ENABLED=true
+GOOGLE_CALENDAR_READONLY_TOKEN=
+GOOGLE_GMAIL_READONLY_ENABLED=true
+GOOGLE_GMAIL_READONLY_TOKEN=
+GOOGLE_TASKS_READONLY_ENABLED=true
+GOOGLE_TASKS_READONLY_TOKEN=
+```
+
+Vercel Production must include the same values, except `GOOGLE_REDIRECT_URI` should be:
+
+```env
+GOOGLE_REDIRECT_URI=https://property-command-center-dashboard.vercel.app/api/google/reconnect/callback
+```
+
+Reconnect flow:
+
+1. Open `/google-connection-center` while logged in as owner.
+2. Click `Fix / Reconnect Google`.
+3. Approve the read-only scopes only.
+4. Copy the returned env values into local `.env.local` and Vercel Production.
+5. Redeploy Vercel and rerun the health check.
+
+If access tokens expire and a refresh token is present, the app refreshes automatically. Manual reconnect is required only when the refresh token is missing, revoked, or lacks a required read-only scope.
 
 ## Safe Health Checks
 
@@ -102,7 +145,7 @@ Product behavior:
 - Google Sheets: real live read-only connection test.
 - Google Drive: `live`, `not_enabled`, `not_configured`, or `error` using read-only Drive metadata.
 - Google Calendar: `live`, `not_enabled`, `not_configured`, or `error` using read-only Calendar access.
-- Gmail: `live`, `not_enabled`, `not_configured`, or `error` using Gmail metadata only.
+- Gmail: `live`, `not_enabled`, `not_configured`, or `error` using Gmail read-only access for intake.
 - Google Tasks: `live`, `not_enabled`, `not_configured`, or `error` using read-only Tasks access.
 
 If `GOOGLE_HEALTHCHECK_TOKEN` is set, pass `?token=<token>` or header `x-healthcheck-token`.
@@ -119,7 +162,7 @@ Owner-authenticated product status routes:
 
 ## Read-Only OAuth Token Rotation
 
-Use the local setup helper when Drive, Calendar, Gmail metadata, or Tasks returns `invalid_grant` or a missing-scope error.
+Use the local setup helper or `/google-connection-center` when Drive, Calendar, Gmail, or Tasks returns `invalid_grant`, `refresh token missing`, or a missing-scope error.
 
 ```bash
 node scripts/google-readonly-oauth-setup.cjs auth-url
@@ -129,7 +172,7 @@ Open the printed Google consent URL while signed into the owner Google account. 
 
 - `https://www.googleapis.com/auth/drive.metadata.readonly`
 - `https://www.googleapis.com/auth/calendar.readonly`
-- `https://www.googleapis.com/auth/gmail.metadata`
+- `https://www.googleapis.com/auth/gmail.readonly`
 - `https://www.googleapis.com/auth/tasks.readonly`
 
 After Google returns the authorization code:

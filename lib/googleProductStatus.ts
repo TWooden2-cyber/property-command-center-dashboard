@@ -1,22 +1,28 @@
 import { google } from "googleapis";
 import { checkGoogleSheetsHealth } from "@/lib/googleSheets";
-import { getGoogleOAuthConfig, getOAuthClient, readEnv, tokenScopeWarning } from "@/lib/googleReadOnlyAuth";
-import type { GoogleProductStatus } from "@/types/googleProducts";
+import {
+  classifyGoogleApiError,
+  getGoogleOAuthConfig,
+  parseGoogleToken,
+  readEnv,
+  refreshAccessTokenIfPossible,
+  tokenConnectivityIssue,
+  tokenExpirationStatus,
+  type GoogleOAuthConfig
+} from "@/lib/googleReadOnlyAuth";
+import type { GoogleProductErrorCode, GoogleProductName, GoogleProductStatus } from "@/types/googleProducts";
+
+export const GOOGLE_READONLY_SCOPES = [
+  "https://www.googleapis.com/auth/gmail.readonly",
+  "https://www.googleapis.com/auth/drive.metadata.readonly",
+  "https://www.googleapis.com/auth/calendar.readonly",
+  "https://www.googleapis.com/auth/tasks.readonly"
+];
 
 const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.metadata.readonly";
 const CALENDAR_SCOPE = "https://www.googleapis.com/auth/calendar.readonly";
-const GMAIL_METADATA_SCOPE = "https://www.googleapis.com/auth/gmail.metadata";
+const GMAIL_SCOPE = "https://www.googleapis.com/auth/gmail.readonly";
 const TASKS_SCOPE = "https://www.googleapis.com/auth/tasks.readonly";
-
-const DRIVE_WRITE_SCOPES = ["https://www.googleapis.com/auth/drive", "https://www.googleapis.com/auth/drive.file"];
-const CALENDAR_WRITE_SCOPES = ["https://www.googleapis.com/auth/calendar", "https://www.googleapis.com/auth/calendar.events"];
-const GMAIL_WRITE_SCOPES = [
-  "https://www.googleapis.com/auth/gmail.modify",
-  "https://www.googleapis.com/auth/gmail.send",
-  "https://www.googleapis.com/auth/gmail.compose",
-  "https://mail.google.com/"
-];
-const TASKS_WRITE_SCOPES = ["https://www.googleapis.com/auth/tasks"];
 
 const DRIVE_ROOT_FOLDER_ID = "1200_qPBmBz6KHjZY59HTPMpvXTCt5bGt";
 const DRIVE_ROOT_FOLDER_NAME = "PROPERTY MANAGEMENT OPERATING SYSTEM";
@@ -63,20 +69,6 @@ function checkedAt() {
   return new Date().toISOString();
 }
 
-function missingStatus(product: GoogleProductStatus["product"], flagName: string, message: string): GoogleProductStatus {
-  return {
-    product,
-    configured: false,
-    connected: false,
-    mode: "read-only",
-    requiredEnvPresent: false,
-    missingEnvVars: [flagName],
-    status: "not_enabled",
-    checkedAt: checkedAt(),
-    message
-  };
-}
-
 function readFlag(name: string): string {
   return readEnv(name).value.trim().toLowerCase();
 }
@@ -85,7 +77,36 @@ function isExplicitlyDisabled(flagName: string): boolean {
   return readFlag(flagName) === "false";
 }
 
-function notConfigured(product: GoogleProductStatus["product"], missingEnvVars: string[], mode: string): GoogleProductStatus {
+function isVercelProduction() {
+  return Boolean(process.env.VERCEL || process.env.VERCEL_ENV === "production");
+}
+
+function envMissingCode(): GoogleProductErrorCode {
+  return isVercelProduction() ? "Vercel production env mismatch" : "env var missing";
+}
+
+function missingStatus(product: GoogleProductName, flagName: string, message: string): GoogleProductStatus {
+  return {
+    product,
+    configured: false,
+    connected: false,
+    mode: "read-only",
+    requiredEnvPresent: false,
+    missingEnvVars: [flagName],
+    missingScopes: [],
+    status: "not_enabled",
+    checkedAt: checkedAt(),
+    message,
+    tokenExpirationStatus: "token missing",
+    lastSuccessfulSync: null,
+    lastErrorMessage: message,
+    errorCode: "env var missing"
+  };
+}
+
+function notConfigured(product: GoogleProductName, missingEnvVars: string[], mode: string): GoogleProductStatus {
+  const prefix = isVercelProduction() ? "Vercel production env mismatch" : "env var missing";
+  const message = `${prefix}: ${missingEnvVars.join(", ")}`;
   return {
     product,
     configured: false,
@@ -93,23 +114,98 @@ function notConfigured(product: GoogleProductStatus["product"], missingEnvVars: 
     mode,
     requiredEnvPresent: false,
     missingEnvVars,
+    missingScopes: [],
     status: "not_configured",
     checkedAt: checkedAt(),
-    message: `${product} read-only integration is built but missing required environment variables.`
+    message,
+    tokenExpirationStatus: "token missing",
+    lastSuccessfulSync: null,
+    lastErrorMessage: message,
+    errorCode: envMissingCode()
   };
 }
 
-function errorStatus(product: GoogleProductStatus["product"], error: unknown, mode: string, details?: Record<string, unknown>): GoogleProductStatus {
+function oauthBase(product: GoogleProductName, mode: string, config: GoogleOAuthConfig): Pick<
+  GoogleProductStatus,
+  "product" | "configured" | "mode" | "requiredEnvPresent" | "missingEnvVars" | "tokenExpirationStatus"
+> {
+  return {
+    product,
+    configured: true,
+    mode,
+    requiredEnvPresent: true,
+    missingEnvVars: config.missingEnvVars,
+    tokenExpirationStatus: tokenExpirationStatus(config.tokenSource)
+  };
+}
+
+function oauthPreflight(product: GoogleProductName, mode: string, config: GoogleOAuthConfig, scopes: string[]) {
+  if (config.missingEnvVars.length > 0) return notConfigured(product, config.missingEnvVars, mode);
+
+  const issue = tokenConnectivityIssue(config.tokenSource, scopes);
+  if (issue.errorCode && issue.message) {
+    return {
+      ...oauthBase(product, mode, config),
+      connected: false,
+      missingScopes: issue.missingScopes,
+      status: "error" as const,
+      checkedAt: checkedAt(),
+      message: issue.message,
+      lastSuccessfulSync: null,
+      lastErrorMessage: issue.message,
+      errorCode: issue.errorCode
+    };
+  }
+
+  return null;
+}
+
+function apiErrorStatus(product: GoogleProductName, error: unknown, mode: string, config?: GoogleOAuthConfig, details?: Record<string, unknown>): GoogleProductStatus {
+  const classified = classifyGoogleApiError(error);
   return {
     product,
     configured: true,
     connected: false,
     mode,
     requiredEnvPresent: true,
-    missingEnvVars: [],
+    missingEnvVars: config?.missingEnvVars || [],
+    missingScopes: [],
     status: "error",
     checkedAt: checkedAt(),
-    message: error instanceof Error ? error.message : `${product} read-only status check failed.`,
+    message: classified.message,
+    tokenExpirationStatus: config ? tokenExpirationStatus(config.tokenSource) : undefined,
+    lastSuccessfulSync: null,
+    lastErrorMessage: classified.message,
+    errorCode: classified.errorCode,
+    details
+  };
+}
+
+function liveStatus(
+  product: GoogleProductName,
+  mode: string,
+  config: GoogleOAuthConfig | null,
+  message: string,
+  details: Record<string, unknown>,
+  connectedAccountEmail?: string | null
+): GoogleProductStatus {
+  const now = checkedAt();
+  return {
+    product,
+    configured: true,
+    connected: true,
+    mode,
+    requiredEnvPresent: true,
+    missingEnvVars: [],
+    missingScopes: [],
+    status: "live",
+    checkedAt: now,
+    message,
+    connectedAccountEmail: connectedAccountEmail || null,
+    tokenExpirationStatus: config ? tokenExpirationStatus(config.tokenSource) : "service account token active",
+    lastSuccessfulSync: now,
+    lastErrorMessage: null,
+    errorCode: null,
     details
   };
 }
@@ -125,16 +221,26 @@ function hasPropertyTerm(value: string) {
 
 export async function getSheetsProductStatus(): Promise<GoogleProductStatus> {
   const sheets = await checkGoogleSheetsHealth();
+  const message = sheets.ok
+    ? "Google Sheets live read-only connection verified."
+    : sheets.error || "Google Sheets live read-only connection failed.";
+
   return {
     product: "Google Sheets",
     configured: sheets.requiredEnvPresent,
     connected: sheets.ok,
-    mode: "live",
+    mode: "live read-only",
     requiredEnvPresent: sheets.requiredEnvPresent,
     missingEnvVars: sheets.missingEnvVars,
-    status: sheets.ok ? "live" : "error",
+    missingScopes: [],
+    status: sheets.ok ? "live" : sheets.requiredEnvPresent ? "error" : "not_configured",
     checkedAt: sheets.checkedAt,
-    message: sheets.ok ? "Google Sheets live read-only connection verified" : sheets.error || "Google Sheets live read-only connection failed",
+    message: sheets.ok ? message : `${sheets.missingEnvVars.length ? "env var missing" : "permission denied"}: ${message}`,
+    connectedAccountEmail: sheets.serviceAccountEmail || null,
+    tokenExpirationStatus: "service account token active",
+    lastSuccessfulSync: sheets.ok ? sheets.checkedAt : null,
+    lastErrorMessage: sheets.ok ? null : message,
+    errorCode: sheets.ok ? null : sheets.missingEnvVars.length ? envMissingCode() : "permission denied",
     details: {
       spreadsheetId: sheets.spreadsheetId,
       serviceAccountEmail: sheets.serviceAccountEmail
@@ -144,25 +250,20 @@ export async function getSheetsProductStatus(): Promise<GoogleProductStatus> {
 
 export async function getDriveProductStatus(): Promise<GoogleProductStatus> {
   if (isExplicitlyDisabled("GOOGLE_DRIVE_READONLY_ENABLED")) {
-    return missingStatus("Google Drive", "GOOGLE_DRIVE_READONLY_ENABLED", "Drive read-only production integration is explicitly disabled.");
+    return missingStatus("Google Drive", "GOOGLE_DRIVE_READONLY_ENABLED", "env var missing: GOOGLE_DRIVE_READONLY_ENABLED is false.");
   }
 
   const config = getGoogleOAuthConfig("GOOGLE_DRIVE_READONLY_TOKEN", ["GOOGLE_DRIVE_TOKEN", "GOOGLE_DRIVE_WRITE_TOKEN"]);
-  const folderId = readEnv("GOOGLE_DRIVE_ROOT_FOLDER_ID", ["GOOGLE_DRIVE_FOLDER_ID"]).value || DRIVE_ROOT_FOLDER_ID;
-  if (config.missingEnvVars.length > 0) {
-    return notConfigured("Google Drive", config.missingEnvVars, "read-only metadata");
-  }
+  const preflight = oauthPreflight("Google Drive", "read-only metadata", config, [DRIVE_SCOPE]);
+  if (preflight) return preflight;
 
-  const scopeWarning = tokenScopeWarning(config.tokenSource, DRIVE_SCOPE, DRIVE_WRITE_SCOPES);
-  if (scopeWarning) return errorStatus("Google Drive", new Error(scopeWarning), "read-only metadata");
+  const folderId = readEnv("GOOGLE_DRIVE_ROOT_FOLDER_ID", ["GOOGLE_DRIVE_FOLDER_ID"]).value || DRIVE_ROOT_FOLDER_ID;
 
   try {
-    const drive = google.drive({ version: "v3", auth: getOAuthClient(config) });
-    const root = await drive.files.get({
-      fileId: folderId,
-      fields: "id,name,mimeType",
-      supportsAllDrives: true
-    });
+    const auth = await refreshAccessTokenIfPossible(config);
+    const drive = google.drive({ version: "v3", auth });
+    const about = await drive.about.get({ fields: "user(emailAddress)" });
+    const root = await drive.files.get({ fileId: folderId, fields: "id,name,mimeType", supportsAllDrives: true });
     const children = await drive.files.list({
       q: `'${folderId}' in parents and trashed = false`,
       fields: "files(id,name,mimeType,modifiedTime)",
@@ -186,17 +287,12 @@ export async function getDriveProductStatus(): Promise<GoogleProductStatus> {
       recentIntakeCount = intakeChildren.data.files?.length ?? 0;
     }
 
-    return {
-      product: "Google Drive",
-      configured: true,
-      connected: true,
-      mode: "read-only metadata",
-      requiredEnvPresent: true,
-      missingEnvVars: [],
-      status: "live",
-      checkedAt: checkedAt(),
-      message: "Google Drive read-only metadata connection verified.",
-      details: {
+    return liveStatus(
+      "Google Drive",
+      "read-only metadata",
+      config,
+      "Google Drive read-only metadata connection verified.",
+      {
         rootFolderFound: Boolean(root.data.id),
         folderName: root.data.name || DRIVE_ROOT_FOLDER_NAME,
         folderId,
@@ -204,28 +300,27 @@ export async function getDriveProductStatus(): Promise<GoogleProductStatus> {
         keyFoldersFound: KEY_DRIVE_FOLDERS.filter((folder) => folderNames.has(folder)),
         missingKeyFolders: KEY_DRIVE_FOLDERS.filter((folder) => !folderNames.has(folder)),
         recentIntakeCount
-      }
-    };
+      },
+      about.data.user?.emailAddress || null
+    );
   } catch (error) {
-    return errorStatus("Google Drive", error, "read-only metadata", { folderId });
+    return apiErrorStatus("Google Drive", error, "read-only metadata", config, { folderId });
   }
 }
 
 export async function getCalendarProductStatus(): Promise<GoogleProductStatus> {
   if (isExplicitlyDisabled("GOOGLE_CALENDAR_READONLY_ENABLED")) {
-    return missingStatus("Google Calendar", "GOOGLE_CALENDAR_READONLY_ENABLED", "Calendar read-only production integration is explicitly disabled.");
+    return missingStatus("Google Calendar", "GOOGLE_CALENDAR_READONLY_ENABLED", "env var missing: GOOGLE_CALENDAR_READONLY_ENABLED is false.");
   }
 
   const config = getGoogleOAuthConfig("GOOGLE_CALENDAR_READONLY_TOKEN", ["GOOGLE_CALENDAR_TOKEN", "GOOGLE_CALENDAR_WRITE_TOKEN"]);
-  if (config.missingEnvVars.length > 0) {
-    return notConfigured("Google Calendar", config.missingEnvVars, "read-only");
-  }
-
-  const scopeWarning = tokenScopeWarning(config.tokenSource, CALENDAR_SCOPE, CALENDAR_WRITE_SCOPES);
-  if (scopeWarning) return errorStatus("Google Calendar", new Error(scopeWarning), "read-only");
+  const preflight = oauthPreflight("Google Calendar", "read-only", config, [CALENDAR_SCOPE]);
+  if (preflight) return preflight;
 
   try {
-    const calendar = google.calendar({ version: "v3", auth: getOAuthClient(config) });
+    const auth = await refreshAccessTokenIfPossible(config);
+    const calendar = google.calendar({ version: "v3", auth });
+    const primary = await calendar.calendars.get({ calendarId: "primary" });
     const now = new Date();
     const later = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
     const response = await calendar.events.list({
@@ -240,17 +335,12 @@ export async function getCalendarProductStatus(): Promise<GoogleProductStatus> {
     const events = response.data.items || [];
     const propertyEvents = events.filter((event) => hasPropertyTerm(event.summary || ""));
 
-    return {
-      product: "Google Calendar",
-      configured: true,
-      connected: true,
-      mode: "read-only",
-      requiredEnvPresent: true,
-      missingEnvVars: [],
-      status: "live",
-      checkedAt: checkedAt(),
-      message: "Google Calendar read-only connection verified.",
-      details: {
+    return liveStatus(
+      "Google Calendar",
+      "read-only",
+      config,
+      "Google Calendar read-only connection verified.",
+      {
         calendarAccessible: true,
         upcomingPropertyEventCount: propertyEvents.length,
         nextEvents: propertyEvents.slice(0, 5).map((event) => ({
@@ -258,87 +348,60 @@ export async function getCalendarProductStatus(): Promise<GoogleProductStatus> {
           start: event.start?.dateTime || event.start?.date || null,
           end: event.end?.dateTime || event.end?.date || null
         }))
-      }
-    };
+      },
+      primary.data.id || null
+    );
   } catch (error) {
-    return errorStatus("Google Calendar", error, "read-only");
+    return apiErrorStatus("Google Calendar", error, "read-only", config);
   }
 }
 
 export async function getGmailProductStatus(): Promise<GoogleProductStatus> {
   if (isExplicitlyDisabled("GOOGLE_GMAIL_READONLY_ENABLED")) {
-    return missingStatus("Gmail", "GOOGLE_GMAIL_READONLY_ENABLED", "Gmail metadata-only production integration is explicitly disabled.");
+    return missingStatus("Gmail", "GOOGLE_GMAIL_READONLY_ENABLED", "env var missing: GOOGLE_GMAIL_READONLY_ENABLED is false.");
   }
 
-  const config = getGoogleOAuthConfig("GOOGLE_GMAIL_METADATA_TOKEN", ["GMAIL_METADATA_TOKEN", "GOOGLE_GMAIL_READONLY_TOKEN", "GMAIL_READONLY_TOKEN"]);
-  if (config.missingEnvVars.length > 0) {
-    return notConfigured("Gmail", config.missingEnvVars, "metadata-only");
-  }
-
-  const scopeWarning = tokenScopeWarning(config.tokenSource, GMAIL_METADATA_SCOPE, GMAIL_WRITE_SCOPES);
-  if (scopeWarning) return errorStatus("Gmail", new Error(scopeWarning), "metadata-only");
+  const config = getGoogleOAuthConfig("GOOGLE_GMAIL_READONLY_TOKEN", ["GMAIL_READONLY_TOKEN", "GOOGLE_GMAIL_METADATA_TOKEN", "GMAIL_METADATA_TOKEN"]);
+  const preflight = oauthPreflight("Gmail", "read-only full intake", config, [GMAIL_SCOPE]);
+  if (preflight) return preflight;
 
   try {
-    const gmail = google.gmail({ version: "v1", auth: getOAuthClient(config) });
+    const auth = await refreshAccessTokenIfPossible(config);
+    const gmail = google.gmail({ version: "v1", auth });
     const profile = await gmail.users.getProfile({ userId: "me" });
     const unread = await gmail.users.messages.list({ userId: "me", labelIds: ["UNREAD"], maxResults: 1 });
     const recent = await gmail.users.messages.list({ userId: "me", labelIds: ["INBOX"], maxResults: 5 });
-    const recentMetadata = await Promise.all(
-      (recent.data.messages || []).slice(0, 5).map(async (message) => {
-        const detail = await gmail.users.messages.get({
-          userId: "me",
-          id: message.id || "",
-          format: "metadata",
-          metadataHeaders: ["From", "Subject", "Date"]
-        });
-        const headers = detail.data.payload?.headers || [];
-        const value = (name: string) => headers.find((header) => header.name?.toLowerCase() === name.toLowerCase())?.value || "";
-        return {
-          from: value("From"),
-          subject: value("Subject"),
-          date: value("Date")
-        };
-      })
-    );
 
-    return {
-      product: "Gmail",
-      configured: true,
-      connected: true,
-      mode: "metadata-only",
-      requiredEnvPresent: true,
-      missingEnvVars: [],
-      status: "live",
-      checkedAt: checkedAt(),
-      message: "Gmail metadata-only connection verified. Message bodies, attachments, drafts, and sends are not accessed.",
-      details: {
+    return liveStatus(
+      "Gmail",
+      "read-only full intake",
+      config,
+      "Gmail read-only connection verified for full email intake. Sending and modifying Gmail remain blocked.",
+      {
         emailAddress: profile.data.emailAddress || null,
         unreadCount: unread.data.resultSizeEstimate ?? null,
-        propertyRelatedMessageCount: null,
-        propertyRelatedMessageCountNote: "Not queried because Gmail metadata scope does not support broad body/search review.",
-        recentMessages: recentMetadata
-      }
-    };
+        recentInboxMessageCount: recent.data.messages?.length ?? 0,
+        tokenScopes: parseGoogleToken(config.tokenSource).scopes
+      },
+      profile.data.emailAddress || null
+    );
   } catch (error) {
-    return errorStatus("Gmail", error, "metadata-only");
+    return apiErrorStatus("Gmail", error, "read-only full intake", config);
   }
 }
 
 export async function getTasksProductStatus(): Promise<GoogleProductStatus> {
   if (isExplicitlyDisabled("GOOGLE_TASKS_READONLY_ENABLED")) {
-    return missingStatus("Google Tasks", "GOOGLE_TASKS_READONLY_ENABLED", "Google Tasks read-only production integration is explicitly disabled.");
+    return missingStatus("Google Tasks", "GOOGLE_TASKS_READONLY_ENABLED", "env var missing: GOOGLE_TASKS_READONLY_ENABLED is false.");
   }
 
   const config = getGoogleOAuthConfig("GOOGLE_TASKS_READONLY_TOKEN", ["GOOGLE_TASKS_TOKEN", "GOOGLE_TASKS_WRITE_TOKEN"]);
-  if (config.missingEnvVars.length > 0) {
-    return notConfigured("Google Tasks", config.missingEnvVars, "read-only");
-  }
-
-  const scopeWarning = tokenScopeWarning(config.tokenSource, TASKS_SCOPE, TASKS_WRITE_SCOPES);
-  if (scopeWarning) return errorStatus("Google Tasks", new Error(scopeWarning), "read-only");
+  const preflight = oauthPreflight("Google Tasks", "read-only", config, [TASKS_SCOPE]);
+  if (preflight) return preflight;
 
   try {
-    const tasks = google.tasks({ version: "v1", auth: getOAuthClient(config) });
+    const auth = await refreshAccessTokenIfPossible(config);
+    const tasks = google.tasks({ version: "v1", auth });
     const lists = await tasks.tasklists.list({ maxResults: 20 });
     const taskLists = lists.data.items || [];
     let openTaskCount = 0;
@@ -347,47 +410,34 @@ export async function getTasksProductStatus(): Promise<GoogleProductStatus> {
 
     for (const list of taskLists.slice(0, 5)) {
       if (!list.id) continue;
-      const response = await tasks.tasks.list({
-        tasklist: list.id,
-        showCompleted: false,
-        showHidden: false,
-        maxResults: 100
-      });
+      const response = await tasks.tasks.list({ tasklist: list.id, showCompleted: false, showHidden: false, maxResults: 100 });
       const items = response.data.items || [];
       openTaskCount += items.length;
       for (const task of items) {
         const searchable = `${task.title || ""} ${task.notes || ""}`;
         if (hasPropertyTerm(searchable)) propertyRelatedTaskCount += 1;
         if (task.due && nextDueTasks.length < 5) {
-          nextDueTasks.push({
-            title: task.title || "(Untitled task)",
-            due: task.due,
-            status: task.status || null
-          });
+          nextDueTasks.push({ title: task.title || "(Untitled task)", due: task.due, status: task.status || null });
         }
       }
     }
 
-    return {
-      product: "Google Tasks",
-      configured: true,
-      connected: true,
-      mode: "read-only",
-      requiredEnvPresent: true,
-      missingEnvVars: [],
-      status: "live",
-      checkedAt: checkedAt(),
-      message: "Google Tasks read-only connection verified.",
-      details: {
+    return liveStatus(
+      "Google Tasks",
+      "read-only",
+      config,
+      "Google Tasks read-only connection verified.",
+      {
         taskListsAccessible: true,
         taskListCount: taskLists.length,
         openTaskCount,
         propertyRelatedTaskCount,
         nextDueTasks
-      }
-    };
+      },
+      null
+    );
   } catch (error) {
-    return errorStatus("Google Tasks", error, "read-only");
+    return apiErrorStatus("Google Tasks", error, "read-only", config);
   }
 }
 
