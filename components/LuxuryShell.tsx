@@ -18,6 +18,7 @@ import {
   Zap,
   FileWarning,
   FileText,
+  FileCheck2,
   FolderUp,
   Mail,
   BarChart3,
@@ -31,7 +32,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 
 type NavItem = {
-  href: Route;
+  href: string;
   label: string;
   icon: LucideIcon;
 };
@@ -62,6 +63,7 @@ const navigation = [
   { href: "/", label: "Overview", icon: Gauge },
   { href: "/rent-collection", label: "Rent Collection", icon: ReceiptText },
   { href: "/notices-evictions", label: "Notices & Evictions", icon: MailWarning },
+  { href: "/owner-approvals", label: "Owner Approvals", icon: FileCheck2 },
   { href: "/maintenance", label: "Maintenance", icon: Hammer },
   { href: "/utilities", label: "Utilities", icon: Zap },
   { href: "/expenses", label: "Expenses / NOI", icon: DollarSign },
@@ -136,7 +138,7 @@ export function LuxuryShell({
             const active = pathname === item.href;
 
             return (
-              <Link key={item.href} href={item.href} className={active ? "nav-item active" : "nav-item"}>
+              <Link key={item.href} href={item.href as Route} className={active ? "nav-item active" : "nav-item"}>
                 <Icon size={18} aria-hidden />
                 <span>{item.label}</span>
               </Link>
