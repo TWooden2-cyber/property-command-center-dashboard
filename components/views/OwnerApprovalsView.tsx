@@ -52,7 +52,58 @@ type IntakeSyncResponse = {
   items: OwnerApprovalRecord[];
   safety: string;
   statuses?: Array<{ product: string; connected: boolean; message: string; errorCode?: string | null }>;
+  intakeAudit?: {
+    gmailQueryUsed: string;
+    totalEmailsChecked: number;
+    emailsMatched: number;
+    emailsSkipped: number;
+    itemsCreated: number;
+    searchLimit: number;
+    includesArchived: boolean;
+    includesSentIfMatched: boolean;
+    excludesSpamTrash: boolean;
+    dateLimit: string;
+    progress: {
+      messagesScanned: number;
+      threadsScanned: number;
+      matched: number;
+      skipped: number;
+      duplicates: number;
+      errors: number;
+    };
+    summary: {
+      totalMailboxSizeScanned: number;
+      totalPropertyEmails: number;
+      sevenUnitCount: number;
+      fourUnitCount: number;
+      unknownPropertyCount: number;
+      googleVoiceCount: number;
+      ownerApprovalItemsCreated: number;
+      skippedDuplicates: number;
+      classificationTotals: Record<string, number>;
+    };
+    entries: Array<{
+      messageId: string;
+      threadId: string;
+      subject: string;
+      from: string;
+      recipients: string;
+      date: string;
+      labels: string[];
+      bodyLength: number;
+      attachments: string[];
+      propertyAssigned: string;
+      classificationAssigned: OwnerApprovalCategory;
+      matched: boolean;
+      skipped: boolean;
+      skipReason: string;
+      duplicateReason: string;
+      ownerApprovalItemCreated: boolean;
+    }>;
+  };
 };
+
+const fixedPropertyFilters = ["7-unit", "4-unit", "228 Reifert", "3103 Courtney", "Unknown Property"] as const;
 
 const navItems = [
   { label: "Owner Approvals", icon: CheckCircle2, href: "/owner-approvals", active: true },
@@ -87,7 +138,7 @@ function categoryTone(category: OwnerApprovalCategory) {
   if (category === "Maintenance") return "blue";
   if (category === "Rent") return "green";
   if (category === "Legal") return "purple";
-  if (category === "Utility") return "orange";
+  if (category === "Utility" || category === "Utilities") return "orange";
   if (category === "Lease") return "gray";
   return "slate";
 }
@@ -108,6 +159,17 @@ function sourceMark(source: OwnerApprovalRecord["source"]) {
 
 function Pill({ children, tone }: { children: ReactNode; tone: string }) {
   return <span className={`mock-pill ${tone}`}>{children}</span>;
+}
+
+function propertyMatchesFilter(record: OwnerApprovalRecord, filter: PropertyFilter) {
+  if (filter === "All Properties") return true;
+  const value = `${record.propertyUnit} ${record.property}`.toLowerCase();
+  if (filter === "7-unit") return value.includes("7-unit") || value.includes("7 unit") || value.includes("228 reifert");
+  if (filter === "4-unit") return value.includes("4-unit") || value.includes("4 unit") || value.includes("four unit") || value.includes("3103 courtney") || value.includes("killeen") || value.includes("arti management") || /\bunit [a-d]\b/.test(value);
+  if (filter === "228 Reifert") return value.includes("228 reifert") || value.includes("reifert");
+  if (filter === "3103 Courtney") return value.includes("3103 courtney") || value.includes("courtney") || value.includes("killeen");
+  if (filter === "Unknown Property") return value.includes("unknown property") || value.includes("property needs owner review");
+  return record.propertyUnit.startsWith(filter);
 }
 
 function normalizeRecord(record: OwnerApprovalRecord): OwnerApprovalRecord {
@@ -461,13 +523,17 @@ export function OwnerApprovalsView() {
   const [editValue, setEditValue] = useState("");
   const [syncing, setSyncing] = useState(false);
   const [connectionWarning, setConnectionWarning] = useState("");
+  const [intakeAudit, setIntakeAudit] = useState<IntakeSyncResponse["intakeAudit"] | null>(null);
 
-  const propertyOptions = useMemo(() => Array.from(new Set(records.map((record) => record.propertyUnit.split(" - ")[0]))), [records]);
+  const propertyOptions = useMemo(() => {
+    const dynamicOptions = Array.from(new Set(records.map((record) => record.propertyUnit.split(" - ")[0])));
+    return Array.from(new Set([...fixedPropertyFilters, ...dynamicOptions]));
+  }, [records]);
   const needsReviewRecords = useMemo(
     () =>
       records.filter((record) => {
         const categoryMatches = categoryFilter === "All Categories" || record.category === categoryFilter;
-        const propertyMatches = propertyFilter === "All Properties" || record.propertyUnit.startsWith(propertyFilter);
+        const propertyMatches = propertyMatchesFilter(record, propertyFilter);
         return categoryMatches && propertyMatches && record.status === "Needs Review";
       }),
     [categoryFilter, propertyFilter, records]
@@ -552,6 +618,7 @@ export function OwnerApprovalsView() {
     try {
       const response = await fetch("/api/owner-approvals/intake", { cache: "no-store" });
       const data = (await response.json()) as IntakeSyncResponse;
+      setIntakeAudit(data.intakeAudit || null);
       const gmailStatus = data.statuses?.find((status) => status.product === "Gmail");
       const driveStatus = data.statuses?.find((status) => status.product === "Google Drive");
       if (gmailStatus && !gmailStatus.connected) setConnectionWarning("Gmail disconnected — reconnect required");
@@ -579,6 +646,7 @@ export function OwnerApprovalsView() {
     setOpenId(reset[0]?.id ?? "");
     setMassPrompt("");
     setEditingSection(null);
+    setIntakeAudit(null);
     setConfirmation("Queue refreshed to sample records. Run Check Gmail & Voice Intake for connector status.");
     window.localStorage.removeItem(storageKey);
   }
@@ -629,6 +697,59 @@ export function OwnerApprovalsView() {
             <button type="button" onClick={checkIntake} disabled={syncing}><RefreshCw size={17} aria-hidden />{syncing ? "Checking..." : "Check Gmail & Voice Intake"}</button>
           </div>
         </header>
+
+        {intakeAudit ? (
+          <section className="intake-audit-panel" aria-label="Gmail intake audit report">
+            <div className="intake-audit-heading">
+              <div>
+                <h2>Gmail Intake Audit</h2>
+                <p>Query: <code>{intakeAudit.gmailQueryUsed}</code></p>
+              </div>
+              <span>{intakeAudit.dateLimit}</span>
+            </div>
+            <div className="intake-audit-stats">
+              <article><span>Messages scanned</span><strong>{intakeAudit.progress.messagesScanned}</strong></article>
+              <article><span>Threads scanned</span><strong>{intakeAudit.progress.threadsScanned}</strong></article>
+              <article><span>Matched</span><strong>{intakeAudit.progress.matched}</strong></article>
+              <article><span>Skipped</span><strong>{intakeAudit.progress.skipped}</strong></article>
+              <article><span>Duplicates</span><strong>{intakeAudit.progress.duplicates}</strong></article>
+              <article><span>Errors</span><strong>{intakeAudit.progress.errors}</strong></article>
+              <article><span>7-unit count</span><strong>{intakeAudit.summary.sevenUnitCount}</strong></article>
+              <article><span>4-unit count</span><strong>{intakeAudit.summary.fourUnitCount}</strong></article>
+              <article><span>Unknown property</span><strong>{intakeAudit.summary.unknownPropertyCount}</strong></article>
+              <article><span>Google Voice</span><strong>{intakeAudit.summary.googleVoiceCount}</strong></article>
+              <article><span>Approval items</span><strong>{intakeAudit.summary.ownerApprovalItemsCreated}</strong></article>
+            </div>
+            <p className="intake-audit-note">
+              Full mailbox query scans All Mail with archived, inbox, sent, starred, important, and labeled mail included.
+              Spam and trash are excluded. Classification totals: {Object.entries(intakeAudit.summary.classificationTotals).map(([key, value]) => `${key}: ${value}`).join(" | ") || "None"}.
+            </p>
+            <div className="intake-audit-table-wrap">
+              <table className="intake-audit-table">
+                <thead>
+                  <tr>
+                    <th>Subject</th>
+                    <th>Property</th>
+                    <th>Class</th>
+                    <th>Created</th>
+                    <th>Skip / Duplicate Reason</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {intakeAudit.entries.slice(0, 20).map((entry) => (
+                    <tr key={`${entry.messageId}-${entry.propertyAssigned}`}>
+                      <td><strong>{entry.subject}</strong><small>{entry.from}</small></td>
+                      <td>{entry.propertyAssigned}</td>
+                      <td>{entry.classificationAssigned}</td>
+                      <td>{entry.ownerApprovalItemCreated ? "Yes" : "No"}</td>
+                      <td>{entry.skipReason || entry.duplicateReason || "Owner Approval item created"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        ) : null}
 
         <section className="approval-table-shell">
           <table className="approval-mock-table">

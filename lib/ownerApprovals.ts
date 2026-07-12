@@ -1,5 +1,19 @@
 export const ownerApprovalSources = ["Gmail", "Google Voice", "RentRedi", "Photos", "Documents"] as const;
-export const ownerApprovalCategories = ["Maintenance", "Rent", "Legal", "Utility", "Lease", "Other"] as const;
+export const ownerApprovalCategories = [
+  "Maintenance",
+  "Rent",
+  "Legal",
+  "Utility",
+  "Utilities",
+  "Lease",
+  "Insurance",
+  "Mortgage",
+  "Vendor",
+  "Section 8",
+  "Inspection",
+  "Code Enforcement",
+  "Other"
+] as const;
 export const ownerApprovalStatuses = ["Needs Review", "Approved", "Returned / Needs More Information", "Rejected", "Executed"] as const;
 export const ownerApprovalPriorities = ["Low", "Medium", "High", "Critical"] as const;
 

@@ -9,35 +9,134 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 const GMAIL_READ_SCOPE = "https://www.googleapis.com/auth/gmail.readonly";
+const GMAIL_INTAKE_QUERY = "-in:spam -in:trash";
 const ACTION_TERMS =
-  /(repair|maintenance|invoice|estimate|photo|receipt|rent|payment|ledger|balance|late|eviction|notice|court|rfta|section 8|hacp|lease|addendum|duquesne|utility|water|sewer|gas|trash|internet|electric|google voice|voicemail|tenant|vendor|owner approval|228|reifert|3103|courtney)/i;
+  /(repair|maintenance|invoice|estimate|photo|receipt|rent|payment|ledger|balance|late|eviction|notice|court|rfta|section 8|hacp|lease|addendum|insurance|policy|claim|mortgage|lender|mbfs|inspection|inspector|code enforcement|violation|duquesne|utility|water|sewer|gas|trash|internet|electric|google voice|voicemail|voice message|tenant|vendor|owner approval|228|reifert|3103|courtney|killeen|arti management|unit\s*[a-d]\b|apt\s*[a-d]\b|apartment\s*[a-d]\b|4.?unit|four unit|fourplex|7.?unit)/i;
+
+const PROPERTY_TERMS =
+  /(228|reifert|3103|courtney|killeen|arti management|unit\s*[a-d]\b|apt\s*[a-d]\b|apartment\s*[a-d]\b|4.?unit|four unit|fourplex|7.?unit|google voice|voicemail|voice message)/i;
+
+type IntakeAuditEntry = {
+  messageId: string;
+  threadId: string;
+  subject: string;
+  from: string;
+  recipients: string;
+  date: string;
+  labels: string[];
+  bodyLength: number;
+  attachments: string[];
+  propertyAssigned: string;
+  classificationAssigned: OwnerApprovalCategory;
+  matched: boolean;
+  skipped: boolean;
+  skipReason: string;
+  duplicateReason: string;
+  ownerApprovalItemCreated: boolean;
+};
+
+type IntakeAuditReport = {
+  gmailQueryUsed: string;
+  totalEmailsChecked: number;
+  emailsMatched: number;
+  emailsSkipped: number;
+  itemsCreated: number;
+  searchLimit: number;
+  includesArchived: boolean;
+  includesSentIfMatched: boolean;
+  excludesSpamTrash: boolean;
+  dateLimit: string;
+  entries: IntakeAuditEntry[];
+  progress: {
+    messagesScanned: number;
+    threadsScanned: number;
+    matched: number;
+    skipped: number;
+    duplicates: number;
+    errors: number;
+  };
+  summary: {
+    totalMailboxSizeScanned: number;
+    totalPropertyEmails: number;
+    sevenUnitCount: number;
+    fourUnitCount: number;
+    unknownPropertyCount: number;
+    googleVoiceCount: number;
+    ownerApprovalItemsCreated: number;
+    skippedDuplicates: number;
+    classificationTotals: Record<string, number>;
+  };
+};
+
+function emptyAudit(): IntakeAuditReport {
+  return {
+    gmailQueryUsed: GMAIL_INTAKE_QUERY,
+    totalEmailsChecked: 0,
+    emailsMatched: 0,
+    emailsSkipped: 0,
+    itemsCreated: 0,
+    searchLimit: 0,
+    includesArchived: true,
+    includesSentIfMatched: true,
+    excludesSpamTrash: true,
+    dateLimit: "No explicit date limit",
+    entries: [],
+    progress: {
+      messagesScanned: 0,
+      threadsScanned: 0,
+      matched: 0,
+      skipped: 0,
+      duplicates: 0,
+      errors: 0
+    },
+    summary: {
+      totalMailboxSizeScanned: 0,
+      totalPropertyEmails: 0,
+      sevenUnitCount: 0,
+      fourUnitCount: 0,
+      unknownPropertyCount: 0,
+      googleVoiceCount: 0,
+      ownerApprovalItemsCreated: 0,
+      skippedDuplicates: 0,
+      classificationTotals: {}
+    }
+  };
+}
 
 function classifyCategory(text: string): OwnerApprovalCategory {
   const value = text.toLowerCase();
-  if (/(eviction|notice|court|rfta|section 8|hacp|legal|complaint|affidavit)/.test(value)) return "Legal";
+  if (/(section 8|hacp|hap|rfta)/.test(value)) return "Section 8";
+  if (/(code enforcement|code violation|inspector violation|municipal violation)/.test(value)) return "Code Enforcement";
+  if (/(inspection|inspector|walkthrough|photos|condition report)/.test(value)) return "Inspection";
+  if (/(insurance|policy|claim|premium|underwriter)/.test(value)) return "Insurance";
+  if (/(mortgage|lender|mbfs|arrears|reinstatement|payoff|escrow)/.test(value)) return "Mortgage";
+  if (/(vendor|contractor|plumber|electrician|hvac|invoice|estimate|quote)/.test(value)) return "Vendor";
+  if (/(eviction|notice|court|legal|complaint|affidavit|quit)/.test(value)) return "Legal";
   if (/(rent|payment|ledger|balance|late|paid|overdue|arrangement)/.test(value)) return "Rent";
   if (/(repair|maintenance|invoice|photo|vendor|heat|plumb|leak|estimate|receipt|complete)/.test(value)) return "Maintenance";
-  if (/(duquesne|utility|water|sewer|gas|trash|internet|electric|bill)/.test(value)) return "Utility";
+  if (/(duquesne|utility|water|sewer|gas|trash|internet|electric|bill)/.test(value)) return "Utilities";
   if (/(lease|addendum|renewal|contract)/.test(value)) return "Lease";
   return "Other";
 }
 
 function classifyPriority(category: OwnerApprovalCategory, text: string): OwnerApprovalPriority {
   if (/(eviction|court|shut.?off|termination|emergency|unsafe|heat|legal|notice)/i.test(text)) return "High";
-  if (category === "Legal") return "High";
-  if (category === "Maintenance" || category === "Utility" || category === "Rent") return "Medium";
+  if (category === "Legal" || category === "Section 8" || category === "Code Enforcement" || category === "Mortgage") return "High";
+  if (category === "Maintenance" || category === "Utility" || category === "Utilities" || category === "Rent" || category === "Insurance" || category === "Inspection") return "Medium";
   return "Low";
 }
 
 function classifyProperty(text: string) {
   if (/228|reifert/i.test(text)) return "228 Reifert St";
-  if (/3103|courtney/i.test(text)) return "3103 Courtney";
-  if (/7.?unit/i.test(text)) return "7-Unit Building";
-  if (/4.?unit/i.test(text)) return "4-Unit Building";
-  return "Property needs owner review";
+  if (/3103|courtney\s+(?:ln|lane)?|killeen|arti management|unit\s*[a-d]\b|apt\s*[a-d]\b|apartment\s*[a-d]\b/i.test(text)) return "3103 Courtney Ln, Killeen, TX";
+  if (/7.?unit|seven.?unit/i.test(text)) return "7-Unit Building";
+  if (/4.?unit|four.?unit|fourplex/i.test(text)) return "4-Unit Building";
+  return "Unknown Property";
 }
 
 function classifyUnit(text: string) {
+  const letterUnit = text.match(/\b(?:unit|apt|apartment)\s*([a-d])\b/i);
+  if (letterUnit) return ` - Unit ${letterUnit[1].toUpperCase()}`;
   const unit = text.match(/\b(?:unit|apt|apartment)\s*([a-z0-9]+)\b/i);
   return unit ? ` - Unit ${unit[1].toUpperCase()}` : "";
 }
@@ -80,7 +179,7 @@ function walkParts(part: gmail_v1.Schema$MessagePart | undefined, state: { text:
 function extractMessageContent(message: gmail_v1.Schema$Message) {
   const state: { text: string[]; html: string[]; attachments: OwnerApprovalRecord["documents"] } = { text: [], html: [], attachments: [] };
   walkParts(message.payload || undefined, state);
-  const body = (state.text.join("\n").trim() || state.html.join("\n").trim() || message.snippet || "").replace(/\s{3,}/g, " ").slice(0, 4000);
+  const body = (state.text.join("\n").trim() || state.html.join("\n").trim() || message.snippet || "").replace(/\s{3,}/g, " ");
   return { body, attachments: state.attachments };
 }
 
@@ -108,7 +207,7 @@ function recommendedAction(category: OwnerApprovalCategory, hasAttachments: bool
   if (category === "Maintenance") return hasAttachments ? "Review attachment proof/invoice, then approve tracker update or vendor follow-up." : "Review maintenance request and decide whether to assign vendor or request more proof.";
   if (category === "Rent") return "Review ledger/payment proof before any reminder, notice, or tracker status change.";
   if (category === "Legal") return "Keep legal action blocked until proof and final owner approval are verified.";
-  if (category === "Utility") return "Review utility bill/setup proof and approve tracker status only if correct.";
+  if (category === "Utility" || category === "Utilities") return "Review utility bill/setup proof and approve tracker status only if correct.";
   if (category === "Lease") return "Review lease document and approve draft/revision path only.";
   return "Review email context and decide whether Codex should prepare a draft, tracker preview, or no action.";
 }
@@ -116,17 +215,46 @@ function recommendedAction(category: OwnerApprovalCategory, hasAttachments: bool
 function draftResponseFor(category: OwnerApprovalCategory) {
   if (category === "Maintenance") return "Hi [Name],\n\nThank you for the update. We are reviewing this maintenance item and will follow up after owner approval.\n\nProperty Management";
   if (category === "Rent") return "Hi [Name],\n\nWe received your message and are reviewing the ledger before confirming any next steps.\n\nProperty Management";
-  if (category === "Utility") return "Utility item received for owner review. No payment or account action will be taken without owner approval.";
+  if (category === "Utility" || category === "Utilities") return "Utility item received for owner review. No payment or account action will be taken without owner approval.";
   return "";
 }
 
+function shouldCreateOwnerApproval(property: string, category: OwnerApprovalCategory, text: string) {
+  return property !== "Unknown Property" || category !== "Other" || ACTION_TERMS.test(text) || PROPERTY_TERMS.test(text);
+}
+
+function updateAuditSummary(audit: IntakeAuditReport) {
+  audit.totalEmailsChecked = audit.entries.length;
+  audit.emailsMatched = audit.entries.filter((entry) => entry.matched).length;
+  audit.emailsSkipped = audit.entries.filter((entry) => entry.skipped).length;
+  audit.itemsCreated = audit.entries.filter((entry) => entry.ownerApprovalItemCreated).length;
+  audit.progress.messagesScanned = audit.totalEmailsChecked;
+  audit.progress.matched = audit.emailsMatched;
+  audit.progress.skipped = audit.emailsSkipped;
+  audit.progress.duplicates = audit.entries.filter((entry) => Boolean(entry.duplicateReason)).length;
+  audit.summary.totalMailboxSizeScanned = audit.totalEmailsChecked;
+  audit.summary.totalPropertyEmails = audit.entries.filter((entry) => entry.propertyAssigned !== "Unknown Property").length;
+  audit.summary.sevenUnitCount = audit.entries.filter((entry) => entry.propertyAssigned.includes("7-Unit") || entry.propertyAssigned.includes("228 Reifert")).length;
+  audit.summary.fourUnitCount = audit.entries.filter((entry) => entry.propertyAssigned.includes("3103 Courtney") || entry.propertyAssigned.includes("4-Unit")).length;
+  audit.summary.unknownPropertyCount = audit.entries.filter((entry) => entry.propertyAssigned === "Unknown Property").length;
+  audit.summary.googleVoiceCount = audit.entries.filter((entry) => /google voice|voicemail|voice message/i.test(`${entry.subject} ${entry.from}`)).length;
+  audit.summary.ownerApprovalItemsCreated = audit.itemsCreated;
+  audit.summary.skippedDuplicates = audit.progress.duplicates;
+  audit.summary.classificationTotals = audit.entries.reduce<Record<string, number>>((totals, entry) => {
+    totals[entry.classificationAssigned] = (totals[entry.classificationAssigned] || 0) + 1;
+    return totals;
+  }, {});
+}
+
 async function readGmailIntakeItems() {
+  const audit = emptyAudit();
   const config = getGoogleOAuthConfig("GOOGLE_GMAIL_READONLY_TOKEN", ["GMAIL_READONLY_TOKEN", "GOOGLE_GMAIL_METADATA_TOKEN", "GMAIL_METADATA_TOKEN"]);
   if (config.missingEnvVars.length > 0) {
     return {
       connected: false,
       message: `Gmail full read intake is missing required environment variables: ${config.missingEnvVars.join(", ")}.`,
-      items: [] as OwnerApprovalRecord[]
+      items: [] as OwnerApprovalRecord[],
+      audit
     };
   }
 
@@ -135,22 +263,31 @@ async function readGmailIntakeItems() {
     return {
       connected: false,
       message: `${tokenIssue.message}. Full email body intake requires ${GMAIL_READ_SCOPE}.`,
-      items: [] as OwnerApprovalRecord[]
+      items: [] as OwnerApprovalRecord[],
+      audit
     };
   }
 
   try {
     const gmail = google.gmail({ version: "v1", auth: getOAuthClient(config) });
     const stamp = nowParts();
-    const response = await gmail.users.messages.list({
-      userId: "me",
-      maxResults: 100,
-      includeSpamTrash: false
-    });
+    const messages: gmail_v1.Schema$Message[] = [];
+    let pageToken: string | undefined;
 
-    const messages = response.data.messages || [];
+    do {
+      const response = await gmail.users.messages.list({
+        userId: "me",
+        q: GMAIL_INTAKE_QUERY,
+        maxResults: 500,
+        includeSpamTrash: false,
+        pageToken
+      });
+      messages.push(...(response.data.messages || []));
+      pageToken = response.data.nextPageToken || undefined;
+    } while (pageToken);
+
     const items: OwnerApprovalRecord[] = [];
-    const seenThreads = new Set<string>();
+    const seenThreadProperties = new Map<string, Set<string>>();
 
     for (const messageRef of messages) {
       if (!messageRef.id) continue;
@@ -158,19 +295,53 @@ async function readGmailIntakeItems() {
       const headers = message.data.payload?.headers || [];
       const subject = header(headers, "Subject") || "(No subject)";
       const from = header(headers, "From") || "Unknown sender";
+      const recipients = [header(headers, "To"), header(headers, "Cc"), header(headers, "Bcc")].filter(Boolean).join(" | ");
       const date = header(headers, "Date") || stamp.iso;
       const { body, attachments } = extractMessageContent(message.data);
-      const searchable = `${subject}\n${from}\n${body}\n${attachments.map((item) => item.name).join("\n")}`;
+      const searchable = `${subject}\n${from}\n${recipients}\n${body}\n${attachments.map((item) => item.name).join("\n")}`;
       const category = classifyCategory(searchable);
-
-      if (category === "Other" && !ACTION_TERMS.test(searchable)) continue;
-
+      const property = classifyProperty(searchable);
       const threadId = message.data.threadId || messageRef.threadId || messageRef.id;
-      if (seenThreads.has(threadId)) continue;
-      seenThreads.add(threadId);
+      const auditEntry: IntakeAuditEntry = {
+        messageId: messageRef.id,
+        threadId,
+        subject,
+        from,
+        recipients,
+        date,
+        labels: message.data.labelIds || [],
+        bodyLength: body.length,
+        attachments: attachments.map((attachment) => attachment.name),
+        propertyAssigned: property,
+        classificationAssigned: category,
+        matched: false,
+        skipped: false,
+        skipReason: "",
+        duplicateReason: "",
+        ownerApprovalItemCreated: false
+      };
+
+      if (!shouldCreateOwnerApproval(property, category, searchable)) {
+        auditEntry.skipped = true;
+        auditEntry.skipReason = "No property/action keyword matched in full mailbox scan.";
+        audit.entries.push(auditEntry);
+        continue;
+      }
+
+      auditEntry.matched = true;
+      const seenProperties = seenThreadProperties.get(threadId) || new Set<string>();
+      if (seenProperties.has(property)) {
+        auditEntry.skipped = true;
+        auditEntry.duplicateReason = `Duplicate Gmail thread/property already created: ${threadId} / ${property}.`;
+        audit.entries.push(auditEntry);
+        continue;
+      }
+      seenProperties.add(property);
+      seenThreadProperties.set(threadId, seenProperties);
 
       let threadContext = "Single message or thread context not available.";
       if (threadId) {
+        audit.progress.threadsScanned += 1;
         const thread = await gmail.users.threads.get({ userId: "me", id: threadId, format: "metadata", metadataHeaders: ["From", "Subject", "Date"] });
         threadContext = (thread.data.messages || [])
           .slice(-4)
@@ -181,7 +352,6 @@ async function readGmailIntakeItems() {
           .join("\n");
       }
 
-      const property = classifyProperty(searchable);
       const unit = classifyUnit(searchable);
       const priority = classifyPriority(category, searchable);
       const cost = estimateCost(searchable);
@@ -231,18 +401,26 @@ async function readGmailIntakeItems() {
         sourceMessageId: messageRef.id,
         sourceThreadId: threadId
       });
+      auditEntry.ownerApprovalItemCreated = true;
+      audit.entries.push(auditEntry);
     }
+
+    updateAuditSummary(audit);
 
     return {
       connected: true,
-      message: `Gmail full read-only intake checked ${messages.length} messages and found ${items.length} owner-review item(s).`,
-      items
+      message: `Gmail full historical read-only intake scanned ${audit.totalEmailsChecked} messages and created ${items.length} owner-review item(s).`,
+      items,
+      audit
     };
   } catch (error) {
+    audit.progress.errors += 1;
+    updateAuditSummary(audit);
     return {
       connected: false,
       message: error instanceof Error ? `Gmail full read intake failed: ${error.message}` : "Gmail full read intake failed.",
-      items: [] as OwnerApprovalRecord[]
+      items: [] as OwnerApprovalRecord[],
+      audit
     };
   }
 }
@@ -348,6 +526,7 @@ export async function GET() {
         driveStatus,
         { product: "Google Voice", connected: false, mode: "gmail-and-drive-workaround-only", message: "Google Voice direct API unavailable; Gmail notifications and Drive workaround files are used." }
       ],
+      intakeAudit: gmailIntake.audit,
       items,
       safety: "Read-only intake check only. Gmail messages may be read when read-only scope is connected. No Gmail replies, Google writes, document moves, task closures, calendar updates, legal actions, financial actions, labels, archives, deletes, drafts, or sends were executed."
     },
