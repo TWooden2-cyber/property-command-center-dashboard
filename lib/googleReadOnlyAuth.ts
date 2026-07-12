@@ -10,6 +10,37 @@ function cleanEnv(value: string | undefined): string {
   return trimmed;
 }
 
+function parseTokenObject(token: string): Record<string, unknown> | null {
+  const attempts = [
+    token,
+    token.replace(/\\n/g, "\n").replace(/\\"/g, '"')
+  ];
+
+  for (const attempt of attempts) {
+    try {
+      const parsed = JSON.parse(attempt) as unknown;
+      if (typeof parsed === "string") {
+        try {
+          const nested = JSON.parse(parsed) as unknown;
+          if (nested && typeof nested === "object" && !Array.isArray(nested)) {
+            return nested as Record<string, unknown>;
+          }
+        } catch {
+          continue;
+        }
+      }
+
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        return parsed as Record<string, unknown>;
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  return null;
+}
+
 export function readEnv(primary: string, aliases: string[] = []) {
   const names = [primary, ...aliases];
   for (const name of names) {
@@ -68,22 +99,31 @@ export function getGoogleOAuthConfig(tokenEnv: string, tokenAliases: string[] = 
 export function getOAuthClient(config: GoogleOAuthConfig) {
   const auth = new google.auth.OAuth2(config.clientId, config.clientSecret, config.redirectUri);
   const token = config.tokenSource?.token ?? "";
+  const parsed = parseTokenObject(token);
 
-  try {
-    const parsed = JSON.parse(token) as Record<string, string | number>;
-    auth.setCredentials(parsed);
-  } catch {
-    auth.setCredentials({ refresh_token: token });
+  if (parsed) {
+    const refreshToken = typeof parsed.refresh_token === "string" ? parsed.refresh_token : "";
+    if (refreshToken) {
+      const credentials: Record<string, string> = { refresh_token: refreshToken };
+      if (typeof parsed.scope === "string") credentials.scope = parsed.scope;
+      if (typeof parsed.token_type === "string") credentials.token_type = parsed.token_type;
+      auth.setCredentials(credentials);
+    } else {
+      auth.setCredentials(parsed);
+    }
+
+    return auth;
   }
 
+  auth.setCredentials({ refresh_token: token });
   return auth;
 }
 
 export function parseGoogleToken(tokenSource: OAuthTokenSource | null): ParsedGoogleToken {
   if (!tokenSource) return { scopes: [], raw: null };
 
-  try {
-    const parsed = JSON.parse(tokenSource.token) as Record<string, unknown>;
+  const parsed = parseTokenObject(tokenSource.token);
+  if (parsed) {
     return {
       accessToken: typeof parsed.access_token === "string" ? parsed.access_token : undefined,
       refreshToken: typeof parsed.refresh_token === "string" ? parsed.refresh_token : undefined,
@@ -91,18 +131,19 @@ export function parseGoogleToken(tokenSource: OAuthTokenSource | null): ParsedGo
       scopes: String(parsed.scope || "").split(/\s+/).filter(Boolean),
       raw: parsed
     };
-  } catch {
-    return {
-      refreshToken: tokenSource.token,
-      scopes: [],
-      raw: null
-    };
   }
+
+  return {
+    refreshToken: tokenSource.token,
+    scopes: [],
+    raw: null
+  };
 }
 
 export function tokenExpirationStatus(tokenSource: OAuthTokenSource | null): string {
   const parsed = parseGoogleToken(tokenSource);
   if (!tokenSource) return "token missing";
+  if (parsed.refreshToken) return "refresh token present; fresh access token minted per check";
   if (!parsed.expiryDate) return parsed.refreshToken ? "refresh token present; access token refreshable" : "no expiry date recorded";
 
   const expiresAt = new Date(parsed.expiryDate);
@@ -194,15 +235,13 @@ export function classifyGoogleApiError(error: unknown): { errorCode: GoogleProdu
 export function tokenScopeWarning(tokenSource: OAuthTokenSource | null, requiredScope: string, forbiddenScopes: string[] = []): string | null {
   if (!tokenSource) return null;
 
-  try {
-    const parsed = JSON.parse(tokenSource.token) as { scope?: string };
-    const scopes = String(parsed.scope || "").split(/\s+/).filter(Boolean);
-    const acceptableScopes = new Set([requiredScope, ...forbiddenScopes]);
-    if (scopes.length > 0 && !scopes.some((scope) => acceptableScopes.has(scope))) {
-      return `${tokenSource.envName} token does not list required scope ${requiredScope}.`;
-    }
-  } catch {
-    return null;
+  const parsed = parseTokenObject(tokenSource.token);
+  if (!parsed) return null;
+
+  const scopes = String(parsed.scope || "").split(/\s+/).filter(Boolean);
+  const acceptableScopes = new Set([requiredScope, ...forbiddenScopes]);
+  if (scopes.length > 0 && !scopes.some((scope) => acceptableScopes.has(scope))) {
+    return `${tokenSource.envName} token does not list required scope ${requiredScope}.`;
   }
 
   return null;
