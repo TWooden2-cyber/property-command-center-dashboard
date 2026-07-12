@@ -172,6 +172,12 @@ export function classifyGoogleApiError(error: unknown): { errorCode: GoogleProdu
   const status = candidate.code || candidate.status || candidate.response?.status;
   const reason = `${candidate.message || ""} ${candidate.response?.data?.error || ""} ${candidate.response?.data?.error_description || ""} ${(candidate.errors || []).map((entry) => `${entry.reason || ""} ${entry.message || ""}`).join(" ")}`.toLowerCase();
 
+  if (reason.includes("eacces") || reason.includes("enotfound") || reason.includes("etimedout") || reason.includes("econnreset") || reason.includes("could not connect") || reason.includes("failed, reason:")) {
+    return { errorCode: "permission denied", message: `permission denied: outbound Google API/OAuth connection failed (${candidate.code || status || "network"}).` };
+  }
+  if (reason.includes("invalid_grant") || reason.includes("unauthorized_client")) {
+    return { errorCode: "token expired", message: `token expired: ${candidate.message || "Google OAuth token refresh was rejected."}` };
+  }
   if (reason.includes("access_not_configured") || reason.includes("api has not been used") || reason.includes("disabled")) {
     return { errorCode: "API disabled", message: `API disabled: ${candidate.message || candidate.response?.data?.message || "Google API is disabled for this project."}` };
   }

@@ -11,6 +11,20 @@ export async function GET() {
 
   const products = await getGoogleProductsStatus();
   const ok = products.every((product) => product.connected);
+  console.info(
+    "[google-products-status]",
+    JSON.stringify(
+      products.map((product) => ({
+        product: product.product,
+        connected: product.connected,
+        status: product.status,
+        errorCode: product.errorCode,
+        message: product.message,
+        missingEnvVars: product.missingEnvVars,
+        missingScopes: product.missingScopes
+      }))
+    )
+  );
 
   return NextResponse.json(
     {
