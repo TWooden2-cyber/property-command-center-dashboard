@@ -117,13 +117,16 @@ export function tokenExpirationStatus(tokenSource: OAuthTokenSource | null): str
   return `access token expires ${expiresAt.toISOString()}${parsed.refreshToken ? "; refresh token present" : "; refresh token missing"}`;
 }
 
-export function missingRequiredScopes(tokenSource: OAuthTokenSource | null, requiredScopes: string[]) {
+export function missingRequiredScopes(tokenSource: OAuthTokenSource | null, requiredScopes: string[] | string[][]) {
   const parsed = parseGoogleToken(tokenSource);
   if (!parsed.scopes.length) return [];
-  return requiredScopes.filter((scope) => !parsed.scopes.includes(scope));
+  return requiredScopes
+    .map((scope) => (Array.isArray(scope) ? scope : [scope]))
+    .filter((scopeGroup) => !scopeGroup.some((scope) => parsed.scopes.includes(scope)))
+    .map((scopeGroup) => scopeGroup[0]);
 }
 
-export function tokenConnectivityIssue(tokenSource: OAuthTokenSource | null, requiredScopes: string[]): {
+export function tokenConnectivityIssue(tokenSource: OAuthTokenSource | null, requiredScopes: string[] | string[][]): {
   errorCode: GoogleProductErrorCode | null;
   message: string | null;
   missingScopes: string[];

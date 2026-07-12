@@ -20,9 +20,14 @@ export const GOOGLE_READONLY_SCOPES = [
 ];
 
 const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.metadata.readonly";
+const DRIVE_FULL_SCOPE = "https://www.googleapis.com/auth/drive";
+const DRIVE_FILE_SCOPE = "https://www.googleapis.com/auth/drive.file";
 const CALENDAR_SCOPE = "https://www.googleapis.com/auth/calendar.readonly";
+const CALENDAR_FULL_SCOPE = "https://www.googleapis.com/auth/calendar";
+const CALENDAR_EVENTS_SCOPE = "https://www.googleapis.com/auth/calendar.events";
 const GMAIL_SCOPE = "https://www.googleapis.com/auth/gmail.readonly";
 const TASKS_SCOPE = "https://www.googleapis.com/auth/tasks.readonly";
+const TASKS_FULL_SCOPE = "https://www.googleapis.com/auth/tasks";
 
 const DRIVE_ROOT_FOLDER_ID = "1200_qPBmBz6KHjZY59HTPMpvXTCt5bGt";
 const DRIVE_ROOT_FOLDER_NAME = "PROPERTY MANAGEMENT OPERATING SYSTEM";
@@ -139,7 +144,7 @@ function oauthBase(product: GoogleProductName, mode: string, config: GoogleOAuth
   };
 }
 
-function oauthPreflight(product: GoogleProductName, mode: string, config: GoogleOAuthConfig, scopes: string[]) {
+function oauthPreflight(product: GoogleProductName, mode: string, config: GoogleOAuthConfig, scopes: string[] | string[][]) {
   if (config.missingEnvVars.length > 0) return notConfigured(product, config.missingEnvVars, mode);
 
   const issue = tokenConnectivityIssue(config.tokenSource, scopes);
@@ -254,7 +259,7 @@ export async function getDriveProductStatus(): Promise<GoogleProductStatus> {
   }
 
   const config = getGoogleOAuthConfig("GOOGLE_DRIVE_READONLY_TOKEN", ["GOOGLE_DRIVE_TOKEN", "GOOGLE_DRIVE_WRITE_TOKEN"]);
-  const preflight = oauthPreflight("Google Drive", "read-only metadata", config, [DRIVE_SCOPE]);
+  const preflight = oauthPreflight("Google Drive", "read-only metadata", config, [[DRIVE_SCOPE, DRIVE_FULL_SCOPE, DRIVE_FILE_SCOPE]]);
   if (preflight) return preflight;
 
   const folderId = readEnv("GOOGLE_DRIVE_ROOT_FOLDER_ID", ["GOOGLE_DRIVE_FOLDER_ID"]).value || DRIVE_ROOT_FOLDER_ID;
@@ -314,13 +319,12 @@ export async function getCalendarProductStatus(): Promise<GoogleProductStatus> {
   }
 
   const config = getGoogleOAuthConfig("GOOGLE_CALENDAR_READONLY_TOKEN", ["GOOGLE_CALENDAR_TOKEN", "GOOGLE_CALENDAR_WRITE_TOKEN"]);
-  const preflight = oauthPreflight("Google Calendar", "read-only", config, [CALENDAR_SCOPE]);
+  const preflight = oauthPreflight("Google Calendar", "read-only", config, [[CALENDAR_SCOPE, CALENDAR_FULL_SCOPE, CALENDAR_EVENTS_SCOPE]]);
   if (preflight) return preflight;
 
   try {
     const auth = await refreshAccessTokenIfPossible(config);
     const calendar = google.calendar({ version: "v3", auth });
-    const primary = await calendar.calendars.get({ calendarId: "primary" });
     const now = new Date();
     const later = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
     const response = await calendar.events.list({
@@ -349,7 +353,7 @@ export async function getCalendarProductStatus(): Promise<GoogleProductStatus> {
           end: event.end?.dateTime || event.end?.date || null
         }))
       },
-      primary.data.id || null
+      null
     );
   } catch (error) {
     return apiErrorStatus("Google Calendar", error, "read-only", config);
@@ -396,7 +400,7 @@ export async function getTasksProductStatus(): Promise<GoogleProductStatus> {
   }
 
   const config = getGoogleOAuthConfig("GOOGLE_TASKS_READONLY_TOKEN", ["GOOGLE_TASKS_TOKEN", "GOOGLE_TASKS_WRITE_TOKEN"]);
-  const preflight = oauthPreflight("Google Tasks", "read-only", config, [TASKS_SCOPE]);
+  const preflight = oauthPreflight("Google Tasks", "read-only", config, [[TASKS_SCOPE, TASKS_FULL_SCOPE]]);
   if (preflight) return preflight;
 
   try {
