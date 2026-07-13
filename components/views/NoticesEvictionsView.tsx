@@ -406,7 +406,6 @@ export function NoticesEvictionsView() {
     <div className="notice-command-page">
       <NoticesHeader />
       <SheetsSourcePanel system={system} error={error} loading={loading} />
-      <NoticeKpis rows={rows} />
       <NoticeFilters filters={filters} onChange={setFilters} rows={rows} />
       {filteredRows.length ? (
         <DataTable rows={filteredRows} columns={columns} />
