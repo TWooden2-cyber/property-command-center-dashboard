@@ -18,7 +18,7 @@ function tone(product: GoogleProductStatus) {
 }
 
 function label(product: GoogleProductStatus) {
-  if (product.connected && product.product === "Gmail") return "Live Metadata Only";
+  if (product.connected && product.product === "Gmail") return "Live Read-Only Intake";
   if (product.connected) return product.product === "Google Sheets" ? "Live" : "Live Read-Only";
   if (product.status === "not_configured") return "Not Configured";
   if (product.status === "not_enabled") return "Not Enabled";
@@ -112,7 +112,7 @@ export function GoogleProductsStatusPanel({ title = "Google Products Read-Only S
       </div>
       <div className="remaining-safety-footer">
         <ShieldCheck size={18} />
-        <p>Write operations disabled by owner policy. This panel only checks connection status and safe metadata.</p>
+        <p>Write operations disabled by owner policy. This panel checks connection status and read-only intake checks.</p>
       </div>
     </section>
   );
