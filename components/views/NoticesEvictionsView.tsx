@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { AlertTriangle, ClipboardCheck, Gavel, Mail, MessageSquare, Scale, Search, ShieldAlert } from "lucide-react";
+import { AlertTriangle, ClipboardCheck, Gavel, Mail, MessageSquare, Scale, ShieldAlert } from "lucide-react";
 import { EmptyState } from "@/components/DataState";
 import { SheetsSourcePanel } from "@/components/SheetsSourcePanel";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -26,38 +26,6 @@ type NoticesPayload = {
 
 type RentPayload = {
   rows: RentRecord[];
-};
-
-type NoticeFilter = {
-  property: string;
-  unit: string;
-  tenant: string;
-  noticeType: string;
-  status: string;
-  ledgerVerification: boolean;
-  hapVerification: boolean;
-  draftReady: boolean;
-  closed: boolean;
-  blocked: boolean;
-  proofMissing: boolean;
-  ownerApproval: boolean;
-  search: string;
-};
-
-const defaultFilters: NoticeFilter = {
-  property: "All",
-  unit: "All",
-  tenant: "All",
-  noticeType: "All",
-  status: "All",
-  ledgerVerification: false,
-  hapVerification: false,
-  draftReady: false,
-  closed: false,
-  blocked: false,
-  proofMissing: false,
-  ownerApproval: false,
-  search: ""
 };
 
 const blockedWarnings = [
@@ -489,37 +457,6 @@ function TenDayNoticeWorkspace({ rows }: { rows: NoticeCommandRow[] }) {
   );
 }
 
-function matchesFilters(row: NoticeCommandRow, filters: NoticeFilter) {
-  const haystack = [
-    row.property,
-    row.unit,
-    row.tenant,
-    row.noticeType,
-    row.amountOwed,
-    row.status,
-    proofStatus(row),
-    ownerAction(row),
-    blockedAction(row)
-  ]
-    .join(" ")
-    .toLowerCase();
-
-  if (filters.property !== "All" && row.property !== filters.property) return false;
-  if (filters.unit !== "All" && row.unit !== filters.unit) return false;
-  if (filters.tenant !== "All" && row.tenant !== filters.tenant) return false;
-  if (filters.noticeType !== "All" && row.noticeType !== filters.noticeType) return false;
-  if (filters.status !== "All" && row.status !== filters.status) return false;
-  if (filters.ledgerVerification && !needsLedgerVerification(row)) return false;
-  if (filters.hapVerification && !needsHapVerification(row)) return false;
-  if (filters.draftReady && !row.noticeType.toLowerCase().includes("notice")) return false;
-  if (filters.closed && !isClosed(row)) return false;
-  if (filters.blocked && !isBlocked(row)) return false;
-  if (filters.proofMissing && !proofMissing(row)) return false;
-  if (filters.ownerApproval && !ownerApprovalRequired(row)) return false;
-  if (filters.search && !haystack.includes(filters.search.toLowerCase())) return false;
-  return true;
-}
-
 function NoticesHeader() {
   return (
     <section className="notice-command-header">
@@ -622,56 +559,6 @@ function NoticeHealthEvaluation() {
   );
 }
 
-function NoticeFilters({ filters, onChange, rows }: { filters: NoticeFilter; onChange: (next: NoticeFilter) => void; rows: NoticeCommandRow[] }) {
-  const properties = ["All", ...Array.from(new Set(rows.map((row) => row.property)))];
-  const units = ["All", ...Array.from(new Set(rows.map((row) => row.unit)))];
-  const tenants = ["All", ...Array.from(new Set(rows.map((row) => row.tenant)))];
-  const noticeTypes = ["All", ...Array.from(new Set(rows.map((row) => row.noticeType)))];
-  const statuses = ["All", ...Array.from(new Set(rows.map((row) => row.status)))];
-
-  return (
-    <section className="notice-filter-panel">
-      <div className="section-heading">
-        <div>
-          <p className="eyebrow">Notice filters</p>
-          <h3>Find legal holds and verification gaps</h3>
-        </div>
-        <div className="search-pill">
-          <Search size={16} />
-          <input value={filters.search} onChange={(event) => onChange({ ...filters, search: event.target.value })} placeholder="Search tenant or notice text" />
-        </div>
-      </div>
-      <div className="notice-filter-grid">
-        {[
-          ["Property", "property", properties],
-          ["Unit", "unit", units],
-          ["Tenant", "tenant", tenants],
-          ["Notice type", "noticeType", noticeTypes],
-          ["Status", "status", statuses]
-        ].map(([label, key, options]) => (
-          <label key={key as string}>
-            {label as string}
-            <select value={filters[key as keyof NoticeFilter] as string} onChange={(event) => onChange({ ...filters, [key as string]: event.target.value })}>
-              {(options as string[]).map((option) => (
-                <option key={option} value={option}>{option}</option>
-              ))}
-            </select>
-          </label>
-        ))}
-      </div>
-      <div className="filter-toggle-row">
-        <label><input type="checkbox" checked={filters.ledgerVerification} onChange={(event) => onChange({ ...filters, ledgerVerification: event.target.checked })} /> Ledger verification needed</label>
-        <label><input type="checkbox" checked={filters.hapVerification} onChange={(event) => onChange({ ...filters, hapVerification: event.target.checked })} /> Section 8/HAP verification needed</label>
-        <label><input type="checkbox" checked={filters.draftReady} onChange={(event) => onChange({ ...filters, draftReady: event.target.checked })} /> Draft ready</label>
-        <label><input type="checkbox" checked={filters.closed} onChange={(event) => onChange({ ...filters, closed: event.target.checked })} /> Closed/no action</label>
-        <label><input type="checkbox" checked={filters.blocked} onChange={(event) => onChange({ ...filters, blocked: event.target.checked })} /> Blocked</label>
-        <label><input type="checkbox" checked={filters.proofMissing} onChange={(event) => onChange({ ...filters, proofMissing: event.target.checked })} /> Proof missing</label>
-        <label><input type="checkbox" checked={filters.ownerApproval} onChange={(event) => onChange({ ...filters, ownerApproval: event.target.checked })} /> Owner approval required</label>
-      </div>
-    </section>
-  );
-}
-
 function DraftStatusSection() {
   return (
     <section className="notice-draft-grid">
@@ -733,21 +620,18 @@ function NoticeOperationalSections() {
 }
 
 export function NoticesEvictionsView() {
-  const [filters, setFilters] = useState(defaultFilters);
   const { data, system, error, loading } = useSheetsView<NoticesPayload>("notices-evictions");
   const { data: rentData } = useSheetsView<RentPayload>("rent-collection");
   const rows = useMemo(() => (data?.rows ? data.rows.map(noticeRecordToCommandRow) : localDevelopmentFallbackAllowed ? noticeRows : []), [data]);
   const rentRows = useMemo(() => (rentData?.rows ? rentData.rows.map(rentRecordToCommandRow) : []), [rentData]);
   const noticeReviewRows = useMemo(() => buildNoticeReviewRows(rows, rentRows), [rows, rentRows]);
-  const filteredRows = useMemo(() => noticeReviewRows.filter((row) => matchesFilters(row, filters)), [filters, noticeReviewRows]);
 
   return (
     <div className="notice-command-page">
       <NoticesHeader />
       <SheetsSourcePanel system={system} error={error} loading={loading} />
-      <NoticeFilters filters={filters} onChange={setFilters} rows={noticeReviewRows} />
-      <NoticeProcessTracker rows={filteredRows.length ? filteredRows : noticeReviewRows} />
-      <TenDayNoticeWorkspace rows={filteredRows.length ? filteredRows : noticeReviewRows} />
+      <NoticeProcessTracker rows={noticeReviewRows} />
+      <TenDayNoticeWorkspace rows={noticeReviewRows} />
       <NoticeHealthEvaluation />
       <DraftStatusSection />
       <NoticeOperationalSections />
