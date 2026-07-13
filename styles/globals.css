@@ -3186,6 +3186,18 @@ tbody tr:hover {
   background: linear-gradient(90deg, var(--danger), var(--warning));
 }
 
+.bar-fill.rent-balance-under-half {
+  background: linear-gradient(90deg, #c2412d, #e1664a);
+}
+
+.bar-fill.rent-balance-over-half {
+  background: linear-gradient(90deg, #d79d34, #f2c85b);
+}
+
+.bar-fill.rent-balance-paid {
+  background: linear-gradient(90deg, #4f8f55, #94c973);
+}
+
 .rent-rate-gauge {
   display: grid;
   gap: 16px;

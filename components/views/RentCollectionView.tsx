@@ -10,7 +10,6 @@ import { localDevelopmentFallbackAllowed, rentRecordToCommandRow } from "@/compo
 import { useSheetsView } from "@/components/views/useSheetsView";
 import { formatCurrency } from "@/lib/formatters";
 import {
-  commandCenterPeriod,
   monthOptions,
   monthlyRentTrend,
   percent,
@@ -62,8 +61,8 @@ type RentFilter = {
 };
 
 const defaultFilters: RentFilter = {
-  month: commandCenterPeriod.monthName,
-  year: commandCenterPeriod.year,
+  month: new Intl.DateTimeFormat("en-US", { month: "long" }).format(new Date()),
+  year: new Date().getFullYear(),
   property: "All",
   unit: "All",
   status: "All",
@@ -170,6 +169,42 @@ function ownerAction(row: RentCollectionRow) {
     return "Follow up remaining balance after ledger review.";
   }
   return "No owner action needed.";
+}
+
+function parseRowMonthYear(row: RentCollectionRow) {
+  const normalizedMonth = row.month.trim();
+  const matchedMonth = monthOptions.find((month) => normalizedMonth.toLowerCase().startsWith(month.toLowerCase()));
+  const matchedYear = normalizedMonth.match(/\b(20\d{2}|19\d{2})\b/)?.[1];
+
+  if (matchedMonth && matchedYear) {
+    return {
+      month: matchedMonth,
+      year: Number(matchedYear)
+    };
+  }
+
+  return {
+    month: normalizedMonth,
+    year: Number.NaN
+  };
+}
+
+function collectionTone(row: RentCollectionRow) {
+  if (row.rentDue <= 0 && row.balance <= 0) {
+    return "paid";
+  }
+
+  const paidRatio = row.rentDue > 0 ? row.paid / row.rentDue : 0;
+
+  if (row.balance <= 0 || paidRatio >= 1) {
+    return "paid";
+  }
+
+  if (paidRatio > 0.5) {
+    return "over-half";
+  }
+
+  return "under-half";
 }
 
 function statusTone(row: RentCollectionRow): SignalTone {
@@ -323,7 +358,7 @@ function PaidProjectedChart({ title, projected, collected }: { title: string; pr
 }
 
 function BalanceByUnitChart({ rows: sourceRows }: { rows: RentCollectionRow[] }) {
-  const rows = sourceRows.filter((row) => row.balance > 0);
+  const rows = sourceRows;
   const max = Math.max(...rows.map((row) => row.balance), 1);
 
   return (
@@ -340,7 +375,10 @@ function BalanceByUnitChart({ rows: sourceRows }: { rows: RentCollectionRow[] })
           <div key={row.id} className="rent-chart-row">
             <span>{row.property} {row.unit}</span>
             <div className="bar-track">
-              <div className="bar-fill rent-balance" style={{ "--bar-width": `${Math.max((row.balance / max) * 100, 4)}%` } as CSSProperties} />
+              <div
+                className={`bar-fill rent-balance rent-balance-${collectionTone(row)}`}
+                style={{ "--bar-width": `${row.balance > 0 ? Math.max((row.balance / max) * 100, 4) : 4}%` } as CSSProperties}
+              />
             </div>
             <strong>{liveMoney(row.balance)}</strong>
           </div>
@@ -457,6 +495,12 @@ function RentFilters({
 }
 
 function matchesFilters(row: RentCollectionRow, filters: RentFilter) {
+  const rowPeriod = parseRowMonthYear(row);
+
+  if (rowPeriod.month !== filters.month || rowPeriod.year !== filters.year) {
+    return false;
+  }
+
   if (filters.property !== "All" && row.property !== filters.property) {
     return false;
   }
