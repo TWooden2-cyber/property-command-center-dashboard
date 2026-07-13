@@ -3468,6 +3468,112 @@ tbody tr:hover {
   line-height: 1.42;
 }
 
+.maintenance-decision-cell {
+  display: grid;
+  gap: 7px;
+  min-width: 104px;
+}
+
+.maintenance-decision-cell button {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--cream);
+  cursor: pointer;
+  font-size: 0.72rem;
+  font-weight: 900;
+  padding: 7px 9px;
+  text-transform: uppercase;
+}
+
+.maintenance-decision-cell button.complete {
+  background: rgba(99, 190, 123, 0.16);
+  border-color: rgba(99, 190, 123, 0.45);
+}
+
+.maintenance-decision-cell button.denial {
+  background: rgba(213, 106, 85, 0.16);
+  border-color: rgba(213, 106, 85, 0.48);
+}
+
+.maintenance-decision-cell button.hold {
+  background: rgba(235, 196, 112, 0.16);
+  border-color: rgba(235, 196, 112, 0.45);
+  color: var(--gold-soft);
+}
+
+.maintenance-draft-panel {
+  border-color: rgba(235, 196, 112, 0.34);
+}
+
+.maintenance-draft-panel > p {
+  color: var(--cream-muted);
+  margin: 0;
+}
+
+.maintenance-contact-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 14px 0;
+}
+
+.maintenance-contact-strip span {
+  align-items: center;
+  border: 1px solid rgba(235, 196, 112, 0.28);
+  border-radius: 999px;
+  color: var(--cream);
+  display: inline-flex;
+  gap: 7px;
+  padding: 8px 11px;
+}
+
+.maintenance-contact-strip svg {
+  color: var(--gold);
+}
+
+.maintenance-draft-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.maintenance-draft-grid article {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(8, 7, 6, 0.3);
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+}
+
+.maintenance-draft-grid strong {
+  color: var(--gold-soft);
+}
+
+.maintenance-draft-grid textarea {
+  border: 1px solid rgba(235, 196, 112, 0.28);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.24);
+  color: var(--cream);
+  font: inherit;
+  line-height: 1.45;
+  min-height: 210px;
+  padding: 12px;
+  resize: vertical;
+  width: 100%;
+}
+
+.maintenance-draft-grid button {
+  justify-self: flex-start;
+  border: 1px solid rgba(235, 196, 112, 0.48);
+  border-radius: 999px;
+  background: rgba(235, 196, 112, 0.1);
+  color: var(--gold-soft);
+  cursor: pointer;
+  font-weight: 900;
+  padding: 9px 13px;
+}
+
 .maintenance-blocked-panel {
   border-color: rgba(213, 106, 85, 0.38);
 }

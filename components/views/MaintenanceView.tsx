@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, type CSSProperties } from "react";
-import { AlertTriangle, CheckCircle2, ClipboardList, Search, ShieldCheck, Wrench } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ClipboardList, Mail, MessageSquare, Search, ShieldCheck, Wrench } from "lucide-react";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { EmptyState } from "@/components/DataState";
 import { SheetsSourcePanel } from "@/components/SheetsSourcePanel";
@@ -21,6 +21,13 @@ import type { MaintenanceRecord } from "@/types/sheets";
 
 type MaintenancePayload = {
   rows: MaintenanceRecord[];
+};
+
+type MaintenanceDecision = "Complete" | "Denial" | "Hold";
+
+type MaintenanceDraftSelection = {
+  row: MaintenanceCommandRow;
+  decision: MaintenanceDecision;
 };
 
 type MaintenanceFilter = {
@@ -75,6 +82,11 @@ const proofNeededItems = [
   "RentRedi/Gmail alert reference saved to Drive later"
 ];
 
+const maintenanceContact = {
+  email: "uptoparr360@gmail.com",
+  phone: "4126065308"
+};
+
 function proofStatus(row: MaintenanceCommandRow) {
   return row.proofStatus ?? (row.photosReceiptsLink && !["Not saved", ""].includes(row.photosReceiptsLink) ? "Saved" : "Missing");
 }
@@ -94,6 +106,110 @@ function tenantUpdateNeeded(row: MaintenanceCommandRow) {
 
 function isOpen(row: MaintenanceCommandRow) {
   return row.status.toLowerCase() !== "complete";
+}
+
+function decisionSubject(row: MaintenanceCommandRow, decision: MaintenanceDecision) {
+  return `Maintenance ${decision} - ${row.property} ${row.unit}`;
+}
+
+function decisionEmailDraft(row: MaintenanceCommandRow, decision: MaintenanceDecision) {
+  const actionLine =
+    decision === "Complete"
+      ? "Please treat this work order as complete once your final confirmation, photos, and invoice/proof are ready."
+      : decision === "Denial"
+        ? "Please do not proceed with this work order at this time. This request is denied/passed for now unless I send new instructions."
+        : "Please place this work order on hold. Do not proceed until I confirm the next step.";
+
+  return `To: ${maintenanceContact.email}
+Subject: ${decisionSubject(row, decision)}
+
+Hi,
+
+${actionLine}
+
+Property / Unit: ${row.property} - ${row.unit}
+Tenant: ${row.tenant || "N/A"}
+Issue: ${row.issue}
+Priority: ${row.priority}
+Current Status: ${row.status}
+Estimated Cost: ${formatCurrency(row.estimatedCost)}
+
+Please reply with confirmation and any photos, invoice, or notes needed for the file.
+
+Thank you,
+Property Management`;
+}
+
+function decisionTextDraft(row: MaintenanceCommandRow, decision: MaintenanceDecision) {
+  if (decision === "Complete") {
+    return `Maintenance update for ${row.property} ${row.unit}: please mark this as complete after you send final confirmation, photos, and invoice/proof. Issue: ${row.issue}`;
+  }
+
+  if (decision === "Denial") {
+    return `Maintenance update for ${row.property} ${row.unit}: do not proceed with this work order at this time. The request is denied/passed for now unless I send new instructions. Issue: ${row.issue}`;
+  }
+
+  return `Maintenance update for ${row.property} ${row.unit}: please place this work order on hold and do not proceed until I confirm the next step. Issue: ${row.issue}`;
+}
+
+function MaintenanceDecisionButtons({ row, onSelect }: { row: MaintenanceCommandRow; onSelect: (selection: MaintenanceDraftSelection) => void }) {
+  return (
+    <div className="maintenance-decision-cell">
+      {(["Complete", "Denial", "Hold"] as const).map((decision) => (
+        <button key={decision} type="button" className={decision.toLowerCase()} onClick={() => onSelect({ row, decision })}>
+          {decision}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function DraftPreview({ selection }: { selection: MaintenanceDraftSelection | null }) {
+  if (!selection) {
+    return (
+      <section className="section-block maintenance-draft-panel">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Maintenance communication drafts</p>
+            <h2>Select Complete, Denial, or Hold</h2>
+          </div>
+          <StatusBadge label="Draft only / not sent" />
+        </div>
+        <p>Choose an action on a maintenance row to generate Gmail email text and Google Voice text for the maintenance contact.</p>
+      </section>
+    );
+  }
+
+  const emailDraft = decisionEmailDraft(selection.row, selection.decision);
+  const textDraft = decisionTextDraft(selection.row, selection.decision);
+
+  return (
+    <section className="section-block maintenance-draft-panel">
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">Draft generated</p>
+          <h2>{selection.decision} message for {selection.row.unit}</h2>
+        </div>
+        <StatusBadge label="Draft only / owner sends" />
+      </div>
+      <div className="maintenance-contact-strip">
+        <span><Mail size={15} /> Gmail draft to {maintenanceContact.email}</span>
+        <span><MessageSquare size={15} /> Google Voice text to {maintenanceContact.phone}</span>
+      </div>
+      <div className="maintenance-draft-grid">
+        <article>
+          <strong>Email Draft</strong>
+          <textarea value={emailDraft} readOnly aria-label="Maintenance email draft" />
+          <button type="button" onClick={() => void navigator.clipboard?.writeText(emailDraft)}>Copy Email Draft</button>
+        </article>
+        <article>
+          <strong>Google Voice Text Draft</strong>
+          <textarea value={textDraft} readOnly aria-label="Maintenance Google Voice text draft" />
+          <button type="button" onClick={() => void navigator.clipboard?.writeText(textDraft)}>Copy Text Draft</button>
+        </article>
+      </div>
+    </section>
+  );
 }
 
 function MaintenanceHeader({ filters, onFiltersChange }: { filters: MaintenanceFilter; onFiltersChange: (next: MaintenanceFilter) => void }) {
@@ -259,25 +375,6 @@ function matchesFilters(row: MaintenanceCommandRow, filters: MaintenanceFilter) 
   return true;
 }
 
-const columns: DataTableColumn<MaintenanceCommandRow>[] = [
-  { key: "dateReported", header: "Date Reported", render: (row) => row.dateReported },
-  { key: "property", header: "Property", render: (row) => row.property },
-  { key: "unit", header: "Unit", render: (row) => row.unit },
-  { key: "tenant", header: "Tenant", render: (row) => row.tenant },
-  { key: "issue", header: "Issue", render: (row) => row.issue },
-  { key: "priority", header: "Priority", render: (row) => <StatusBadge label={row.priority} /> },
-  { key: "assignedVendor", header: "Assigned Vendor", render: (row) => row.assignedVendor || "Not assigned" },
-  { key: "estimatedCost", header: "Estimated Cost", render: (row) => formatCurrency(row.estimatedCost), className: "numeric" },
-  { key: "actualCost", header: "Actual Cost", render: (row) => formatCurrency(row.actualCost ?? Number.NaN), className: "numeric" },
-  { key: "status", header: "Status", render: (row) => <StatusBadge label={row.status} /> },
-  { key: "dateCompleted", header: "Date Completed", render: (row) => row.dateCompleted || "Open" },
-  { key: "tenantUpdateSent", header: "Tenant Update Sent", render: (row) => <StatusBadge label={row.tenantUpdateSent} /> },
-  { key: "photosReceiptsLink", header: "Photos/Receipts Link", render: (row) => row.photosReceiptsLink || "Not saved" },
-  { key: "proofStatus", header: "Proof Status", render: (row) => <StatusBadge label={proofStatus(row)} /> },
-  { key: "ownerAction", header: "Owner Action", render: (row) => ownerAction(row) },
-  { key: "notes", header: "Notes", render: (row) => row.notes }
-];
-
 function MaintenanceActionQueue() {
   return (
     <section className="section-block">
@@ -393,9 +490,29 @@ function VendorAndTenantTrackers() {
 
 export function MaintenanceView() {
   const [filters, setFilters] = useState<MaintenanceFilter>(defaultFilters);
+  const [draftSelection, setDraftSelection] = useState<MaintenanceDraftSelection | null>(null);
   const { data, system, error, loading } = useSheetsView<MaintenancePayload>("maintenance");
   const rows = useMemo(() => (data?.rows ? data.rows.map(maintenanceRecordToCommandRow) : localDevelopmentFallbackAllowed ? maintenanceRows : []), [data]);
   const filteredRows = useMemo(() => rows.filter((row) => matchesFilters(row, filters)), [filters, rows]);
+  const columns: DataTableColumn<MaintenanceCommandRow>[] = useMemo(() => [
+    { key: "actions", header: "Action", render: (row) => <MaintenanceDecisionButtons row={row} onSelect={setDraftSelection} /> },
+    { key: "dateReported", header: "Date Reported", render: (row) => row.dateReported },
+    { key: "property", header: "Property", render: (row) => row.property },
+    { key: "unit", header: "Unit", render: (row) => row.unit },
+    { key: "tenant", header: "Tenant", render: (row) => row.tenant },
+    { key: "issue", header: "Issue", render: (row) => row.issue },
+    { key: "priority", header: "Priority", render: (row) => <StatusBadge label={row.priority} /> },
+    { key: "assignedVendor", header: "Assigned Vendor", render: (row) => row.assignedVendor || "Not assigned" },
+    { key: "estimatedCost", header: "Estimated Cost", render: (row) => formatCurrency(row.estimatedCost), className: "numeric" },
+    { key: "actualCost", header: "Actual Cost", render: (row) => formatCurrency(row.actualCost ?? Number.NaN), className: "numeric" },
+    { key: "status", header: "Status", render: (row) => <StatusBadge label={row.status} /> },
+    { key: "dateCompleted", header: "Date Completed", render: (row) => row.dateCompleted || "Open" },
+    { key: "tenantUpdateSent", header: "Tenant Update Sent", render: (row) => <StatusBadge label={row.tenantUpdateSent} /> },
+    { key: "photosReceiptsLink", header: "Photos/Receipts Link", render: (row) => row.photosReceiptsLink || "Not saved" },
+    { key: "proofStatus", header: "Proof Status", render: (row) => <StatusBadge label={proofStatus(row)} /> },
+    { key: "ownerAction", header: "Owner Action", render: (row) => ownerAction(row) },
+    { key: "notes", header: "Notes", render: (row) => row.notes }
+  ], []);
 
   return (
     <div className="view-stack maintenance-command-page">
@@ -403,6 +520,7 @@ export function MaintenanceView() {
       <SheetsSourcePanel system={system} error={error} loading={loading} />
       <MaintenanceKpis rows={rows} />
       <MaintenanceFilters filters={filters} onFiltersChange={setFilters} rows={rows} />
+      <DraftPreview selection={draftSelection} />
 
       <section className="section-block">
         <div className="section-heading">
