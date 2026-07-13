@@ -8,7 +8,7 @@ const { google } = require("googleapis");
 const SCOPES = [
   "https://www.googleapis.com/auth/drive.metadata.readonly",
   "https://www.googleapis.com/auth/calendar.readonly",
-  "https://www.googleapis.com/auth/gmail.metadata",
+  "https://www.googleapis.com/auth/gmail.readonly",
   "https://www.googleapis.com/auth/tasks.readonly"
 ];
 
@@ -112,7 +112,7 @@ async function exchangeCode(codeArg) {
     GOOGLE_CALENDAR_READONLY_ENABLED: "true",
     GOOGLE_CALENDAR_READONLY_TOKEN: tokenJson,
     GOOGLE_GMAIL_READONLY_ENABLED: "true",
-    GOOGLE_GMAIL_METADATA_TOKEN: tokenJson,
+    GOOGLE_GMAIL_READONLY_TOKEN: tokenJson,
     GOOGLE_TASKS_READONLY_ENABLED: "true",
     GOOGLE_TASKS_READONLY_TOKEN: tokenJson
   };
