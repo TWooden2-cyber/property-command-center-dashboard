@@ -3779,6 +3779,7 @@ tbody tr:hover {
 .notice-filter-panel,
 .notice-proof-panel,
 .notice-approval-panel,
+.notice-process-tracker,
 .ten-day-notice-workspace,
 .notice-command-panel,
 .notice-action-card,
@@ -3815,10 +3816,118 @@ tbody tr:hover {
 .notice-command-header p,
 .notice-health-panel p,
 .notice-action-card p,
+.notice-process-tracker p,
 .ten-day-notice-workspace p,
 .notice-command-preview p {
   color: var(--cream-muted);
   line-height: 1.5;
+}
+
+.notice-process-tracker {
+  border-color: rgba(235, 196, 112, 0.34);
+}
+
+.notice-process-list {
+  display: grid;
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.notice-process-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(8, 7, 6, 0.32);
+  padding: 15px;
+}
+
+.notice-process-card > header {
+  align-items: center;
+  border-bottom: 1px solid rgba(235, 196, 112, 0.14);
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  padding-bottom: 12px;
+}
+
+.notice-process-card > header div {
+  display: grid;
+  gap: 4px;
+}
+
+.notice-process-card > header strong {
+  color: var(--cream);
+  font-size: 1rem;
+}
+
+.notice-process-card > header span,
+.notice-process-card > header small {
+  color: var(--muted);
+}
+
+.notice-process-card > header div:last-child {
+  text-align: right;
+}
+
+.notice-process-steps {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(130px, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.notice-process-step {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 6px;
+  min-height: 150px;
+  padding: 12px;
+}
+
+.notice-process-step span {
+  color: var(--cream);
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+.notice-process-step strong {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+}
+
+.notice-process-step small,
+.notice-process-step em {
+  color: var(--cream-muted);
+  font-size: 0.78rem;
+  font-style: normal;
+  line-height: 1.35;
+}
+
+.notice-process-step.green {
+  border-color: rgba(99, 190, 123, 0.48);
+  background: rgba(99, 190, 123, 0.12);
+}
+
+.notice-process-step.green strong {
+  color: #bff3c7;
+}
+
+.notice-process-step.yellow {
+  border-color: rgba(235, 196, 112, 0.52);
+  background: rgba(235, 196, 112, 0.12);
+}
+
+.notice-process-step.yellow strong {
+  color: var(--gold-soft);
+}
+
+.notice-process-step.red {
+  border-color: rgba(213, 106, 85, 0.5);
+  background: rgba(213, 106, 85, 0.12);
+}
+
+.notice-process-step.red strong {
+  color: #ffd5ca;
 }
 
 .ten-day-notice-workspace {
@@ -3868,6 +3977,14 @@ tbody tr:hover {
 
 .ten-day-list small {
   color: var(--muted);
+  line-height: 1.35;
+}
+
+.ten-day-list em {
+  color: var(--gold-soft);
+  font-size: 0.78rem;
+  font-style: normal;
+  font-weight: 900;
   line-height: 1.35;
 }
 
@@ -7190,8 +7307,19 @@ tbody tr:hover {
   }
 
   .ten-day-notice-layout,
+  .notice-process-card > header,
+  .notice-process-steps,
   .notice-message-drafts {
     grid-template-columns: 1fr;
+  }
+
+  .notice-process-card > header {
+    align-items: flex-start;
+    display: grid;
+  }
+
+  .notice-process-card > header div:last-child {
+    text-align: left;
   }
 
   .rent-chart-row strong {

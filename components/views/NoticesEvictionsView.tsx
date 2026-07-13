@@ -3,11 +3,10 @@
 import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { AlertTriangle, ClipboardCheck, Gavel, Mail, MessageSquare, Scale, Search, ShieldAlert } from "lucide-react";
-import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { EmptyState } from "@/components/DataState";
 import { SheetsSourcePanel } from "@/components/SheetsSourcePanel";
 import { StatusBadge } from "@/components/StatusBadge";
-import { localDevelopmentFallbackAllowed, noticeRecordToCommandRow } from "@/components/views/liveSheetAdapters";
+import { localDevelopmentFallbackAllowed, noticeRecordToCommandRow, rentRecordToCommandRow } from "@/components/views/liveSheetAdapters";
 import { useSheetsView } from "@/components/views/useSheetsView";
 import {
   commandCenterPeriod,
@@ -16,12 +15,17 @@ import {
   noticeRows,
   yearOptions,
   type NoticeCommandRow,
+  type RentCollectionRow,
   type SignalTone
 } from "@/lib/propertyCommandCenterData";
-import type { NoticeRecord } from "@/types/sheets";
+import type { NoticeRecord, RentRecord } from "@/types/sheets";
 
 type NoticesPayload = {
   rows: NoticeRecord[];
+};
+
+type RentPayload = {
+  rows: RentRecord[];
 };
 
 type NoticeFilter = {
@@ -95,6 +99,25 @@ const approvalGate = [
 ];
 
 const lawyerContact = "Matt Feinman <matt@keystonelegalpa.com>";
+const legalProcessSteps = [
+  "5 day grace period",
+  "10 day notice issued",
+  "Lawyer notified",
+  "Court date set",
+  "Eviction date",
+  "Lock out date"
+] as const;
+
+type LegalProcessStep = (typeof legalProcessSteps)[number];
+type StepTone = "green" | "yellow" | "red";
+
+type LegalProcessStatus = {
+  label: LegalProcessStep;
+  tone: StepTone;
+  status: string;
+  date: string;
+  reminder: string;
+};
 
 function proofStatus(row: NoticeCommandRow) {
   return row.proofStatus ?? "Not set";
@@ -146,11 +169,130 @@ function amountDueValue(row: NoticeCommandRow) {
   return Number.isFinite(value) ? value : 0;
 }
 
+function money(value: number) {
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
+}
+
 function dueForTenDayNotice(row: NoticeCommandRow) {
   if (isClosed(row)) return false;
   if (amountDueValue(row) <= 0) return false;
   const text = `${row.noticeType} ${row.status} ${ownerAction(row)} ${blockedAction(row)}`.toLowerCase();
   return text.includes("10-day") || text.includes("nonpayment") || text.includes("notice") || text.includes("ledger") || text.includes("verify");
+}
+
+function addDays(date: Date, days: number) {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+}
+
+function formatDate(value: Date) {
+  return value.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+function parseNoticeDate(row: NoticeCommandRow) {
+  const parsed = row.noticeDate ? new Date(row.noticeDate) : null;
+  if (parsed && !Number.isNaN(parsed.getTime())) return parsed;
+
+  const started = row.dateStarted ? new Date(row.dateStarted) : null;
+  if (started && !Number.isNaN(started.getTime())) return started;
+
+  return new Date();
+}
+
+function processTone(row: NoticeCommandRow, step: LegalProcessStep): StepTone {
+  const text = `${row.status} ${row.noticeType} ${proofStatus(row)} ${ownerAction(row)} ${blockedAction(row)}`.toLowerCase();
+
+  if (step === "5 day grace period") {
+    if (text.includes("closed") || text.includes("paid")) return "green";
+    return "yellow";
+  }
+
+  if (step === "10 day notice issued") {
+    if (text.includes("notice served") || text.includes("issued")) return "green";
+    if (text.includes("10-day") || text.includes("notice")) return "yellow";
+    return "red";
+  }
+
+  if (step === "Lawyer notified") {
+    if (text.includes("lawyer notified") || text.includes("attorney notified")) return "green";
+    return amountDueValue(row) > 0 ? "red" : "yellow";
+  }
+
+  if (step === "Court date set") {
+    if (text.includes("court date")) return "green";
+    return text.includes("lawyer") || text.includes("filing") ? "yellow" : "red";
+  }
+
+  if (step === "Eviction date") {
+    if (text.includes("eviction date")) return "green";
+    return text.includes("court") ? "yellow" : "red";
+  }
+
+  if (text.includes("lock out") || text.includes("lockout")) return "green";
+  return text.includes("eviction") ? "yellow" : "red";
+}
+
+function legalProcessStatus(row: NoticeCommandRow): LegalProcessStatus[] {
+  const base = parseNoticeDate(row);
+  const dates: Record<LegalProcessStep, Date> = {
+    "5 day grace period": addDays(base, 5),
+    "10 day notice issued": addDays(base, 10),
+    "Lawyer notified": addDays(base, 11),
+    "Court date set": addDays(base, 16),
+    "Eviction date": addDays(base, 26),
+    "Lock out date": addDays(base, 31)
+  };
+
+  return legalProcessSteps.map((label) => {
+    const tone = processTone(row, label);
+    const date = formatDate(dates[label]);
+    return {
+      label,
+      tone,
+      date,
+      status: tone === "green" ? "Completed" : tone === "yellow" ? "Current / pending" : "Needs completion",
+      reminder: label === "Lawyer notified" ? `Follow up with ${lawyerContact} on ${date}` : `Calendar reminder target: ${date}`
+    };
+  });
+}
+
+function latestRentMonth(rows: RentCollectionRow[]) {
+  if (rows.some((row) => row.month === commandCenterPeriod.label)) {
+    return commandCenterPeriod.label;
+  }
+
+  const months = rows.map((row) => row.month).filter(Boolean).sort();
+  return months[months.length - 1] ?? "";
+}
+
+function noticeRowFromRent(row: RentCollectionRow): NoticeCommandRow {
+  return {
+    id: `rent-notice-${row.id}`,
+    dateStarted: row.dueDate || "",
+    property: row.property,
+    unit: row.unit,
+    tenant: row.tenant || row.unit,
+    noticeType: "10-Day Notice for Nonpayment Review",
+    amountOwed: money(row.balance),
+    noticeDate: row.dueDate || "Owner to set",
+    status: `${row.status} / Notice review`,
+    proofStatus: row.method || "Rent ledger review needed",
+    ownerAction: "Verify monthly rent balance before notice, tenant message, or lawyer escalation.",
+    blockedAction: "Do not send, serve, file, or contact tenant/lawyer until owner approval."
+  };
+}
+
+function buildNoticeReviewRows(noticeRowsForPage: NoticeCommandRow[], rentRowsForPage: RentCollectionRow[]) {
+  const latestMonth = latestRentMonth(rentRowsForPage);
+  const currentRentRows = rentRowsForPage.filter((row) => (!latestMonth || row.month === latestMonth) && row.property.toLowerCase().includes("7-unit"));
+  const existingUnitKeys = new Set(noticeRowsForPage.map((row) => `${row.property}|${row.unit}`.toLowerCase()));
+  const rentNoticeRows = currentRentRows
+    .filter((row) => row.balance > 0)
+    .filter((row) => !existingUnitKeys.has(`${row.property}|${row.unit}`.toLowerCase()))
+    .map(noticeRowFromRent);
+
+  return [...noticeRowsForPage, ...rentNoticeRows];
 }
 
 function tenantEmailDraft(row: NoticeCommandRow) {
@@ -219,6 +361,54 @@ function DraftBox({ title, icon, body }: { title: string; icon: ReactNode; body:
   );
 }
 
+function NoticeProcessTracker({ rows }: { rows: NoticeCommandRow[] }) {
+  const processRows = rows.filter((row) => amountDueValue(row) > 0 && !isClosed(row));
+
+  return (
+    <section className="notice-process-tracker">
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">Status update</p>
+          <h3>Late rent notice process tracker</h3>
+          <p>Step-by-step status by tenant. Green is complete, yellow is current or pending, and red needs completion.</p>
+        </div>
+        <StatusBadge label="Calendar reminder dates shown / not written" />
+      </div>
+
+      {processRows.length ? (
+        <div className="notice-process-list">
+          {processRows.map((row) => (
+            <article key={row.id} className="notice-process-card">
+              <header>
+                <div>
+                  <strong>{row.tenant}</strong>
+                  <span>{row.property} - {row.unit}</span>
+                </div>
+                <div>
+                  <small>Amount owed</small>
+                  <strong>{row.amountOwed}</strong>
+                </div>
+              </header>
+              <div className="notice-process-steps">
+                {legalProcessStatus(row).map((step) => (
+                  <div key={step.label} className={`notice-process-step ${step.tone}`}>
+                    <span>{step.label}</span>
+                    <strong>{step.status}</strong>
+                    <small>{step.date}</small>
+                    <em>{step.reminder}</em>
+                  </div>
+                ))}
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <EmptyState title="No open balances in the notice process tracker" message="No current tenant rows show an open balance requiring this step-by-step notice process." />
+      )}
+    </section>
+  );
+}
+
 function TenDayNoticeWorkspace({ rows }: { rows: NoticeCommandRow[] }) {
   const candidates = rows.filter(dueForTenDayNotice);
   const [selectedId, setSelectedId] = useState(candidates[0]?.id ?? "");
@@ -248,6 +438,7 @@ function TenDayNoticeWorkspace({ rows }: { rows: NoticeCommandRow[] }) {
                 <span>{row.tenant}</span>
                 <strong>{row.amountOwed}</strong>
                 <small>{row.property} - {row.unit}</small>
+                <em>{row.status}</em>
               </button>
             ))}
           </div>
@@ -525,35 +716,19 @@ function NoticeOperationalSections() {
 export function NoticesEvictionsView() {
   const [filters, setFilters] = useState(defaultFilters);
   const { data, system, error, loading } = useSheetsView<NoticesPayload>("notices-evictions");
+  const { data: rentData } = useSheetsView<RentPayload>("rent-collection");
   const rows = useMemo(() => (data?.rows ? data.rows.map(noticeRecordToCommandRow) : localDevelopmentFallbackAllowed ? noticeRows : []), [data]);
-  const filteredRows = useMemo(() => rows.filter((row) => matchesFilters(row, filters)), [filters, rows]);
-
-  const columns: DataTableColumn<NoticeCommandRow>[] = [
-    { key: "dateStarted", header: "Date Started", render: (row) => row.dateStarted },
-    { key: "property", header: "Property", render: (row) => row.property },
-    { key: "unit", header: "Unit", render: (row) => row.unit },
-    { key: "tenant", header: "Tenant", render: (row) => row.tenant },
-    { key: "noticeType", header: "Notice Type", render: (row) => row.noticeType },
-    { key: "amountOwed", header: "Amount Owed", render: (row) => row.amountOwed },
-    { key: "noticeDate", header: "Notice Date", render: (row) => row.noticeDate },
-    { key: "status", header: "Status", render: (row) => <StatusBadge label={row.status} /> },
-    { key: "proofStatus", header: "Proof Status", render: (row) => proofStatus(row) },
-    { key: "ownerAction", header: "Owner Action", render: (row) => ownerAction(row) },
-    { key: "blockedAction", header: "Blocked Action", render: (row) => blockedAction(row) },
-    { key: "risk", header: "Risk", render: (row) => <span className={`risk-dot ${statusTone(row)}`}>{statusTone(row) === "green" ? "Closed" : statusTone(row) === "yellow" ? "Review" : "Blocked"}</span> }
-  ];
+  const rentRows = useMemo(() => (rentData?.rows ? rentData.rows.map(rentRecordToCommandRow) : []), [rentData]);
+  const noticeReviewRows = useMemo(() => buildNoticeReviewRows(rows, rentRows), [rows, rentRows]);
+  const filteredRows = useMemo(() => noticeReviewRows.filter((row) => matchesFilters(row, filters)), [filters, noticeReviewRows]);
 
   return (
     <div className="notice-command-page">
       <NoticesHeader />
       <SheetsSourcePanel system={system} error={error} loading={loading} />
-      <NoticeFilters filters={filters} onChange={setFilters} rows={rows} />
-      {filteredRows.length ? (
-        <DataTable rows={filteredRows} columns={columns} />
-      ) : (
-        <EmptyState title="No notice records match these filters" message="Reset filters or check the live Google Sheets source." />
-      )}
-      <TenDayNoticeWorkspace rows={filteredRows.length ? filteredRows : rows} />
+      <NoticeFilters filters={filters} onChange={setFilters} rows={noticeReviewRows} />
+      <NoticeProcessTracker rows={filteredRows.length ? filteredRows : noticeReviewRows} />
+      <TenDayNoticeWorkspace rows={filteredRows.length ? filteredRows : noticeReviewRows} />
       <NoticeHealthEvaluation />
       <DraftStatusSection />
       <NoticeOperationalSections />
