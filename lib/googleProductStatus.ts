@@ -13,7 +13,7 @@ import {
 import type { GoogleProductErrorCode, GoogleProductName, GoogleProductStatus } from "@/types/googleProducts";
 
 export const GOOGLE_READONLY_SCOPES = [
-  "https://www.googleapis.com/auth/gmail.metadata",
+  "https://www.googleapis.com/auth/gmail.readonly",
   "https://www.googleapis.com/auth/drive.metadata.readonly",
   "https://www.googleapis.com/auth/calendar.readonly",
   "https://www.googleapis.com/auth/tasks.readonly"
@@ -25,7 +25,7 @@ const DRIVE_FILE_SCOPE = "https://www.googleapis.com/auth/drive.file";
 const CALENDAR_SCOPE = "https://www.googleapis.com/auth/calendar.readonly";
 const CALENDAR_FULL_SCOPE = "https://www.googleapis.com/auth/calendar";
 const CALENDAR_EVENTS_SCOPE = "https://www.googleapis.com/auth/calendar.events";
-const GMAIL_SCOPE = "https://www.googleapis.com/auth/gmail.metadata";
+const GMAIL_SCOPE = "https://www.googleapis.com/auth/gmail.readonly";
 const TASKS_SCOPE = "https://www.googleapis.com/auth/tasks.readonly";
 const TASKS_FULL_SCOPE = "https://www.googleapis.com/auth/tasks";
 
@@ -366,7 +366,7 @@ export async function getGmailProductStatus(): Promise<GoogleProductStatus> {
   }
 
   const config = getGoogleOAuthConfig("GOOGLE_GMAIL_READONLY_TOKEN", ["GMAIL_READONLY_TOKEN", "GOOGLE_GMAIL_METADATA_TOKEN", "GMAIL_METADATA_TOKEN"]);
-  const preflight = oauthPreflight("Gmail", "read-only metadata", config, [GMAIL_SCOPE]);
+  const preflight = oauthPreflight("Gmail", "read-only full intake", config, [GMAIL_SCOPE]);
   if (preflight) return preflight;
 
   try {
@@ -378,9 +378,9 @@ export async function getGmailProductStatus(): Promise<GoogleProductStatus> {
 
     return liveStatus(
       "Gmail",
-      "read-only metadata",
+      "read-only full intake",
       config,
-      "Gmail metadata connection verified. Sending, modifying Gmail, and reading message bodies remain blocked.",
+      "Gmail read-only connection verified for full email intake. Sending and modifying Gmail remain blocked.",
       {
         emailAddress: profile.data.emailAddress || null,
         unreadCount: unread.data.resultSizeEstimate ?? null,
@@ -390,7 +390,7 @@ export async function getGmailProductStatus(): Promise<GoogleProductStatus> {
       profile.data.emailAddress || null
     );
   } catch (error) {
-    return apiErrorStatus("Gmail", error, "read-only metadata", config);
+    return apiErrorStatus("Gmail", error, "read-only full intake", config);
   }
 }
 
