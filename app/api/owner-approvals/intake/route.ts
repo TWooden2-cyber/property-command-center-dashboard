@@ -9,7 +9,8 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 const GMAIL_READ_SCOPE = "https://www.googleapis.com/auth/gmail.readonly";
-const GMAIL_INTAKE_QUERY = "-in:spam -in:trash";
+const GMAIL_INTAKE_START_DATE = "2025/12/31";
+const GMAIL_INTAKE_QUERY = `-in:spam -in:trash after:${GMAIL_INTAKE_START_DATE}`;
 const ACTION_TERMS =
   /(repair|maintenance|invoice|estimate|photo|receipt|rent|payment|ledger|balance|late|eviction|notice|court|rfta|section 8|hacp|lease|addendum|insurance|policy|claim|mortgage|lender|mbfs|inspection|inspector|code enforcement|violation|duquesne|utility|water|sewer|gas|trash|internet|electric|google voice|voicemail|voice message|tenant|vendor|owner approval|228|reifert|3103|courtney|killeen|arti management|unit\s*[a-d]\b|apt\s*[a-d]\b|apartment\s*[a-d]\b|4.?unit|four unit|fourplex|7.?unit)/i;
 
@@ -79,7 +80,7 @@ function emptyAudit(): IntakeAuditReport {
     includesArchived: true,
     includesSentIfMatched: true,
     excludesSpamTrash: true,
-    dateLimit: "No explicit date limit",
+    dateLimit: "January 1, 2026 through current mailbox",
     entries: [],
     progress: {
       messagesScanned: 0,
