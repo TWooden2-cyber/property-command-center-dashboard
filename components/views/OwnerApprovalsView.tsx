@@ -368,6 +368,11 @@ function buildMassPrompt(records: OwnerApprovalRecord[]) {
   return lines.join("\n");
 }
 
+function sourceEmailUrl(record: OwnerApprovalRecord) {
+  const sourceId = record.sourceThreadId || record.sourceMessageId;
+  return sourceId ? `https://mail.google.com/mail/u/0/#all/${encodeURIComponent(sourceId)}` : "";
+}
+
 function ExpandedTask({
   record,
   editingSection,
@@ -394,6 +399,7 @@ function ExpandedTask({
   onCollapse: () => void;
 }) {
   const history = record.statusHistory || [];
+  const emailUrl = sourceEmailUrl(record);
 
   return (
     <section className="queue-expanded-task">
@@ -420,12 +426,15 @@ function ExpandedTask({
           title="Review Summary"
           editValue={editValue}
           isEditing={editingSection === "reviewSummary"}
-          onView={() => onView("reviewSummary")}
+          onView={() => {
+            if (emailUrl) window.open(emailUrl, "_blank", "noopener,noreferrer");
+            else onView("reviewSummary");
+          }}
           onEdit={() => onStartEdit("reviewSummary")}
           onEditValue={onEditValue}
           onSave={onSaveSection}
           onCancel={onCancelEdit}
-          action={<button type="button" onClick={() => onView("reviewSummary")}>View Original Message</button>}
+          action={emailUrl ? <a className="queue-card-link-button" href={emailUrl} target="_blank" rel="noreferrer">Open referenced email</a> : <button type="button" onClick={() => onView("reviewSummary")}>Review source details</button>}
         >
           {record.reviewSummary.map((line) => <p key={line}>{line}</p>)}
           <dl className="summary-meta">
@@ -436,7 +445,7 @@ function ExpandedTask({
           </dl>
         </DetailCard>
 
-        <DetailCard
+        {false ? <DetailCard
           title={`Supporting Documents (${record.documents.length})`}
           editValue={editValue}
           isEditing={editingSection === "documents"}
@@ -458,7 +467,7 @@ function ExpandedTask({
               </article>
             ))}
           </div>
-        </DetailCard>
+        </DetailCard> : null}
 
         <DetailCard title="Draft Response" editValue={editValue} isEditing={editingSection === "draftResponse"} onView={() => onView("draftResponse")} onEdit={() => onStartEdit("draftResponse")} onEditValue={onEditValue} onSave={onSaveSection} onCancel={onCancelEdit} action={<button type="button" onClick={() => onStartEdit("draftResponse")}>Edit Draft</button>}>
           <pre className="draft-response-box">{record.draftResponse || "No draft response needed for this task."}</pre>
@@ -470,11 +479,11 @@ function ExpandedTask({
           <p><strong>ETA:</strong> {record.eta}</p>
         </DetailCard>
 
-        <DetailCard title="Estimated Cost" editValue={editValue} isEditing={editingSection === "estimatedCost"} onView={() => onView("estimatedCost")} onEdit={() => onStartEdit("estimatedCost")} onEditValue={onEditValue} onSave={onSaveSection} onCancel={onCancelEdit} action={<button type="button" onClick={() => onStartEdit("estimatedCost")}>View Estimate</button>}>
+        {record.estimatedCost > 0 ? <DetailCard title="Estimated Cost" editValue={editValue} isEditing={editingSection === "estimatedCost"} onView={() => onView("estimatedCost")} onEdit={() => onStartEdit("estimatedCost")} onEditValue={onEditValue} onSave={onSaveSection} onCancel={onCancelEdit} action={<button type="button" onClick={() => onStartEdit("estimatedCost")}>Edit Estimate</button>}>
           <strong className="estimated-cost">{money(record.estimatedCost)}</strong>
           <p>Range: {record.costRange}</p>
           <p>{record.costNote}</p>
-        </DetailCard>
+        </DetailCard> : null}
 
         <DetailCard title="Deadline" editValue={editValue} isEditing={editingSection === "deadline"} onView={() => onView("deadline")} onEdit={() => onStartEdit("deadline")} onEditValue={onEditValue} onSave={onSaveSection} onCancel={onCancelEdit} action={<button type="button" onClick={() => onStartEdit("deadline")}>Edit Deadline</button>}>
           <p>{record.deadlineLabel}</p>
@@ -768,8 +777,8 @@ export function OwnerApprovalsView() {
             </thead>
             <tbody>
               {needsReviewRecords.slice(0, 8).map((record) => (
-                <tr key={record.id}>
-                  <td><button type="button" className="id-link" onClick={() => setOpenId(record.id)}>{record.id}</button></td>
+                <tr key={record.id} className={openId === record.id ? "approval-row-active" : ""} onClick={() => setOpenId(record.id)}>
+                  <td><button type="button" className="id-link" onClick={(event) => { event.stopPropagation(); setOpenId(record.id); }}>{record.id}</button></td>
                   <td><span className="source-cell">{sourceMark(record.source)}{record.source}</span><br /><small>{record.sourceMode}</small></td>
                   <td><Pill tone={categoryTone(record.category)}>{record.category}</Pill></td>
                   <td>{record.propertyUnit}</td>
@@ -777,7 +786,7 @@ export function OwnerApprovalsView() {
                   <td>{record.receivedDate}<br /><span>{record.receivedTime}</span></td>
                   <td><Pill tone={priorityTone(record.priority)}>{record.priority}</Pill></td>
                   <td><Pill tone={record.sourceMode === "Blocked" ? "red" : "status-blue"}>{record.status}</Pill></td>
-                  <td><button className="row-collapse-button" type="button" onClick={() => setOpenId(openId === record.id ? "" : record.id)}>{openId === record.id ? <ChevronUp size={16} aria-hidden /> : <ChevronDown size={16} aria-hidden />}</button></td>
+                  <td><button className="row-collapse-button" type="button" onClick={(event) => { event.stopPropagation(); setOpenId(openId === record.id ? "" : record.id); }}>{openId === record.id ? <ChevronUp size={16} aria-hidden /> : <ChevronDown size={16} aria-hidden />}</button></td>
                 </tr>
               ))}
               {!needsReviewRecords.length ? <tr><td colSpan={9} className="approval-empty-row">No items currently need owner approval. Approved, returned, and rejected items can be reopened below.</td></tr> : null}

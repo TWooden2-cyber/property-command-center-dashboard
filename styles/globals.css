@@ -5294,19 +5294,22 @@ tbody tr:hover {
 }
 
 .approval-mock-table {
-  min-width: 1180px;
+  min-width: 1320px;
   width: 100%;
   border-collapse: collapse;
+  table-layout: fixed;
 }
 
 .approval-mock-table th,
 .approval-mock-table td {
   border-bottom: 1px solid #e6edf5;
-  padding: 15px 16px;
+  padding: 12px 14px;
   color: #172033;
   text-align: left;
-  vertical-align: middle;
-  font-size: 0.88rem;
+  vertical-align: top;
+  font-size: 0.82rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 .approval-mock-table th {
@@ -5319,6 +5322,14 @@ tbody tr:hover {
 
 .approval-mock-table tbody tr:hover {
   background: #f8fbff;
+}
+
+.approval-mock-table tbody tr {
+  cursor: pointer;
+}
+
+.approval-row-active {
+  background: rgba(201, 164, 81, 0.12) !important;
 }
 
 .approval-mock-table td span {
@@ -5486,8 +5497,8 @@ tbody tr:hover {
 
 .queue-detail-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr 1.35fr 1.1fr 0.95fr 1fr;
-  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
 }
 
 .queue-detail-card {
@@ -6066,6 +6077,46 @@ tbody tr:hover {
   color: var(--muted) !important;
 }
 
+.approval-mock-table th:nth-child(1),
+.approval-mock-table td:nth-child(1) {
+  width: 150px;
+}
+
+.approval-mock-table th:nth-child(2),
+.approval-mock-table td:nth-child(2) {
+  width: 135px;
+}
+
+.approval-mock-table th:nth-child(3),
+.approval-mock-table td:nth-child(3) {
+  width: 130px;
+}
+
+.approval-mock-table th:nth-child(4),
+.approval-mock-table td:nth-child(4) {
+  width: 180px;
+}
+
+.approval-mock-table th:nth-child(5),
+.approval-mock-table td:nth-child(5) {
+  width: 330px;
+}
+
+.approval-mock-table th:nth-child(6),
+.approval-mock-table td:nth-child(6),
+.approval-mock-table th:nth-child(7),
+.approval-mock-table td:nth-child(7),
+.approval-mock-table th:nth-child(8),
+.approval-mock-table td:nth-child(8) {
+  width: 120px;
+}
+
+.approval-mock-table th:nth-child(9),
+.approval-mock-table td:nth-child(9) {
+  width: 72px;
+  text-align: center;
+}
+
 .id-link {
   color: var(--gold-soft);
   text-decoration: underline;
@@ -6144,6 +6195,55 @@ tbody tr:hover {
 
 .queue-detail-card header {
   border-bottom: 1px solid var(--line);
+  min-height: 56px;
+  padding: 10px 14px;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.detail-card-controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+  min-width: 0;
+}
+
+.detail-card-controls button {
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid rgba(201, 164, 81, 0.32);
+  border-radius: 7px;
+  color: var(--gold-soft);
+  background: rgba(201, 164, 81, 0.08);
+  font-size: 0.78rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.queue-detail-card h3 {
+  max-width: 220px;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.queue-detail-card-body {
+  overflow-wrap: anywhere;
+}
+
+.queue-card-link-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid rgba(201, 164, 81, 0.36);
+  border-radius: 6px;
+  color: var(--gold-soft);
+  background: rgba(201, 164, 81, 0.1);
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-decoration: none;
 }
 
 .queue-detail-card p,
