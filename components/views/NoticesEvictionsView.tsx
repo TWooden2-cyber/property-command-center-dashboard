@@ -283,16 +283,35 @@ function noticeRowFromRent(row: RentCollectionRow): NoticeCommandRow {
   };
 }
 
+function mergeNoticeWithRentBalance(noticeRow: NoticeCommandRow, rentRow: RentCollectionRow) {
+  if (rentRow.balance <= 0) return noticeRow;
+
+  return {
+    ...noticeRow,
+    id: `${noticeRow.id}-rent-balance`,
+    tenant: noticeRow.tenant || rentRow.tenant || rentRow.unit,
+    amountOwed: money(rentRow.balance),
+    status: `${rentRow.status} / ${noticeRow.status || "Notice review"}`,
+    proofStatus: [proofStatus(noticeRow), rentRow.method].filter(Boolean).join(" | "),
+    ownerAction: [ownerAction(noticeRow), "Verify monthly rent balance before notice, tenant message, or lawyer escalation."].filter(Boolean).join(" | ")
+  };
+}
+
 function buildNoticeReviewRows(noticeRowsForPage: NoticeCommandRow[], rentRowsForPage: RentCollectionRow[]) {
   const latestMonth = latestRentMonth(rentRowsForPage);
   const currentRentRows = rentRowsForPage.filter((row) => (!latestMonth || row.month === latestMonth) && row.property.toLowerCase().includes("7-unit"));
-  const existingUnitKeys = new Set(noticeRowsForPage.map((row) => `${row.property}|${row.unit}`.toLowerCase()));
+  const rentRowsByUnit = new Map(currentRentRows.map((row) => [`${row.property}|${row.unit}`.toLowerCase(), row]));
+  const mergedNoticeRows = noticeRowsForPage.map((row) => {
+    const rentRow = rentRowsByUnit.get(`${row.property}|${row.unit}`.toLowerCase());
+    return rentRow ? mergeNoticeWithRentBalance(row, rentRow) : row;
+  });
+  const existingUnitKeys = new Set(mergedNoticeRows.map((row) => `${row.property}|${row.unit}`.toLowerCase()));
   const rentNoticeRows = currentRentRows
     .filter((row) => row.balance > 0)
     .filter((row) => !existingUnitKeys.has(`${row.property}|${row.unit}`.toLowerCase()))
     .map(noticeRowFromRent);
 
-  return [...noticeRowsForPage, ...rentNoticeRows];
+  return [...mergedNoticeRows, ...rentNoticeRows];
 }
 
 function tenantEmailDraft(row: NoticeCommandRow) {
