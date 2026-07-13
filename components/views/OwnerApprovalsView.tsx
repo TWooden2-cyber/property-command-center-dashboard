@@ -30,7 +30,6 @@ import {
 import {
   defaultOwnerInstruction,
   ownerApprovalCategories,
-  ownerApprovalRecords,
   type OwnerApprovalCategory,
   type OwnerApprovalDecision,
   type OwnerApprovalPriority,
@@ -40,7 +39,8 @@ import {
 } from "@/lib/ownerApprovals";
 import { money } from "@/lib/propertyCommandCenterData";
 
-const storageKey = "owner-command-center.owner-approval-queue.mockup.v3";
+const storageKey = "owner-command-center.owner-approval-queue.live.v1";
+const legacyStorageKeys = ["owner-command-center.owner-approval-queue.mockup.v3"];
 
 type CategoryFilter = "All Categories" | OwnerApprovalCategory;
 type PropertyFilter = "All Properties" | string;
@@ -512,9 +512,9 @@ function ExpandedTask({
 }
 
 export function OwnerApprovalsView() {
-  const [records, setRecords] = useState<OwnerApprovalRecord[]>(ownerApprovalRecords.map(normalizeRecord));
+  const [records, setRecords] = useState<OwnerApprovalRecord[]>([]);
   const [loaded, setLoaded] = useState(false);
-  const [openId, setOpenId] = useState(ownerApprovalRecords[0]?.id ?? "");
+  const [openId, setOpenId] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("All Categories");
   const [propertyFilter, setPropertyFilter] = useState<PropertyFilter>("All Properties");
   const [massPrompt, setMassPrompt] = useState("");
@@ -550,14 +550,9 @@ export function OwnerApprovalsView() {
   const lowCount = pendingRecords.filter((record) => record.priority === "Low").length;
 
   useEffect(() => {
-    try {
-      const saved = window.localStorage.getItem(storageKey);
-      if (saved) setRecords((JSON.parse(saved) as OwnerApprovalRecord[]).map(normalizeRecord));
-    } catch {
-      setRecords(ownerApprovalRecords.map(normalizeRecord));
-    } finally {
-      setLoaded(true);
-    }
+    legacyStorageKeys.forEach((key) => window.localStorage.removeItem(key));
+    setLoaded(true);
+    void checkIntake({ reason: "load" });
   }, []);
 
   useEffect(() => {
@@ -611,13 +606,16 @@ export function OwnerApprovalsView() {
     setConfirmation("Owner instructions saved.");
   }
 
-  async function checkIntake() {
+  async function checkIntake(options: { reason?: "load" | "manual" } = {}) {
     setSyncing(true);
     setConnectionWarning("");
-    setConfirmation("Checking Gmail metadata and Google Voice workaround sources...");
+    setConfirmation(options.reason === "load" ? "Loading live owner approval intake..." : "Checking Gmail and Google Voice workaround sources...");
     try {
       const response = await fetch("/api/owner-approvals/intake", { cache: "no-store" });
       const data = (await response.json()) as IntakeSyncResponse;
+      if (!response.ok || !data.ok) {
+        throw new Error("Live owner approval intake is unavailable.");
+      }
       setIntakeAudit(data.intakeAudit || null);
       const gmailStatus = data.statuses?.find((status) => status.product === "Gmail");
       const driveStatus = data.statuses?.find((status) => status.product === "Google Drive");
@@ -627,28 +625,38 @@ export function OwnerApprovalsView() {
       const incoming = (data.items || []).map(normalizeRecord);
       setRecords((current) => {
         const byId = new Map(current.map((record) => [record.id, record]));
-        incoming.forEach((record) => byId.set(record.id, { ...record, statusHistory: byId.get(record.id)?.statusHistory || record.statusHistory || [] }));
-        return Array.from(byId.values());
+        return incoming.map((record) => {
+          const existing = byId.get(record.id);
+          return existing
+            ? {
+                ...record,
+                ownerDecision: existing.ownerDecision,
+                ownerInstructions: existing.ownerInstructions,
+                status: existing.status,
+                statusHistory: existing.statusHistory || record.statusHistory || [],
+                rejectionReason: existing.rejectionReason
+              }
+            : record;
+        });
       });
-      setConfirmation(`${incoming.length} intake item(s) checked. ${data.safety}`);
-      if (incoming[0]) setOpenId(incoming[0].id);
+      setConfirmation(`${incoming.length} live intake item(s) loaded. ${data.safety}`);
+      setOpenId((current) => incoming.some((record) => record.id === current) ? current : incoming[0]?.id || "");
     } catch (error) {
       setConnectionWarning("Gmail disconnected — reconnect required");
-      setConfirmation(error instanceof Error ? `Intake check blocked: ${error.message}` : "Intake check blocked.");
+      setRecords([]);
+      setOpenId("");
+      setConfirmation(error instanceof Error ? `Live intake blocked: ${error.message}` : "Live intake blocked.");
     } finally {
       setSyncing(false);
     }
   }
 
   function refreshQueue() {
-    const reset = ownerApprovalRecords.map(normalizeRecord);
-    setRecords(reset);
-    setOpenId(reset[0]?.id ?? "");
     setMassPrompt("");
     setEditingSection(null);
     setIntakeAudit(null);
-    setConfirmation("Queue refreshed to sample records. Run Check Gmail & Voice Intake for connector status.");
     window.localStorage.removeItem(storageKey);
+    void checkIntake({ reason: "manual" });
   }
 
   const prompt = massPrompt || buildMassPrompt(records);
@@ -694,7 +702,7 @@ export function OwnerApprovalsView() {
             </select>
             <button type="button"><Filter size={17} aria-hidden />Filters</button>
             <button type="button" onClick={refreshQueue}><RefreshCw size={17} aria-hidden />Refresh</button>
-            <button type="button" onClick={checkIntake} disabled={syncing}><RefreshCw size={17} aria-hidden />{syncing ? "Checking..." : "Check Gmail & Voice Intake"}</button>
+            <button type="button" onClick={() => checkIntake({ reason: "manual" })} disabled={syncing}><RefreshCw size={17} aria-hidden />{syncing ? "Checking..." : "Check Gmail & Voice Intake"}</button>
           </div>
         </header>
 
