@@ -3160,7 +3160,7 @@ tbody tr:hover {
 
 .rent-chart-row {
   display: grid;
-  grid-template-columns: minmax(130px, 190px) minmax(150px, 1fr) 112px;
+  grid-template-columns: minmax(130px, 190px) 112px minmax(150px, 1fr) 112px;
   gap: 12px;
   align-items: center;
 }
@@ -3172,6 +3172,14 @@ tbody tr:hover {
 .rent-chart-row strong {
   text-align: right;
   font-variant-numeric: tabular-nums;
+}
+
+.rent-owed-value {
+  color: #ffb7a8;
+}
+
+.rent-total-value {
+  color: var(--cream);
 }
 
 .bar-fill.rent-projected {

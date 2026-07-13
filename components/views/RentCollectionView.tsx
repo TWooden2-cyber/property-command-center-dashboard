@@ -374,13 +374,14 @@ function BalanceByUnitChart({ rows: sourceRows }: { rows: RentCollectionRow[] })
         {rows.map((row) => (
           <div key={row.id} className="rent-chart-row">
             <span>{row.property} {row.unit}</span>
+            <strong className="rent-owed-value">{liveMoney(row.balance)}</strong>
             <div className="bar-track">
               <div
                 className={`bar-fill rent-balance rent-balance-${collectionTone(row)}`}
                 style={{ "--bar-width": `${row.balance > 0 ? Math.max((row.balance / max) * 100, 4) : 4}%` } as CSSProperties}
               />
             </div>
-            <strong>{liveMoney(row.balance)}</strong>
+            <strong className="rent-total-value">{liveMoney(row.rentDue)}</strong>
           </div>
         ))}
       </div>
