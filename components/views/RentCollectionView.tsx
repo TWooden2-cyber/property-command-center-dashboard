@@ -190,11 +190,13 @@ function parseRowMonthYear(row: RentCollectionRow) {
 }
 
 function collectionTone(row: RentCollectionRow) {
-  if (row.rentDue <= 0 && row.balance <= 0) {
+  const monthlyRent = monthlyRentForRow(row);
+
+  if (monthlyRent <= 0 && row.balance <= 0) {
     return "paid";
   }
 
-  const paidRatio = row.rentDue > 0 ? row.paid / row.rentDue : 0;
+  const paidRatio = monthlyRent > 0 ? Math.max(monthlyRent - row.balance, 0) / monthlyRent : 0;
 
   if (row.balance <= 0 || paidRatio >= 1) {
     return "paid";
@@ -205,6 +207,24 @@ function collectionTone(row: RentCollectionRow) {
   }
 
   return "under-half";
+}
+
+function monthlyRentForRow(row: RentCollectionRow) {
+  if (row.property === "7-Unit") {
+    const rentByUnit: Record<string, number> = {
+      "Unit 1": 1000,
+      "Unit 2": 1350,
+      "Unit 3": 1350,
+      "Unit 4": 1350,
+      "Unit 5": 1350,
+      "Unit 6": 1000,
+      "Unit 7": 1000
+    };
+
+    return rentByUnit[row.unit] ?? row.rentDue;
+  }
+
+  return row.rentDue;
 }
 
 function statusTone(row: RentCollectionRow): SignalTone {
@@ -359,7 +379,6 @@ function PaidProjectedChart({ title, projected, collected }: { title: string; pr
 
 function BalanceByUnitChart({ rows: sourceRows }: { rows: RentCollectionRow[] }) {
   const rows = sourceRows;
-  const max = Math.max(...rows.map((row) => row.balance), 1);
 
   return (
     <section className="chart-card rent-chart-card">
@@ -378,10 +397,10 @@ function BalanceByUnitChart({ rows: sourceRows }: { rows: RentCollectionRow[] })
             <div className="bar-track">
               <div
                 className={`bar-fill rent-balance rent-balance-${collectionTone(row)}`}
-                style={{ "--bar-width": `${row.balance > 0 ? Math.max((row.balance / max) * 100, 4) : 4}%` } as CSSProperties}
+                style={{ "--bar-width": `${row.balance > 0 && monthlyRentForRow(row) > 0 ? Math.max(Math.min((row.balance / monthlyRentForRow(row)) * 100, 100), 4) : 4}%` } as CSSProperties}
               />
             </div>
-            <strong className="rent-total-value">{liveMoney(row.rentDue)}</strong>
+            <strong className="rent-total-value">{liveMoney(monthlyRentForRow(row))}</strong>
           </div>
         ))}
       </div>
