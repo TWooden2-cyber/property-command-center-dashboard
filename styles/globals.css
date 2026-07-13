@@ -3574,6 +3574,14 @@ tbody tr:hover {
   padding: 9px 13px;
 }
 
+.maintenance-prompt-card {
+  grid-column: 1 / -1;
+}
+
+.maintenance-prompt-card textarea {
+  min-height: 260px;
+}
+
 .maintenance-blocked-panel {
   border-color: rgba(213, 106, 85, 0.38);
 }

@@ -152,6 +152,61 @@ function decisionTextDraft(row: MaintenanceCommandRow, decision: MaintenanceDeci
   return `Maintenance update for ${row.property} ${row.unit}: please place this work order on hold and do not proceed until I confirm the next step. Issue: ${row.issue}`;
 }
 
+function codexStatusPrompt(row: MaintenanceCommandRow, decision: MaintenanceDecision) {
+  const targetStatus = decision === "Complete" ? "Complete" : decision === "Denial" ? "Denied" : "On Hold";
+  const completionInstructions =
+    decision === "Complete"
+      ? [
+          "Mark the maintenance issue status as Complete.",
+          "Set Date Completed to today's date unless a better completion date is provided in the proof.",
+          "Confirm proof/photos/invoice/completion notes are saved or flag proof missing if not available.",
+          "Update the dashboard maintenance status and remove this item from open maintenance counts."
+        ]
+      : decision === "Denial"
+        ? [
+            "Mark the maintenance issue status as Denied.",
+            "Do not assign the vendor or schedule work.",
+            "Keep proof requirements closed as not applicable unless proof already exists.",
+            "Update the dashboard maintenance status and activity log."
+          ]
+        : [
+            "Mark the maintenance issue status as On Hold.",
+            "Keep this item visible in open maintenance until the hold is released.",
+            "Add an owner follow-up note explaining that no work should proceed yet.",
+            "Update the dashboard maintenance status and activity log."
+          ];
+
+  return `Update the property management portal records for this maintenance item only.
+
+Decision: ${decision}
+Target maintenance status: ${targetStatus}
+
+Maintenance item:
+- Property / Unit: ${row.property} - ${row.unit}
+- Tenant: ${row.tenant || "N/A"}
+- Issue: ${row.issue}
+- Priority: ${row.priority}
+- Current status: ${row.status}
+- Assigned vendor: ${row.assignedVendor || "Not assigned"}
+- Estimated cost: ${formatCurrency(row.estimatedCost)}
+- Actual cost: ${formatCurrency(row.actualCost ?? Number.NaN)}
+- Current proof status: ${proofStatus(row)}
+- Current owner action: ${ownerAction(row)}
+
+Required updates:
+${completionInstructions.map((instruction) => `- ${instruction}`).join("\n")}
+- Update the Maintenance tracker.
+- Update the Dashboard maintenance summary.
+- Update the Activity log with the decision and timestamp.
+
+Safety rules:
+- Do not send Gmail.
+- Do not send Google Voice text.
+- Do not modify Google Drive files.
+- Do not create Calendar or Task records unless separately approved.
+- Do not contact tenant, vendor, or anyone else unless separately approved.`;
+}
+
 function MaintenanceDecisionButtons({ row, onSelect }: { row: MaintenanceCommandRow; onSelect: (selection: MaintenanceDraftSelection) => void }) {
   return (
     <div className="maintenance-decision-cell">
@@ -182,6 +237,7 @@ function DraftPreview({ selection }: { selection: MaintenanceDraftSelection | nu
 
   const emailDraft = decisionEmailDraft(selection.row, selection.decision);
   const textDraft = decisionTextDraft(selection.row, selection.decision);
+  const promptDraft = codexStatusPrompt(selection.row, selection.decision);
 
   return (
     <section className="section-block maintenance-draft-panel">
@@ -195,6 +251,7 @@ function DraftPreview({ selection }: { selection: MaintenanceDraftSelection | nu
       <div className="maintenance-contact-strip">
         <span><Mail size={15} /> Gmail draft to {maintenanceContact.email}</span>
         <span><MessageSquare size={15} /> Google Voice text to {maintenanceContact.phone}</span>
+        <span><ClipboardList size={15} /> Codex status update prompt</span>
       </div>
       <div className="maintenance-draft-grid">
         <article>
@@ -206,6 +263,11 @@ function DraftPreview({ selection }: { selection: MaintenanceDraftSelection | nu
           <strong>Google Voice Text Draft</strong>
           <textarea value={textDraft} readOnly aria-label="Maintenance Google Voice text draft" />
           <button type="button" onClick={() => void navigator.clipboard?.writeText(textDraft)}>Copy Text Draft</button>
+        </article>
+        <article className="maintenance-prompt-card">
+          <strong>Codex Status Update Prompt</strong>
+          <textarea value={promptDraft} readOnly aria-label="Maintenance Codex status update prompt" />
+          <button type="button" onClick={() => void navigator.clipboard?.writeText(promptDraft)}>Copy Status Prompt</button>
         </article>
       </div>
     </section>
