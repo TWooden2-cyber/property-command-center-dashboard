@@ -3779,6 +3779,7 @@ tbody tr:hover {
 .notice-filter-panel,
 .notice-proof-panel,
 .notice-approval-panel,
+.ten-day-notice-workspace,
 .notice-command-panel,
 .notice-action-card,
 .notice-blocked-panel,
@@ -3814,9 +3815,146 @@ tbody tr:hover {
 .notice-command-header p,
 .notice-health-panel p,
 .notice-action-card p,
+.ten-day-notice-workspace p,
 .notice-command-preview p {
   color: var(--cream-muted);
   line-height: 1.5;
+}
+
+.ten-day-notice-workspace {
+  border-color: rgba(235, 196, 112, 0.36);
+}
+
+.ten-day-notice-layout {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.8fr) minmax(260px, 1fr) minmax(420px, 1.8fr);
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.ten-day-list {
+  display: grid;
+  gap: 10px;
+  align-content: flex-start;
+}
+
+.ten-day-list button {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(8, 7, 6, 0.38);
+  color: var(--cream);
+  cursor: pointer;
+  display: grid;
+  gap: 5px;
+  padding: 13px;
+  text-align: left;
+}
+
+.ten-day-list button.active,
+.ten-day-list button:hover {
+  border-color: rgba(235, 196, 112, 0.72);
+  background: rgba(235, 196, 112, 0.1);
+}
+
+.ten-day-list span,
+.ten-day-list strong {
+  font-weight: 900;
+}
+
+.ten-day-list strong {
+  color: #ffd5ca;
+  font-size: 1.05rem;
+}
+
+.ten-day-list small {
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.ten-day-selected-card,
+.notice-draft-box {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(8, 7, 6, 0.3);
+  padding: 15px;
+}
+
+.ten-day-selected-card h3 {
+  color: var(--cream);
+  margin: 0 0 12px;
+}
+
+.ten-day-selected-card dl {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+
+.ten-day-selected-card div {
+  border-bottom: 1px solid rgba(235, 196, 112, 0.12);
+  padding-bottom: 9px;
+}
+
+.ten-day-selected-card dt {
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.ten-day-selected-card dd {
+  color: var(--cream);
+  margin: 4px 0 0;
+  line-height: 1.4;
+}
+
+.notice-message-drafts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.notice-draft-box {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.notice-draft-box header {
+  align-items: center;
+  color: var(--gold-soft);
+  display: flex;
+  gap: 8px;
+  font-weight: 900;
+}
+
+.notice-draft-box header span {
+  color: var(--gold);
+  display: inline-flex;
+}
+
+.notice-draft-box textarea {
+  border: 1px solid rgba(235, 196, 112, 0.28);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.24);
+  color: var(--cream);
+  font: inherit;
+  line-height: 1.45;
+  min-height: 188px;
+  padding: 12px;
+  resize: vertical;
+  width: 100%;
+}
+
+.notice-draft-box button {
+  justify-self: flex-start;
+  border: 1px solid rgba(235, 196, 112, 0.48);
+  border-radius: 999px;
+  background: rgba(235, 196, 112, 0.1);
+  color: var(--gold-soft);
+  cursor: pointer;
+  font-weight: 900;
+  padding: 9px 13px;
 }
 
 .notice-kpi-grid {
@@ -7048,6 +7186,11 @@ tbody tr:hover {
   }
 
   .rent-chart-row {
+    grid-template-columns: 1fr;
+  }
+
+  .ten-day-notice-layout,
+  .notice-message-drafts {
     grid-template-columns: 1fr;
   }
 

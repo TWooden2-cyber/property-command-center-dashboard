@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { AlertTriangle, ClipboardCheck, Gavel, Search, ShieldAlert } from "lucide-react";
+import type { ReactNode } from "react";
+import { AlertTriangle, ClipboardCheck, Gavel, Mail, MessageSquare, Scale, Search, ShieldAlert } from "lucide-react";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { EmptyState } from "@/components/DataState";
 import { SheetsSourcePanel } from "@/components/SheetsSourcePanel";
@@ -93,6 +94,8 @@ const approvalGate = [
   "Calendar/task updates require owner approval."
 ];
 
+const lawyerContact = "Matt Feinman <matt@keystonelegalpa.com>";
+
 function proofStatus(row: NoticeCommandRow) {
   return row.proofStatus ?? "Not set";
 }
@@ -136,6 +139,144 @@ function statusTone(row: NoticeCommandRow): SignalTone {
   if (isBlocked(row) || proofMissing(row)) return "red";
   if (ownerApprovalRequired(row) || needsLedgerVerification(row) || needsHapVerification(row)) return "yellow";
   return "green";
+}
+
+function amountDueValue(row: NoticeCommandRow) {
+  const value = Number(String(row.amountOwed).replace(/[^0-9.-]/g, ""));
+  return Number.isFinite(value) ? value : 0;
+}
+
+function dueForTenDayNotice(row: NoticeCommandRow) {
+  if (isClosed(row)) return false;
+  if (amountDueValue(row) <= 0) return false;
+  const text = `${row.noticeType} ${row.status} ${ownerAction(row)} ${blockedAction(row)}`.toLowerCase();
+  return text.includes("10-day") || text.includes("nonpayment") || text.includes("notice") || text.includes("ledger") || text.includes("verify");
+}
+
+function tenantEmailDraft(row: NoticeCommandRow) {
+  return `Subject: Past Due Rent Balance - ${row.property} ${row.unit}
+
+Hi ${row.tenant},
+
+Our records show a past due rent balance of ${row.amountOwed} for ${row.property} ${row.unit}. Please review your RentRedi account and contact Property Management if you believe this balance is incorrect or if a payment has already been made.
+
+This message is a draft for owner review only. No notice or legal action will be sent until the balance, ledger, and owner approval are confirmed.
+
+Best,
+Property Management`;
+}
+
+function tenantVoiceDraft(row: NoticeCommandRow) {
+  return `Hi ${row.tenant}, this is Property Management. Our records show a past due rent balance of ${row.amountOwed} for ${row.unit}. Please check RentRedi and contact us today if you have already paid or need to discuss the balance. This is a draft message pending owner approval.`;
+}
+
+function evictionProcessDraft(row: NoticeCommandRow) {
+  return `Subject: Important Rent Balance Notice - ${row.property} ${row.unit}
+
+Hi ${row.tenant},
+
+This is a draft notification for owner review. The account for ${row.property} ${row.unit} currently shows ${row.amountOwed} past due. If the balance is not corrected or verified promptly, the file may be reviewed for the next step in the nonpayment notice process.
+
+No notice will be served, filed, or escalated until the ledger is verified and the owner gives final approval.
+
+Best,
+Property Management`;
+}
+
+function lawyerEmailDraft(row: NoticeCommandRow) {
+  return `To: ${lawyerContact}
+Subject: Draft Review Request - ${row.property} ${row.unit} - ${row.tenant}
+
+Matt,
+
+Please review this tenant file for possible nonpayment notice / eviction process guidance.
+
+Property / Unit: ${row.property} - ${row.unit}
+Tenant: ${row.tenant}
+Amount currently shown owed: ${row.amountOwed}
+Notice type/status: ${row.noticeType} / ${row.status}
+Notice date: ${row.noticeDate || "Not set"}
+Proof status: ${proofStatus(row)}
+Owner action needed: ${ownerAction(row)}
+Blocked action: ${blockedAction(row)}
+
+Please advise what documentation or verification you need before any notice or filing step is taken.
+
+Thank you,
+Property Management`;
+}
+
+function DraftBox({ title, icon, body }: { title: string; icon: ReactNode; body: string }) {
+  return (
+    <article className="notice-draft-box">
+      <header>
+        <span>{icon}</span>
+        <strong>{title}</strong>
+      </header>
+      <textarea value={body} readOnly aria-label={title} />
+      <button type="button" onClick={() => void navigator.clipboard?.writeText(body)}>Copy Draft</button>
+    </article>
+  );
+}
+
+function TenDayNoticeWorkspace({ rows }: { rows: NoticeCommandRow[] }) {
+  const candidates = rows.filter(dueForTenDayNotice);
+  const [selectedId, setSelectedId] = useState(candidates[0]?.id ?? "");
+  const selected = candidates.find((row) => row.id === selectedId) ?? candidates[0];
+
+  return (
+    <section className="ten-day-notice-workspace">
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">10-day notice review</p>
+          <h3>Late payment notice draft center</h3>
+          <p>Review who appears due for a 10-day notice and prepare draft communications for owner approval.</p>
+        </div>
+        <StatusBadge label="Draft only / no sending" />
+      </div>
+
+      {selected ? (
+        <div className="ten-day-notice-layout">
+          <div className="ten-day-list">
+            {candidates.map((row) => (
+              <button
+                key={row.id}
+                type="button"
+                className={row.id === selected.id ? "active" : ""}
+                onClick={() => setSelectedId(row.id)}
+              >
+                <span>{row.tenant}</span>
+                <strong>{row.amountOwed}</strong>
+                <small>{row.property} - {row.unit}</small>
+              </button>
+            ))}
+          </div>
+
+          <article className="ten-day-selected-card">
+            <p className="eyebrow">Selected file</p>
+            <h3>{selected.tenant}</h3>
+            <dl>
+              <div><dt>Property / Unit</dt><dd>{selected.property} - {selected.unit}</dd></div>
+              <div><dt>Amount Owed</dt><dd>{selected.amountOwed}</dd></div>
+              <div><dt>Status</dt><dd>{selected.status}</dd></div>
+              <div><dt>Notice Date</dt><dd>{selected.noticeDate || "Owner to set"}</dd></div>
+              <div><dt>Proof Status</dt><dd>{proofStatus(selected)}</dd></div>
+              <div><dt>Owner Action</dt><dd>{ownerAction(selected)}</dd></div>
+            </dl>
+          </article>
+
+          <div className="notice-message-drafts">
+            <DraftBox title="Late Payment Email Draft" icon={<Mail size={16} />} body={tenantEmailDraft(selected)} />
+            <DraftBox title="Google Voice Text Draft" icon={<MessageSquare size={16} />} body={tenantVoiceDraft(selected)} />
+            <DraftBox title="Eviction Process Notification Draft" icon={<AlertTriangle size={16} />} body={evictionProcessDraft(selected)} />
+            <DraftBox title="Email Draft to Lawyer" icon={<Scale size={16} />} body={lawyerEmailDraft(selected)} />
+          </div>
+        </div>
+      ) : (
+        <EmptyState title="No tenants currently show as due for 10-day notice review" message="The live notice rows do not show an open balance requiring review." />
+      )}
+    </section>
+  );
 }
 
 function matchesFilters(row: NoticeCommandRow, filters: NoticeFilter) {
@@ -412,13 +553,10 @@ export function NoticesEvictionsView() {
       ) : (
         <EmptyState title="No notice records match these filters" message="Reset filters or check the live Google Sheets source." />
       )}
-      {localDevelopmentFallbackAllowed ? (
-        <>
-          <NoticeHealthEvaluation />
-          <DraftStatusSection />
-          <NoticeOperationalSections />
-        </>
-      ) : null}
+      <TenDayNoticeWorkspace rows={filteredRows.length ? filteredRows : rows} />
+      <NoticeHealthEvaluation />
+      <DraftStatusSection />
+      <NoticeOperationalSections />
     </div>
   );
 }
