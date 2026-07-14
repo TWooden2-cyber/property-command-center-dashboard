@@ -627,6 +627,246 @@ button {
   margin-bottom: 18px;
 }
 
+.noi-command-panel {
+  display: grid;
+  gap: 18px;
+}
+
+.noi-layout-grid {
+  display: grid;
+  grid-template-columns: minmax(360px, 0.86fr) minmax(0, 1.14fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.noi-tracker-card {
+  border: 1px solid rgba(201, 164, 81, 0.24);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(247, 240, 228, 0.075), rgba(247, 240, 228, 0.035)),
+    rgba(8, 7, 6, 0.36);
+  padding: 18px;
+  min-height: 100%;
+}
+
+.noi-card-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(247, 240, 228, 0.1);
+}
+
+.noi-card-heading span,
+.noi-formula-strip span {
+  color: var(--gold-soft);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.noi-card-heading strong {
+  color: var(--cream);
+  text-align: right;
+  line-height: 1.25;
+}
+
+.noi-field-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.noi-field-row {
+  display: grid;
+  grid-template-columns: minmax(140px, 0.42fr) minmax(0, 0.58fr);
+  gap: 14px;
+  align-items: start;
+  border: 1px solid rgba(247, 240, 228, 0.08);
+  border-radius: 8px;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.noi-field-row span {
+  color: var(--cream);
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.noi-field-row p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.noi-formula-strip {
+  display: grid;
+  gap: 7px;
+  margin-top: 14px;
+  border: 1px solid rgba(122, 166, 106, 0.3);
+  border-radius: 8px;
+  padding: 14px;
+  background: rgba(122, 166, 106, 0.08);
+}
+
+.noi-formula-strip strong {
+  color: #d8f0d0;
+  line-height: 1.35;
+}
+
+.noi-expense-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.noi-expense-group {
+  min-height: 154px;
+  border: 1px solid rgba(247, 240, 228, 0.08);
+  border-radius: 8px;
+  padding: 13px;
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.noi-expense-group h3 {
+  margin: 0 0 9px;
+  color: var(--gold-soft);
+  font-size: 0.82rem;
+  text-transform: uppercase;
+}
+
+.noi-expense-group ul {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--cream-muted);
+  line-height: 1.42;
+}
+
+.noi-expense-group li + li {
+  margin-top: 3px;
+}
+
+.task-automation-page {
+  gap: 18px;
+}
+
+.task-automation-hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  border-color: rgba(201, 164, 81, 0.34);
+  background:
+    linear-gradient(120deg, rgba(201, 164, 81, 0.16), rgba(124, 165, 170, 0.08)),
+    rgba(8, 7, 6, 0.48);
+}
+
+.task-automation-hero h2 {
+  margin: 0;
+  font-size: clamp(1.8rem, 3vw, 3rem);
+  line-height: 1;
+}
+
+.task-automation-hero p {
+  max-width: 850px;
+  margin: 12px 0 0;
+  color: var(--cream-muted);
+  line-height: 1.5;
+}
+
+.task-automation-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.task-automation-card {
+  display: grid;
+  gap: 14px;
+  border: 1px solid rgba(247, 240, 228, 0.12);
+  border-radius: 8px;
+  padding: 18px;
+  background:
+    linear-gradient(180deg, rgba(247, 240, 228, 0.08), rgba(247, 240, 228, 0.035)),
+    rgba(8, 7, 6, 0.46);
+  box-shadow: var(--shadow);
+}
+
+.task-automation-card header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.task-automation-card svg {
+  color: var(--gold-soft);
+  flex: 0 0 auto;
+}
+
+.task-automation-card h3 {
+  margin: 0;
+  color: var(--cream);
+  font-size: 1rem;
+}
+
+.task-automation-card p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.task-automation-card textarea,
+.task-master-prompt textarea {
+  width: 100%;
+  resize: vertical;
+  border: 1px solid rgba(201, 164, 81, 0.24);
+  border-radius: 8px;
+  color: var(--cream);
+  background: rgba(0, 0, 0, 0.32);
+  line-height: 1.5;
+}
+
+.task-automation-card textarea {
+  min-height: 180px;
+  padding: 12px;
+}
+
+.task-automation-card button,
+.task-master-prompt button {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid rgba(201, 164, 81, 0.34);
+  border-radius: 8px;
+  color: var(--gold-soft);
+  background: rgba(201, 164, 81, 0.08);
+  font-weight: 800;
+}
+
+.task-master-prompt textarea {
+  min-height: 330px;
+  padding: 16px;
+}
+
+.task-prompt-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.task-prompt-actions span {
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.35;
+}
+
 .risk-grid,
 .checklist-grid,
 .settings-grid {
@@ -7284,6 +7524,9 @@ tbody tr:hover {
   .operation-summary-grid,
   .operation-service-grid,
   .operation-form-grid,
+  .noi-layout-grid,
+  .noi-expense-grid,
+  .task-automation-grid,
   .owner-gate-bar,
   .owner-command-hero,
   .owner-two-column,
@@ -7332,6 +7575,9 @@ tbody tr:hover {
   .operation-summary-grid,
   .operation-service-grid,
   .operation-form-grid,
+  .noi-layout-grid,
+  .noi-expense-grid,
+  .task-automation-grid,
   .owner-gate-bar,
   .owner-command-hero,
   .owner-two-column,
@@ -7370,6 +7616,15 @@ tbody tr:hover {
 
   .connection-card dl div {
     grid-template-columns: 1fr;
+  }
+
+  .noi-field-row {
+    grid-template-columns: 1fr;
+  }
+
+  .task-automation-hero,
+  .task-prompt-actions {
+    display: grid;
   }
 
   .intake-audit-heading {

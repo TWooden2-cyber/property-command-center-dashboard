@@ -4,26 +4,21 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { Route } from "next";
 import Link from "next/link";
 import {
-  BadgeDollarSign,
+  Bot,
   BriefcaseBusiness,
   CalendarDays,
   CheckCircle2,
   ChevronDown,
   ChevronUp,
-  ClipboardList,
   Copy,
   Edit3,
   Eye,
+  FolderKanban,
   Filter,
-  Gauge,
   Home,
+  Mail,
   RefreshCw,
   Save,
-  Settings,
-  SlidersHorizontal,
-  UserRound,
-  UsersRound,
-  Wrench,
   X
 } from "lucide-react";
 import {
@@ -106,15 +101,10 @@ const fixedPropertyFilters = ["7-unit", "4-unit", "228 Reifert", "3103 Courtney"
 
 const navItems = [
   { label: "Owner Approvals", icon: CheckCircle2, href: "/owner-approvals", active: true },
-  { label: "Dashboard", icon: Gauge, href: "/" },
-  { label: "Rent & Ledger", icon: ClipboardList, href: "/rent-collection" },
-  { label: "Legal / Evictions", icon: BadgeDollarSign, href: "/notices-evictions" },
-  { label: "Maintenance", icon: Wrench, href: "/maintenance" },
-  { label: "Utilities", icon: SlidersHorizontal, href: "/utilities" },
-  { label: "Calendar", icon: CalendarDays, href: "/calendar-follow-ups" },
-  { label: "Tenants", icon: UserRound, href: "/" },
-  { label: "Vendors", icon: UsersRound, href: "/" },
-  { label: "Settings", icon: Settings, href: "/settings" }
+  { label: "Task Automation", icon: Bot, href: "/task-automation" },
+  { label: "Gmail Organization", icon: Mail, href: "/task-automation#gmail" },
+  { label: "Calendar Monitoring", icon: CalendarDays, href: "/task-automation#calendar" },
+  { label: "Drive Organization", icon: FolderKanban, href: "/task-automation#drive" }
 ];
 
 const hiddenApprovalSidebarRoutes = new Set([

@@ -6,6 +6,7 @@ import type { Route } from "next";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  Bot,
   ClipboardList,
   Gauge,
   Hammer,
@@ -58,6 +59,7 @@ const navigation = [
   { href: "/rent-collection", label: "Rent Collection", icon: ReceiptText },
   { href: "/notices-evictions", label: "Notices & Evictions", icon: MailWarning },
   { href: "/owner-approvals", label: "Owner Approvals", icon: FileCheck2 },
+  { href: "/task-automation", label: "Task Automation", icon: Bot },
   { href: "/maintenance", label: "Maintenance", icon: Hammer },
   { href: "/utilities", label: "Utilities", icon: Zap },
   { href: "/expenses", label: "Expenses / NOI", icon: DollarSign },

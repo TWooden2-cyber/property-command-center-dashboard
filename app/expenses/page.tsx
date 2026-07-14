@@ -3,6 +3,57 @@ import { LuxuryShell } from "@/components/LuxuryShell";
 import { formatCurrency, toNumber } from "@/lib/formatters";
 import { getWorkbookSnapshot } from "@/lib/googleSheets";
 
+const incomeTrackingRows = [
+  ["Property", "Property name/address"],
+  ["Month", "Reporting month"],
+  ["Units", "Occupied / Vacant"],
+  ["Occupancy Rate", "% occupied"],
+  ["Gross Potential Rent", "Rent if every unit is occupied"],
+  ["Vacancy Loss", "Lost rent from vacancies"],
+  ["Concessions", "Discounts/free rent"],
+  ["Other Income", "Late fees, laundry, pet fees, parking, storage, application fees"],
+  ["Effective Gross Income (EGI)", "Gross rent minus vacancy plus other income"]
+];
+
+const operatingExpenseGroups = [
+  {
+    title: "Utilities",
+    items: ["Electric", "Gas", "Water", "Sewer", "Trash"]
+  },
+  {
+    title: "Maintenance",
+    items: ["Repairs", "Maintenance supplies", "HVAC", "Plumbing", "Electrical", "Landscaping", "Snow removal", "Pest control"]
+  },
+  {
+    title: "Management",
+    items: ["Property management fees", "Leasing commissions", "Tenant screening"]
+  },
+  {
+    title: "Administrative",
+    items: ["Office supplies", "Software subscriptions", "Phone", "Postage"]
+  },
+  {
+    title: "Insurance",
+    items: ["Property insurance"]
+  },
+  {
+    title: "Taxes",
+    items: ["Property taxes"]
+  },
+  {
+    title: "Professional",
+    items: ["CPA", "Attorney", "Bookkeeping"]
+  },
+  {
+    title: "HOA / Association Fees",
+    items: ["HOA dues", "Association fees", "Special assessments"]
+  },
+  {
+    title: "Licenses & Permits",
+    items: ["Rental licenses", "Occupancy permits", "Inspection permits"]
+  }
+];
+
 export default async function ExpensesPage() {
   await requireOwnerSession();
   const snapshot = await getWorkbookSnapshot();
@@ -16,7 +67,56 @@ export default async function ExpensesPage() {
   return (
     <LuxuryShell title="Expenses / NOI" subtitle="Read-only operating expense and NOI review">
       <div className="command-page">
-        <section className="section-card">
+        <section className="section-block noi-command-panel">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">NOI tracker structure</p>
+              <h2>Income and operating expense sections</h2>
+            </div>
+            <span className="status-pill yellow">Structure ready for live tracker mapping</span>
+          </div>
+          <div className="noi-layout-grid">
+            <article className="noi-tracker-card">
+              <div className="noi-card-heading">
+                <span>Income</span>
+                <strong>Effective Gross Income inputs</strong>
+              </div>
+              <div className="noi-field-list">
+                {incomeTrackingRows.map(([section, description]) => (
+                  <div key={section} className="noi-field-row">
+                    <span>{section}</span>
+                    <p>{description}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="noi-formula-strip">
+                <span>EGI Formula</span>
+                <strong>Gross Potential Rent - Vacancy Loss - Concessions + Other Income</strong>
+              </div>
+            </article>
+
+            <article className="noi-tracker-card">
+              <div className="noi-card-heading">
+                <span>Operating Expenses</span>
+                <strong>Expense category breakdown</strong>
+              </div>
+              <div className="noi-expense-grid">
+                {operatingExpenseGroups.map((group) => (
+                  <section key={group.title} className="noi-expense-group">
+                    <h3>{group.title}</h3>
+                    <ul>
+                      {group.items.map((item) => (
+                        <li key={item}>{item}</li>
+                      ))}
+                    </ul>
+                  </section>
+                ))}
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section className="section-block">
           <div className="section-heading">
             <div>
               <p className="eyebrow">{liveConnected ? "Live Google Sheets" : "Live data unavailable"}</p>
