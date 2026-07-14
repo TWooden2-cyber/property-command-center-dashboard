@@ -6700,6 +6700,51 @@ tbody tr:hover {
   cursor: not-allowed;
 }
 
+.approval-target-button-group {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 14px;
+  border: 1px solid rgba(201, 164, 81, 0.2);
+  border-radius: 9px;
+  padding: 10px;
+  background: rgba(8, 7, 6, 0.2);
+}
+
+.approval-target-button-group strong {
+  color: var(--gold-soft);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.approval-target-button-group > div {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 7px;
+}
+
+.approval-target-button-group button {
+  min-height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--cream);
+  background: rgba(247, 240, 228, 0.055);
+  font-size: 0.74rem;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.approval-target-button-group button:hover {
+  border-color: rgba(201, 164, 81, 0.56);
+  background: rgba(201, 164, 81, 0.1);
+}
+
+.approval-target-button-group button.selected {
+  border-color: rgba(201, 164, 81, 0.86);
+  color: #0b0906;
+  background: linear-gradient(135deg, var(--gold), var(--gold-soft));
+}
+
 .approval-mock-table th,
 .approval-mock-table td {
   border-bottom: 1px solid var(--line);

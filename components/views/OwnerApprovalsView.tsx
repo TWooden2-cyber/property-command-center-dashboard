@@ -47,6 +47,26 @@ type ExecutableAction = {
   reason: string;
 };
 
+const trackerTargetButtons = [
+  "Dashboard / Activity Log",
+  "Maintenance Tracker",
+  "Rent Ledger",
+  "Legal Tracker",
+  "Utility Tracker",
+  "Calendar Follow-Ups"
+] as const;
+
+const folderTargetButtons = [
+  "Tenant Folder",
+  "Lease Folder",
+  "Maintenance Folder",
+  "Legal / Evictions Folder",
+  "Utilities Folder",
+  "Insurance Folder",
+  "Rent / Ledger Folder",
+  "Owner Approval Folder"
+] as const;
+
 type IntakeSyncResponse = {
   ok: boolean;
   checkedAt: string;
@@ -488,6 +508,8 @@ function buildSelectedExecutionPrompt(records: OwnerApprovalRecord[], selectedId
       `Category: ${record.category}`,
       `Approved action: ${record.approvedAction}`,
       `Owner instructions: ${record.ownerInstructions || "No owner instructions saved."}`,
+      `Selected tracker destination(s): ${(record.selectedTrackerTargets || []).join("; ") || "None selected."}`,
+      `Selected folder destination(s): ${(record.selectedFolderTargets || []).join("; ") || "None selected."}`,
       `Draft response: ${record.draftResponse || "No draft response included."}`,
       `Deadline: ${record.deadline}`,
       `Estimated cost: ${money(record.estimatedCost)}`,
@@ -522,6 +544,8 @@ function ExpandedTask({
   onDecision,
   onInstructionChange,
   onToggleExecutionAction,
+  onToggleTrackerTarget,
+  onToggleFolderTarget,
   onRunSelectedExecution,
   onCollapse
 }: {
@@ -536,6 +560,8 @@ function ExpandedTask({
   onDecision: (id: string, decision: OwnerApprovalDecision) => void;
   onInstructionChange: (id: string, instructions: string) => void;
   onToggleExecutionAction: (id: string, actionType: ExecutableActionType) => void;
+  onToggleTrackerTarget: (id: string, target: string) => void;
+  onToggleFolderTarget: (id: string, target: string) => void;
   onRunSelectedExecution: (id: string) => void;
   onCollapse: () => void;
 }) {
@@ -544,6 +570,8 @@ function ExpandedTask({
   const execution = executableSummary(record);
   const canExecute = record.status === "Approved";
   const selectedActions = (record.selectedExecutionActions || []) as ExecutableActionType[];
+  const selectedTrackerTargets = record.selectedTrackerTargets || [];
+  const selectedFolderTargets = record.selectedFolderTargets || [];
 
   return (
     <section className="queue-expanded-task">
@@ -655,6 +683,40 @@ function ExpandedTask({
               </button>
             ))}
           </div>
+          {selectedActions.includes("tracker-update") ? (
+            <div className="approval-target-button-group" aria-label="Tracker destinations">
+              <strong>Choose tracker</strong>
+              <div>
+                {trackerTargetButtons.map((target) => (
+                  <button
+                    type="button"
+                    key={target}
+                    className={selectedTrackerTargets.includes(target) ? "selected" : ""}
+                    onClick={() => onToggleTrackerTarget(record.id, target)}
+                  >
+                    {target}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+          {selectedActions.includes("file-document") ? (
+            <div className="approval-target-button-group" aria-label="Folder destinations">
+              <strong>Choose folder</strong>
+              <div>
+                {folderTargetButtons.map((target) => (
+                  <button
+                    type="button"
+                    key={target}
+                    className={selectedFolderTargets.includes(target) ? "selected" : ""}
+                    onClick={() => onToggleFolderTarget(record.id, target)}
+                  >
+                    {target}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
           <div className="approval-radio-group">
             <label className="approve"><input type="radio" checked={record.ownerDecision === "Approve"} onChange={() => onDecision(record.id, "Approve")} />Approve</label>
             <label className="return"><input type="radio" checked={record.ownerDecision === "Return for Changes"} onChange={() => onDecision(record.id, "Return for Changes")} />Return for Changes</label>
@@ -811,10 +873,44 @@ export function OwnerApprovalsView() {
     const selected = ((record.selectedExecutionActions || []) as ExecutableActionType[]);
     const wasSelected = selected.includes(actionType);
     const nextSelected = wasSelected ? selected.filter((type) => type !== actionType) : [...selected, actionType];
-    setRecords((current) => current.map((item) => (item.id === id ? { ...item, selectedExecutionActions: nextSelected } : item)));
+    setRecords((current) => current.map((item) => {
+      if (item.id !== id) return item;
+      return {
+        ...item,
+        selectedExecutionActions: nextSelected,
+        selectedTrackerTargets: nextSelected.includes("tracker-update") ? item.selectedTrackerTargets : [],
+        selectedFolderTargets: nextSelected.includes("file-document") ? item.selectedFolderTargets : []
+      };
+    }));
     setSelectedExecutionIds((current) => (current.includes(id) ? current : [...current, id]));
     setMassPrompt("");
     setConfirmation(`${actionLabelForType(actionType)} option ${wasSelected ? "removed" : "selected"}.`);
+  }
+
+  function toggleTrackerTarget(id: string, target: string) {
+    const record = records.find((item) => item.id === id);
+    const wasSelected = Boolean(record?.selectedTrackerTargets?.includes(target));
+    setRecords((current) => current.map((item) => {
+      if (item.id !== id) return item;
+      const selected = item.selectedTrackerTargets || [];
+      const nextSelected = selected.includes(target) ? selected.filter((value) => value !== target) : [...selected, target];
+      return { ...item, selectedTrackerTargets: nextSelected };
+    }));
+    setMassPrompt("");
+    setConfirmation(`${target} ${wasSelected ? "removed" : "selected"}.`);
+  }
+
+  function toggleFolderTarget(id: string, target: string) {
+    const record = records.find((item) => item.id === id);
+    const wasSelected = Boolean(record?.selectedFolderTargets?.includes(target));
+    setRecords((current) => current.map((item) => {
+      if (item.id !== id) return item;
+      const selected = item.selectedFolderTargets || [];
+      const nextSelected = selected.includes(target) ? selected.filter((value) => value !== target) : [...selected, target];
+      return { ...item, selectedFolderTargets: nextSelected };
+    }));
+    setMassPrompt("");
+    setConfirmation(`${target} ${wasSelected ? "removed" : "selected"}.`);
   }
 
   function runSelectedExecutionForRecord(id: string) {
@@ -868,7 +964,9 @@ export function OwnerApprovalsView() {
                 status: existing.status,
                 statusHistory: existing.statusHistory || record.statusHistory || [],
                 rejectionReason: existing.rejectionReason,
-                selectedExecutionActions: existing.selectedExecutionActions || record.selectedExecutionActions || []
+                selectedExecutionActions: existing.selectedExecutionActions || record.selectedExecutionActions || [],
+                selectedTrackerTargets: existing.selectedTrackerTargets || record.selectedTrackerTargets || [],
+                selectedFolderTargets: existing.selectedFolderTargets || record.selectedFolderTargets || []
               }
             : record;
         });
@@ -1032,6 +1130,8 @@ export function OwnerApprovalsView() {
             onDecision={updateDecision}
             onInstructionChange={updateInstructions}
             onToggleExecutionAction={toggleRecordExecutionAction}
+            onToggleTrackerTarget={toggleTrackerTarget}
+            onToggleFolderTarget={toggleFolderTarget}
             onRunSelectedExecution={runSelectedExecutionForRecord}
             onCollapse={() => setOpenId("")}
           />

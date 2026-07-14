@@ -76,6 +76,8 @@ export type OwnerApprovalRecord = {
   sourceMessageId?: string;
   sourceThreadId?: string;
   selectedExecutionActions?: string[];
+  selectedTrackerTargets?: string[];
+  selectedFolderTargets?: string[];
 };
 
 export const defaultOwnerInstruction =
