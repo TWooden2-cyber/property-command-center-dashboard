@@ -428,19 +428,29 @@ function executableSummary(record: OwnerApprovalRecord) {
   return { label: actions.map((action) => action.label).join(" + "), tone: "ready", actions };
 }
 
-function buildSelectedExecutionPrompt(records: OwnerApprovalRecord[], selectedIds: string[], actionType?: ExecutableActionType) {
+function actionLabelForType(type: ExecutableActionType) {
+  return executableActionButtons.find((action) => action.type === type)?.label || type;
+}
+
+function normalizeActionFilter(actionFilter?: ExecutableActionType | ExecutableActionType[]) {
+  if (!actionFilter) return [];
+  return Array.isArray(actionFilter) ? actionFilter : [actionFilter];
+}
+
+function buildSelectedExecutionPrompt(records: OwnerApprovalRecord[], selectedIds: string[], actionFilter?: ExecutableActionType | ExecutableActionType[]) {
+  const requestedActions = normalizeActionFilter(actionFilter);
   const selected = records.filter((record) => selectedIds.includes(record.id) && record.status === "Approved");
   const executable = selected.filter((record) => {
     const actions = detectExecutableActions(record);
-    return actionType ? actions.some((action) => action.type === actionType) : actions.length > 0;
+    return requestedActions.length ? true : actions.length > 0;
   });
 
   if (!executable.length) {
     return "No selected approved items match this executable action type. Select approved items with clear instructions first.";
   }
 
-  const actionLabel = actionType
-    ? executableActionButtons.find((action) => action.type === actionType)?.label || "Selected Executable Action"
+  const actionLabel = requestedActions.length
+    ? requestedActions.map(actionLabelForType).join(" + ")
     : "All Detected Executable Actions";
 
   const lines = [
@@ -464,10 +474,14 @@ function buildSelectedExecutionPrompt(records: OwnerApprovalRecord[], selectedId
 
   executable.forEach((record, index) => {
     const actions = detectExecutableActions(record);
+    const selectedActionLabels = requestedActions.length
+      ? requestedActions.map(actionLabelForType)
+      : actions.map((action) => action.label);
     lines.push(
       `Executable Item ${index + 1}`,
       `Task ID: ${record.id}`,
-      `Detected executable action(s): ${actions.map((action) => action.label).join("; ")}`,
+      `Selected executable action(s): ${selectedActionLabels.join("; ") || "No executable action selected."}`,
+      `Detected executable action(s): ${actions.map((action) => action.label).join("; ") || "None detected from text."}`,
       `Source: ${record.source}`,
       `Source mode: ${record.sourceMode || "Sample"}`,
       `Property / Unit: ${record.propertyUnit}`,
@@ -507,7 +521,8 @@ function ExpandedTask({
   onCancelEdit,
   onDecision,
   onInstructionChange,
-  onGenerateExecution,
+  onToggleExecutionAction,
+  onRunSelectedExecution,
   onCollapse
 }: {
   record: OwnerApprovalRecord;
@@ -520,13 +535,15 @@ function ExpandedTask({
   onCancelEdit: () => void;
   onDecision: (id: string, decision: OwnerApprovalDecision) => void;
   onInstructionChange: (id: string, instructions: string) => void;
-  onGenerateExecution: (id: string, actionType?: ExecutableActionType) => void;
+  onToggleExecutionAction: (id: string, actionType: ExecutableActionType) => void;
+  onRunSelectedExecution: (id: string) => void;
   onCollapse: () => void;
 }) {
   const history = record.statusHistory || [];
   const emailUrl = sourceEmailUrl(record);
   const execution = executableSummary(record);
   const canExecute = record.status === "Approved";
+  const selectedActions = (record.selectedExecutionActions || []) as ExecutableActionType[];
 
   return (
     <section className="queue-expanded-task">
@@ -627,7 +644,13 @@ function ExpandedTask({
           <h3>Approval & Instructions</h3>
           <div className="approval-inline-execution-strip" aria-label="Executable actions for this approval item">
             {executableActionButtons.map((action) => (
-              <button type="button" key={action.label} onClick={() => onGenerateExecution(record.id, action.type)} disabled={!canExecute}>
+              <button
+                type="button"
+                key={action.label}
+                className={action.type && selectedActions.includes(action.type) ? "selected" : ""}
+                onClick={() => action.type ? onToggleExecutionAction(record.id, action.type) : onRunSelectedExecution(record.id)}
+                disabled={!action.type && (!canExecute || !selectedActions.length)}
+              >
                 {action.label}
               </button>
             ))}
@@ -645,10 +668,12 @@ function ExpandedTask({
           </div>
           <div className="inline-execution-buttons" aria-label="Executable action status for this approval item">
             <div>
-              <strong>Execution Buttons</strong>
-              <em className={`execution-type-pill ${execution.tone}`}>{execution.label}</em>
+              <strong>Selected Action Options</strong>
+              <em className={`execution-type-pill ${selectedActions.length ? "ready" : execution.tone}`}>
+                {selectedActions.length ? selectedActions.map(actionLabelForType).join(" + ") : execution.label}
+              </em>
             </div>
-            <p>{canExecute ? "Generate a focused execution prompt for this approved item." : "Approve this item before generating an execution prompt."}</p>
+            <p>{canExecute ? "Click action buttons to choose options, then click Run Selected." : "You can choose action options now. Approve the item before running them."}</p>
           </div>
         </div>
         <label className="codex-instructions-box">
@@ -780,15 +805,32 @@ export function OwnerApprovalsView() {
     setConfirmation("Execution prompt generated for selected approved items.");
   }
 
-  function generateSingleExecutionPrompt(id: string, actionType?: ExecutableActionType) {
+  function toggleRecordExecutionAction(id: string, actionType: ExecutableActionType) {
     const record = records.find((item) => item.id === id);
     if (!record) return;
+    const selected = ((record.selectedExecutionActions || []) as ExecutableActionType[]);
+    const wasSelected = selected.includes(actionType);
+    const nextSelected = wasSelected ? selected.filter((type) => type !== actionType) : [...selected, actionType];
+    setRecords((current) => current.map((item) => (item.id === id ? { ...item, selectedExecutionActions: nextSelected } : item)));
+    setSelectedExecutionIds((current) => (current.includes(id) ? current : [...current, id]));
+    setMassPrompt("");
+    setConfirmation(`${actionLabelForType(actionType)} option ${wasSelected ? "removed" : "selected"}.`);
+  }
+
+  function runSelectedExecutionForRecord(id: string) {
+    const record = records.find((item) => item.id === id);
+    if (!record) return;
+    const selectedActions = ((record.selectedExecutionActions || []) as ExecutableActionType[]);
+    if (!selectedActions.length) {
+      setConfirmation("Choose at least one execution option first.");
+      return;
+    }
     if (record.status !== "Approved") {
       setConfirmation("Approve this item before generating an execution prompt.");
       return;
     }
     setSelectedExecutionIds([id]);
-    setMassPrompt(buildSelectedExecutionPrompt(records, [id], actionType));
+    setMassPrompt(buildSelectedExecutionPrompt(records, [id], selectedActions));
     setConfirmation("Execution prompt generated for the open approval item.");
   }
 
@@ -825,7 +867,8 @@ export function OwnerApprovalsView() {
                 ownerInstructions: existing.ownerInstructions,
                 status: existing.status,
                 statusHistory: existing.statusHistory || record.statusHistory || [],
-                rejectionReason: existing.rejectionReason
+                rejectionReason: existing.rejectionReason,
+                selectedExecutionActions: existing.selectedExecutionActions || record.selectedExecutionActions || []
               }
             : record;
         });
@@ -988,7 +1031,8 @@ export function OwnerApprovalsView() {
             onCancelEdit={() => { setEditingSection(null); setEditValue(""); }}
             onDecision={updateDecision}
             onInstructionChange={updateInstructions}
-            onGenerateExecution={generateSingleExecutionPrompt}
+            onToggleExecutionAction={toggleRecordExecutionAction}
+            onRunSelectedExecution={runSelectedExecutionForRecord}
             onCollapse={() => setOpenId("")}
           />
         ) : null}

@@ -75,6 +75,7 @@ export type OwnerApprovalRecord = {
   statusHistory?: OwnerApprovalStatusHistoryEntry[];
   sourceMessageId?: string;
   sourceThreadId?: string;
+  selectedExecutionActions?: string[];
 };
 
 export const defaultOwnerInstruction =

@@ -6688,6 +6688,13 @@ tbody tr:hover {
   background: rgba(201, 164, 81, 0.16);
 }
 
+.approval-inline-execution-strip button.selected {
+  border-color: rgba(201, 164, 81, 0.86);
+  color: #0b0906;
+  background: linear-gradient(135deg, var(--gold), var(--gold-soft));
+  box-shadow: 0 0 0 2px rgba(201, 164, 81, 0.18);
+}
+
 .approval-inline-execution-strip button:disabled {
   opacity: 0.45;
   cursor: not-allowed;
