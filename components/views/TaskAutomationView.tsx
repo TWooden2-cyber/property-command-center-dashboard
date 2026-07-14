@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Bot, CalendarDays, Copy, FolderKanban, Mail, RefreshCw } from "lucide-react";
+import { Bot, CalendarDays, Copy, FolderKanban, LayoutDashboard, Mail, RefreshCw } from "lucide-react";
 
 const defaultMonitoringPrompt = `Run the Property Management Monitoring Resource Update.
 
@@ -10,6 +10,7 @@ Scope:
 - Google Calendar deadline and follow-up monitoring
 - Google Drive document organization review
 - Owner Approval Queue monitoring
+- Dashboard and tracker update preview
 - Maintenance, rent, legal, utilities, and activity-log monitoring
 
 Rules:
@@ -25,6 +26,7 @@ Return:
 - Gmail organization recommendations
 - Calendar reminders/follow-ups recommended
 - Drive organization recommendations
+- Dashboard/tracker updates needed by tab, row, field, old value, new value, and proof source
 - Blocked items and missing connection errors
 - Proposed tracker/dashboard updates, without writing them
 - Exact next approval prompt needed for Codex to execute approved updates`;
@@ -53,6 +55,14 @@ const automationSections = [
     detail: "Review folders, proof files, owner approval documents, utilities, notices, leases, invoices, and missing proof.",
     prompt:
       "Check Google Drive organization read-only. Identify missing folders, misplaced documents, duplicate/uncertain files, owner approval documents, proof gaps, and recommended filing actions. Do not move, rename, delete, upload, or share files."
+  },
+  {
+    id: "dashboard",
+    icon: LayoutDashboard,
+    title: "Dashboard Tracker Update",
+    detail: "Prepare dashboard, rent, maintenance, legal, utility, calendar, and activity-log update instructions.",
+    prompt:
+      "Prepare a dashboard and tracker update preview from the latest approved owner decisions and verified source data. Return proposed updates by tracker tab, exact property/unit, row match fields, field name, current value, new value, proof/source, confidence, blocked items, and owner approval required. Do not write to Google Sheets, trackers, ledgers, calendars, tasks, Gmail, Drive, tenant records, legal records, vendor records, or payment records."
   }
 ];
 
