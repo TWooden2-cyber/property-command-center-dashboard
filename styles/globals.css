@@ -6665,6 +6665,34 @@ tbody tr:hover {
   margin: 0 32px;
 }
 
+.approval-inline-execution-strip {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0 0 14px;
+}
+
+.approval-inline-execution-strip button {
+  min-height: 36px;
+  border: 1px solid rgba(201, 164, 81, 0.38);
+  border-radius: 8px;
+  color: var(--gold-soft);
+  background: rgba(201, 164, 81, 0.1);
+  font-size: 0.75rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.approval-inline-execution-strip button:hover {
+  border-color: rgba(201, 164, 81, 0.68);
+  background: rgba(201, 164, 81, 0.16);
+}
+
+.approval-inline-execution-strip button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .approval-mock-table th,
 .approval-mock-table td {
   border-bottom: 1px solid var(--line);
@@ -6868,9 +6896,37 @@ tbody tr:hover {
 }
 
 .supporting-documents-list article,
-.approval-status-list div {
+.approval-status-list-item {
   border: 1px solid var(--line);
   background: rgba(8, 7, 6, 0.24);
+}
+
+.approval-status-list-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+  border-radius: 8px;
+  padding: 9px;
+}
+
+.approval-select-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 32px;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+.approval-select-check input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--gold);
 }
 
 .approval-status-list button {
@@ -6890,6 +6946,244 @@ tbody tr:hover {
 .detail-card-controls button:hover {
   border-color: rgba(201, 164, 81, 0.5);
   background: rgba(201, 164, 81, 0.1);
+}
+
+.execution-action-panel {
+  margin: 18px 38px 0;
+  border: 1px solid rgba(201, 164, 81, 0.24);
+  border-radius: 12px;
+  padding: 18px;
+  background:
+    radial-gradient(circle at top right, rgba(201, 164, 81, 0.08), transparent 34%),
+    rgba(17, 15, 12, 0.84);
+  box-shadow: var(--shadow-soft);
+}
+
+.execution-action-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 16px;
+}
+
+.execution-action-header h2 {
+  margin: 4px 0 6px;
+  color: var(--text);
+  font-size: 1.2rem;
+}
+
+.execution-action-header p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.execution-selection-tools {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.execution-selection-tools strong {
+  color: var(--gold-soft);
+  font-size: 0.88rem;
+  white-space: nowrap;
+}
+
+.execution-selection-tools button,
+.execution-action-buttons button {
+  border: 1px solid rgba(201, 164, 81, 0.34);
+  border-radius: 9px;
+  color: var(--gold-soft);
+  background: rgba(201, 164, 81, 0.08);
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.execution-selection-tools button {
+  min-height: 36px;
+  padding: 0 12px;
+}
+
+.execution-action-buttons {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.execution-action-buttons button {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 8px;
+  align-items: center;
+  min-height: 72px;
+  padding: 12px;
+  text-align: left;
+}
+
+.execution-action-buttons button small {
+  grid-column: 2;
+  color: var(--muted);
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.execution-action-buttons button:hover,
+.execution-selection-tools button:hover {
+  border-color: rgba(201, 164, 81, 0.64);
+  background: rgba(201, 164, 81, 0.14);
+}
+
+.execution-action-buttons button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.execution-selected-list {
+  display: grid;
+  gap: 9px;
+  margin-top: 16px;
+  max-height: 360px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.execution-selected-list article {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) minmax(150px, auto);
+  gap: 12px;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px;
+  background: rgba(8, 7, 6, 0.28);
+}
+
+.execution-selected-list article.selected {
+  border-color: rgba(201, 164, 81, 0.58);
+  background: rgba(201, 164, 81, 0.1);
+}
+
+.execution-selected-list article > button {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  border: 0;
+  color: inherit;
+  text-align: left;
+  background: transparent;
+  cursor: pointer;
+}
+
+.execution-selected-list article > button strong {
+  color: var(--gold-soft);
+  font-size: 0.8rem;
+}
+
+.execution-selected-list article > button span {
+  color: var(--text);
+  font-weight: 900;
+}
+
+.execution-selected-list article > button small {
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.execution-type-pill {
+  justify-self: end;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 7px 10px;
+  color: var(--muted);
+  background: rgba(8, 7, 6, 0.34);
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 900;
+  text-align: right;
+}
+
+.execution-type-pill.ready {
+  border-color: rgba(74, 222, 128, 0.34);
+  color: #bbf7d0;
+  background: rgba(34, 197, 94, 0.1);
+}
+
+.execution-type-pill.blocked {
+  border-color: rgba(248, 113, 113, 0.34);
+  color: #fecaca;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.inline-execution-buttons {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 10px;
+  border: 1px solid rgba(201, 164, 81, 0.24);
+  border-radius: 10px;
+  padding: 14px;
+  background: rgba(8, 7, 6, 0.22);
+}
+
+.approval-radio-panel .inline-execution-buttons {
+  grid-column: auto;
+  margin-top: 12px;
+}
+
+.inline-execution-buttons > div:first-child {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.inline-execution-buttons strong {
+  color: var(--text);
+  font-size: 0.96rem;
+}
+
+.inline-execution-buttons p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.inline-execution-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.approval-radio-panel .inline-execution-grid {
+  grid-template-columns: 1fr;
+}
+
+.inline-execution-grid button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 38px;
+  border: 1px solid rgba(201, 164, 81, 0.34);
+  border-radius: 8px;
+  color: var(--gold-soft);
+  background: rgba(201, 164, 81, 0.08);
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.inline-execution-grid button:hover {
+  border-color: rgba(201, 164, 81, 0.64);
+  background: rgba(201, 164, 81, 0.14);
+}
+
+.inline-execution-grid button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
 }
 
 .detail-card-controls {

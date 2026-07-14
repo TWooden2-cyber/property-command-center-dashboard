@@ -39,6 +39,13 @@ const legacyStorageKeys = ["owner-command-center.owner-approval-queue.mockup.v3"
 type CategoryFilter = "All Categories" | OwnerApprovalCategory;
 type PropertyFilter = "All Properties" | string;
 type EditableSectionKey = "reviewSummary" | "documents" | "draftResponse" | "recommendedAction" | "estimatedCost" | "deadline";
+type ExecutableActionType = "draft-email" | "calendar-reminder" | "tracker-update" | "file-document" | "prepare-document" | "mark-complete";
+
+type ExecutableAction = {
+  type: ExecutableActionType;
+  label: string;
+  reason: string;
+};
 
 type IntakeSyncResponse = {
   ok: boolean;
@@ -293,12 +300,16 @@ function StatusSection({
   title,
   records,
   tone,
-  onOpen
+  onOpen,
+  selectedIds,
+  onToggleSelected
 }: {
   title: string;
   records: OwnerApprovalRecord[];
   tone: string;
   onOpen: (id: string) => void;
+  selectedIds?: string[];
+  onToggleSelected?: (id: string) => void;
 }) {
   return (
     <article className={`approval-status-section ${tone}`}>
@@ -309,11 +320,19 @@ function StatusSection({
       {records.length ? (
         <div className="approval-status-list">
           {records.slice(0, 4).map((record) => (
-            <button type="button" key={record.id} onClick={() => onOpen(record.id)}>
-              <strong>{record.id}</strong>
-              <span>{record.title}</span>
-              {record.ownerInstructions ? <small>{record.ownerInstructions}</small> : null}
-            </button>
+            <article key={record.id} className="approval-status-list-item">
+              {onToggleSelected ? (
+                <label className="approval-select-check" onClick={(event) => event.stopPropagation()}>
+                  <input type="checkbox" checked={selectedIds?.includes(record.id) || false} onChange={() => onToggleSelected(record.id)} />
+                  <span>Select</span>
+                </label>
+              ) : null}
+              <button type="button" onClick={() => onOpen(record.id)}>
+                <strong>{record.id}</strong>
+                <span>{record.title}</span>
+                {record.ownerInstructions ? <small>{record.ownerInstructions}</small> : null}
+              </button>
+            </article>
           ))}
         </div>
       ) : (
@@ -367,6 +386,111 @@ function buildMassPrompt(records: OwnerApprovalRecord[]) {
   return lines.join("\n");
 }
 
+const executableActionButtons: Array<{ type?: ExecutableActionType; label: string; help: string }> = [
+  { type: "draft-email", label: "Draft Email", help: "Create Gmail drafts only. Do not send." },
+  { type: "calendar-reminder", label: "Calendar Reminder", help: "Create approved calendar/task reminders." },
+  { type: "tracker-update", label: "Tracker Update", help: "Update approved dashboard/tracker fields only." },
+  { type: "file-document", label: "File / Attach Document", help: "Move, file, or attach exact approved documents only." },
+  { type: "prepare-document", label: "Prepare Document", help: "Create approved notices, leases, or owner documents." },
+  { type: "mark-complete", label: "Mark Complete", help: "Mark approved tasks complete when proof is clear." },
+  { label: "Run Selected", help: "Generate one prompt for every detected executable action." }
+];
+
+function detectExecutableActions(record: OwnerApprovalRecord): ExecutableAction[] {
+  const text = `${record.approvedAction} ${record.ownerInstructions} ${record.draftResponse} ${record.recommendedAction}`.toLowerCase();
+  const actions: ExecutableAction[] = [];
+
+  if (/\bdraft\b|\bemail response\b|\bemail drafted\b|\bcreate.+email\b/.test(text)) {
+    actions.push({ type: "draft-email", label: "Draft Email", reason: "Instructions ask for a Gmail draft or email response." });
+  }
+  if (/\bcalendar\b|\breminder\b|\bfollow up\b|\bfollow-up\b|\bdeadline\b/.test(text)) {
+    actions.push({ type: "calendar-reminder", label: "Calendar Reminder", reason: "Instructions include a date, reminder, or follow-up." });
+  }
+  if (/\btracker\b|\bledger\b|\bdashboard\b|\bstatus\b|\bmark\b|\btrack\b/.test(text)) {
+    actions.push({ type: "tracker-update", label: "Tracker Update", reason: "Instructions mention a tracker, ledger, dashboard, status, or tracking update." });
+  }
+  if (/\bfolder\b|\bfile\b|\battach\b|\battachment\b|\bdrive\b|\bplaced into\b/.test(text)) {
+    actions.push({ type: "file-document", label: "File / Attach Document", reason: "Instructions mention a file, folder, attachment, or Drive action." });
+  }
+  if (/\bnotice\b|\blease violation\b|\b10 day\b|\b10-day\b|\bdocument\b|\blease\b/.test(text)) {
+    actions.push({ type: "prepare-document", label: "Prepare Document", reason: "Instructions mention a notice, lease, or document preparation task." });
+  }
+  if (/\bcomplete\b|\bcompleted\b|\bresolved\b|\bno action needed\b|\brepair is complete\b|\baction is complete\b/.test(text)) {
+    actions.push({ type: "mark-complete", label: "Mark Complete", reason: "Instructions indicate the task is complete or resolved." });
+  }
+
+  return actions.filter((action, index, list) => list.findIndex((item) => item.type === action.type) === index);
+}
+
+function executableSummary(record: OwnerApprovalRecord) {
+  const actions = detectExecutableActions(record);
+  if (!actions.length) return { label: "Needs Exact Instruction", tone: "blocked", actions };
+  return { label: actions.map((action) => action.label).join(" + "), tone: "ready", actions };
+}
+
+function buildSelectedExecutionPrompt(records: OwnerApprovalRecord[], selectedIds: string[], actionType?: ExecutableActionType) {
+  const selected = records.filter((record) => selectedIds.includes(record.id) && record.status === "Approved");
+  const executable = selected.filter((record) => {
+    const actions = detectExecutableActions(record);
+    return actionType ? actions.some((action) => action.type === actionType) : actions.length > 0;
+  });
+
+  if (!executable.length) {
+    return "No selected approved items match this executable action type. Select approved items with clear instructions first.";
+  }
+
+  const actionLabel = actionType
+    ? executableActionButtons.find((action) => action.type === actionType)?.label || "Selected Executable Action"
+    : "All Detected Executable Actions";
+
+  const lines = [
+    `Run one Owner Approval Queue execution batch for: ${actionLabel}.`,
+    "",
+    "Use only the selected approved items below.",
+    "",
+    "Safety rule: do not send emails, write Google files/sheets, move documents, close tasks, update calendars, file legal documents, make payments, or contact anyone unless the selected item explicitly authorizes that exact action.",
+    "",
+    "After each approved task is executed, update only the approved status surfaces:",
+    "- Owner Approval Queue status",
+    "- Dashboard",
+    "- Rent ledger, if rent-related and explicitly approved",
+    "- Maintenance tracker, if maintenance-related and explicitly approved",
+    "- Legal tracker, if legal-related and explicitly approved",
+    "- Utility tracker, if utility-related and explicitly approved",
+    "- Calendar/task reminders, if deadline-related and explicitly approved",
+    "- Activity log",
+    ""
+  ];
+
+  executable.forEach((record, index) => {
+    const actions = detectExecutableActions(record);
+    lines.push(
+      `Executable Item ${index + 1}`,
+      `Task ID: ${record.id}`,
+      `Detected executable action(s): ${actions.map((action) => action.label).join("; ")}`,
+      `Source: ${record.source}`,
+      `Source mode: ${record.sourceMode || "Sample"}`,
+      `Property / Unit: ${record.propertyUnit}`,
+      `Category: ${record.category}`,
+      `Approved action: ${record.approvedAction}`,
+      `Owner instructions: ${record.ownerInstructions || "No owner instructions saved."}`,
+      `Draft response: ${record.draftResponse || "No draft response included."}`,
+      `Deadline: ${record.deadline}`,
+      `Estimated cost: ${money(record.estimatedCost)}`,
+      `Dashboard/tracker updates required: ${record.dashboardUpdatesRequired.join("; ")}`,
+      `Source Gmail URL: ${sourceEmailUrl(record) || "No source email link available."}`,
+      "",
+      "Execution notes required:",
+      "- Report what was executed.",
+      "- Report what was blocked and why.",
+      "- Do not perform any action outside the selected executable action type.",
+      ""
+    );
+  });
+
+  return lines.join("\n");
+}
+
 function sourceEmailUrl(record: OwnerApprovalRecord) {
   const sourceId = record.sourceThreadId || record.sourceMessageId;
   return sourceId ? `https://mail.google.com/mail/u/0/#all/${encodeURIComponent(sourceId)}` : "";
@@ -383,6 +507,7 @@ function ExpandedTask({
   onCancelEdit,
   onDecision,
   onInstructionChange,
+  onGenerateExecution,
   onCollapse
 }: {
   record: OwnerApprovalRecord;
@@ -395,10 +520,13 @@ function ExpandedTask({
   onCancelEdit: () => void;
   onDecision: (id: string, decision: OwnerApprovalDecision) => void;
   onInstructionChange: (id: string, instructions: string) => void;
+  onGenerateExecution: (id: string, actionType?: ExecutableActionType) => void;
   onCollapse: () => void;
 }) {
   const history = record.statusHistory || [];
   const emailUrl = sourceEmailUrl(record);
+  const execution = executableSummary(record);
+  const canExecute = record.status === "Approved";
 
   return (
     <section className="queue-expanded-task">
@@ -497,6 +625,13 @@ function ExpandedTask({
       <section className="approval-instructions-row">
         <div className="approval-radio-panel">
           <h3>Approval & Instructions</h3>
+          <div className="approval-inline-execution-strip" aria-label="Executable actions for this approval item">
+            {executableActionButtons.map((action) => (
+              <button type="button" key={action.label} onClick={() => onGenerateExecution(record.id, action.type)} disabled={!canExecute}>
+                {action.label}
+              </button>
+            ))}
+          </div>
           <div className="approval-radio-group">
             <label className="approve"><input type="radio" checked={record.ownerDecision === "Approve"} onChange={() => onDecision(record.id, "Approve")} />Approve</label>
             <label className="return"><input type="radio" checked={record.ownerDecision === "Return for Changes"} onChange={() => onDecision(record.id, "Return for Changes")} />Return for Changes</label>
@@ -507,6 +642,13 @@ function ExpandedTask({
             {history.length ? history.slice(-4).map((entry) => (
               <small key={`${entry.timestamp}-${entry.status}`}>{new Date(entry.timestamp).toLocaleString()} · {entry.priorStatus} → {entry.status}</small>
             )) : <small>No status changes saved yet.</small>}
+          </div>
+          <div className="inline-execution-buttons" aria-label="Executable action status for this approval item">
+            <div>
+              <strong>Execution Buttons</strong>
+              <em className={`execution-type-pill ${execution.tone}`}>{execution.label}</em>
+            </div>
+            <p>{canExecute ? "Generate a focused execution prompt for this approved item." : "Approve this item before generating an execution prompt."}</p>
           </div>
         </div>
         <label className="codex-instructions-box">
@@ -532,6 +674,7 @@ export function OwnerApprovalsView() {
   const [syncing, setSyncing] = useState(false);
   const [connectionWarning, setConnectionWarning] = useState("");
   const [intakeAudit, setIntakeAudit] = useState<IntakeSyncResponse["intakeAudit"] | null>(null);
+  const [selectedExecutionIds, setSelectedExecutionIds] = useState<string[]>([]);
 
   const propertyOptions = useMemo(() => {
     const dynamicOptions = Array.from(new Set(records.map((record) => record.propertyUnit.split(" - ")[0])));
@@ -553,6 +696,8 @@ export function OwnerApprovalsView() {
   const returnedRecords = records.filter((record) => record.status === "Returned / Needs More Information");
   const rejectedRecords = records.filter((record) => record.status === "Rejected");
   const selectedCost = readyRecords.reduce((total, record) => total + record.estimatedCost, 0);
+  const selectedExecutionRecords = readyRecords.filter((record) => selectedExecutionIds.includes(record.id));
+  const selectedExecutableCost = selectedExecutionRecords.reduce((total, record) => total + record.estimatedCost, 0);
   const highCount = pendingRecords.filter((record) => record.priority === "High" || record.priority === "Critical").length;
   const mediumCount = pendingRecords.filter((record) => record.priority === "Medium").length;
   const lowCount = pendingRecords.filter((record) => record.priority === "Low").length;
@@ -607,6 +752,44 @@ export function OwnerApprovalsView() {
     setOpenId(id);
     setConfirmation(confirmationForDecision(decision));
     setMassPrompt("");
+  }
+
+  function toggleExecutionSelection(id: string) {
+    setSelectedExecutionIds((current) => (current.includes(id) ? current.filter((selectedId) => selectedId !== id) : [...current, id]));
+    setMassPrompt("");
+  }
+
+  function selectAllReadyForExecution() {
+    setSelectedExecutionIds(readyRecords.map((record) => record.id));
+    setConfirmation(`${readyRecords.length} approved item(s) selected for execution prompt.`);
+    setMassPrompt("");
+  }
+
+  function clearExecutionSelection() {
+    setSelectedExecutionIds([]);
+    setConfirmation("Execution selection cleared.");
+    setMassPrompt("");
+  }
+
+  function generateExecutionPrompt(actionType?: ExecutableActionType) {
+    if (!selectedExecutionIds.length) {
+      setConfirmation("Select one or more approved items before generating an execution prompt.");
+      return;
+    }
+    setMassPrompt(buildSelectedExecutionPrompt(records, selectedExecutionIds, actionType));
+    setConfirmation("Execution prompt generated for selected approved items.");
+  }
+
+  function generateSingleExecutionPrompt(id: string, actionType?: ExecutableActionType) {
+    const record = records.find((item) => item.id === id);
+    if (!record) return;
+    if (record.status !== "Approved") {
+      setConfirmation("Approve this item before generating an execution prompt.");
+      return;
+    }
+    setSelectedExecutionIds([id]);
+    setMassPrompt(buildSelectedExecutionPrompt(records, [id], actionType));
+    setConfirmation("Execution prompt generated for the open approval item.");
   }
 
   function updateInstructions(id: string, instructions: string) {
@@ -805,14 +988,60 @@ export function OwnerApprovalsView() {
             onCancelEdit={() => { setEditingSection(null); setEditValue(""); }}
             onDecision={updateDecision}
             onInstructionChange={updateInstructions}
+            onGenerateExecution={generateSingleExecutionPrompt}
             onCollapse={() => setOpenId("")}
           />
         ) : null}
 
         <section className="approval-status-sections" aria-label="Approval status sections">
-          <StatusSection title="Approved" records={readyRecords} tone="approved" onOpen={setOpenId} />
+          <StatusSection title="Approved" records={readyRecords} tone="approved" onOpen={setOpenId} selectedIds={selectedExecutionIds} onToggleSelected={toggleExecutionSelection} />
           <StatusSection title="Returned / Needs More Information" records={returnedRecords} tone="returned" onOpen={setOpenId} />
           <StatusSection title="Rejected" records={rejectedRecords} tone="rejected" onOpen={setOpenId} />
+        </section>
+
+        <section className="execution-action-panel" aria-label="Executable owner approval actions">
+          <div className="execution-action-header">
+            <div>
+              <span className="section-kicker">Execution Buttons</span>
+              <h2>Run Approved Items by Action Type</h2>
+              <p>Select multiple approved items, then choose the exact action you want Codex to execute.</p>
+            </div>
+            <div className="execution-selection-tools">
+              <strong>{selectedExecutionIds.length} selected</strong>
+              <button type="button" onClick={selectAllReadyForExecution}>Select All Approved</button>
+              <button type="button" onClick={clearExecutionSelection}>Clear</button>
+            </div>
+          </div>
+
+          <div className="execution-action-buttons">
+            {executableActionButtons.map((action) => (
+              <button type="button" key={action.label} onClick={() => generateExecutionPrompt(action.type)} disabled={!selectedExecutionIds.length}>
+                <BriefcaseBusiness size={16} aria-hidden />
+                <span>{action.label}</span>
+                <small>{action.help}</small>
+              </button>
+            ))}
+          </div>
+
+          <div className="execution-selected-list">
+            {readyRecords.length ? readyRecords.map((record) => {
+              const summary = executableSummary(record);
+              return (
+                <article key={record.id} className={selectedExecutionIds.includes(record.id) ? "selected" : ""}>
+                  <label className="approval-select-check">
+                    <input type="checkbox" checked={selectedExecutionIds.includes(record.id)} onChange={() => toggleExecutionSelection(record.id)} />
+                    <span>Select</span>
+                  </label>
+                  <button type="button" onClick={() => setOpenId(record.id)}>
+                    <strong>{record.id}</strong>
+                    <span>{record.propertyUnit}</span>
+                    <small>{record.title}</small>
+                  </button>
+                  <em className={`execution-type-pill ${summary.tone}`}>{summary.label}</em>
+                </article>
+              );
+            }) : <p>No approved items are ready for execution.</p>}
+          </div>
         </section>
 
         {massPrompt ? (
@@ -824,8 +1053,9 @@ export function OwnerApprovalsView() {
 
         <footer className="mockup-summary-bar">
           <div><span>Items Pending Approval</span><strong>{pendingRecords.length} <small>Total</small></strong><p><em className="high">{highCount} High</em><em className="medium">{mediumCount} Medium</em><em className="low">{lowCount} Low</em></p></div>
-          <div><span>Ready for Execution</span><strong>{readyRecords.length} <small>Items Selected</small></strong></div>
-          <div><span>Estimated Cost (Selected)</span><strong>{money(selectedCost)}</strong></div>
+          <div><span>Ready for Execution</span><strong>{readyRecords.length} <small>Approved</small></strong></div>
+          <div><span>Selected for Execution</span><strong>{selectedExecutionIds.length} <small>Items</small></strong></div>
+          <div><span>Estimated Cost (Selected)</span><strong>{money(selectedExecutionIds.length ? selectedExecutableCost : selectedCost)}</strong></div>
           <button type="button" onClick={() => setMassPrompt(buildMassPrompt(records))}><BriefcaseBusiness size={20} aria-hidden />Generate Mass Prompt<small>Copy all approved instructions for Codex</small></button>
         </footer>
       </main>
