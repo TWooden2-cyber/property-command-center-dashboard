@@ -14,7 +14,6 @@ import {
   Copy,
   Edit3,
   Eye,
-  FileText,
   Filter,
   Gauge,
   Home,
@@ -112,13 +111,23 @@ const navItems = [
   { label: "Legal / Evictions", icon: BadgeDollarSign, href: "/notices-evictions" },
   { label: "Maintenance", icon: Wrench, href: "/maintenance" },
   { label: "Utilities", icon: SlidersHorizontal, href: "/utilities" },
-  { label: "Documents", icon: FileText, href: "/drive-readonly" },
   { label: "Calendar", icon: CalendarDays, href: "/calendar-follow-ups" },
   { label: "Tenants", icon: UserRound, href: "/" },
   { label: "Vendors", icon: UsersRound, href: "/" },
-  { label: "Reports", icon: ClipboardList, href: "/reports" },
   { label: "Settings", icon: Settings, href: "/settings" }
 ];
+
+const hiddenApprovalSidebarRoutes = new Set([
+  "/draft-status",
+  "/drive-update-center",
+  "/drive-readonly",
+  "/final-integration",
+  "/gmail-follow-ups",
+  "/reports",
+  "/live-readiness",
+  "/real-data-cleanup",
+  "/operations-readiness"
+]);
 
 function statusForDecision(decision: OwnerApprovalDecision): OwnerApprovalStatus {
   if (decision === "Approve") return "Approved";
@@ -678,7 +687,7 @@ export function OwnerApprovalsView() {
           <div><strong>PROPERTY</strong><span>MANAGEMENT SYSTEM</span></div>
         </div>
         <nav aria-label="Owner approval navigation">
-          {navItems.map((item) => {
+          {navItems.filter((item) => !hiddenApprovalSidebarRoutes.has(item.href)).map((item) => {
             const Icon = item.icon;
             return (
               <Link key={item.label} className={item.active ? "active" : ""} href={item.href as Route}>

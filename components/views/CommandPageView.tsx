@@ -16,6 +16,18 @@ type FilterState = {
   tone: string;
 };
 
+const hiddenPortalRoutes = new Set([
+  "/draft-status",
+  "/drive-update-center",
+  "/drive-readonly",
+  "/final-integration",
+  "/gmail-follow-ups",
+  "/reports",
+  "/live-readiness",
+  "/real-data-cleanup",
+  "/operations-readiness"
+]);
+
 function rowText(row: CommandTableRow) {
   return Object.values(row.values).join(" ").toLowerCase();
 }
@@ -176,13 +188,15 @@ function BlockedAndApproval({ config }: { config: CommandPageConfig }) {
 }
 
 function RelatedLinks({ config }: { config: CommandPageConfig }) {
-  if (!config.relatedLinks?.length) {
+  const visibleLinks = config.relatedLinks?.filter((link) => !hiddenPortalRoutes.has(link.href)) ?? [];
+
+  if (!visibleLinks.length) {
     return null;
   }
 
   return (
     <section className="remaining-related-grid">
-      {config.relatedLinks.map((link) => (
+      {visibleLinks.map((link) => (
         <article className={`remaining-queue-card queue-${link.tone}`} key={link.href}>
           <ShieldAlert size={19} />
           <h3>{link.title}</h3>

@@ -17,18 +17,10 @@ import {
   DollarSign,
   Zap,
   FileWarning,
-  FileText,
   FileCheck2,
-  FolderUp,
-  Mail,
-  BarChart3,
   ShieldCheck,
-  Route as RouteIcon,
-  Database,
-  ListChecks,
   RadioTower,
   PlugZap,
-  HardDrive
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -73,20 +65,23 @@ const navigation = [
   { href: "/admin-tasks", label: "Admin Tasks", icon: ClipboardList },
   { href: "/calendar-follow-ups", label: "Calendar & Follow-Ups", icon: CalendarClock },
   { href: "/lease-violations", label: "Lease Violations", icon: FileWarning },
-  { href: "/draft-status", label: "Draft Status", icon: FileText },
-  { href: "/drive-update-center", label: "Drive Update Center", icon: FolderUp },
-  { href: "/drive-readonly", label: "Drive Read-Only", icon: HardDrive },
   { href: "/google-connection-center", label: "Google Connections", icon: PlugZap },
-  { href: "/final-integration", label: "Final Integration", icon: ClipboardList },
-  { href: "/gmail-follow-ups", label: "Gmail Tracking", icon: Mail },
-  { href: "/reports", label: "Reports", icon: BarChart3 },
   { href: "/data-accuracy", label: "Data Accuracy", icon: ShieldCheck },
-  { href: "/live-readiness", label: "Live Readiness", icon: RouteIcon },
   { href: "/live-operations", label: "Live Operations", icon: RadioTower },
-  { href: "/real-data-cleanup", label: "Real Data Cleanup", icon: Database },
-  { href: "/operations-readiness", label: "Operations Readiness", icon: ListChecks },
   { href: "/settings", label: "Settings", icon: Settings }
 ] satisfies readonly NavItem[];
+
+const hiddenSidebarRoutes = new Set([
+  "/draft-status",
+  "/drive-update-center",
+  "/drive-readonly",
+  "/final-integration",
+  "/gmail-follow-ups",
+  "/reports",
+  "/live-readiness",
+  "/real-data-cleanup",
+  "/operations-readiness"
+]);
 
 export function LuxuryShell({
   title,
@@ -137,7 +132,7 @@ export function LuxuryShell({
         </Link>
 
         <nav className="nav-list" aria-label="Main navigation">
-          {navigation.map((item) => {
+          {navigation.filter((item) => !hiddenSidebarRoutes.has(item.href)).map((item) => {
             const Icon = item.icon;
             const active = pathname === item.href;
 
