@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
+    "test:owner-approvals": "node scripts/ownerApprovalExecution.test.mjs",
     "drive:readonly:preflight": "node scripts/drive-readonly-preflight.mjs",
     "drive:readonly:list": "node scripts/drive-readonly-list.mjs",
     "drive:readonly:health": "node scripts/drive-folder-health.mjs"

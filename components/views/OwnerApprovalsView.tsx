@@ -31,6 +31,11 @@ import {
   type OwnerApprovalStatus,
   type OwnerApprovalStatusHistoryEntry
 } from "@/lib/ownerApprovals";
+import {
+  buildOwnerApprovalExecutionPayloads,
+  portalErrorPayload,
+  type OwnerApprovalUiAction
+} from "@/lib/ownerApprovalExecution";
 import { money } from "@/lib/propertyCommandCenterData";
 
 const storageKey = "owner-command-center.owner-approval-queue.live.v1";
@@ -39,20 +44,7 @@ const legacyStorageKeys = ["owner-command-center.owner-approval-queue.mockup.v3"
 type CategoryFilter = "All Categories" | OwnerApprovalCategory;
 type PropertyFilter = "All Properties" | string;
 type EditableSectionKey = "reviewSummary" | "documents" | "draftResponse" | "recommendedAction" | "estimatedCost" | "deadline";
-type ExecutableActionType =
-  | "draft-email"
-  | "send-response"
-  | "calendar-reminder"
-  | "create-task"
-  | "tracker-update"
-  | "file-document"
-  | "draft-violation-notice"
-  | "draft-10-day-notice"
-  | "draft-lease"
-  | "schedule-vendor"
-  | "notify-tenant"
-  | "prepare-document"
-  | "mark-complete";
+type ExecutableActionType = OwnerApprovalUiAction;
 
 type ExecutableAction = {
   type: ExecutableActionType;
@@ -448,9 +440,17 @@ function buildMassPrompt(records: OwnerApprovalRecord[]) {
   ];
 
   approved.forEach((record, index) => {
+    const payloads = buildOwnerApprovalExecutionPayloads(record);
+    const executionPayloads = payloads.length ? payloads : [portalErrorPayload(record.id)];
     lines.push(
       `Approved Item ${index + 1}`,
       `Task ID: ${record.id}`,
+      `Execution payload:`,
+      JSON.stringify(executionPayloads, null, 2),
+      `Selected Action: ${executionPayloads.map((payload) => payload.selectedAction).join("; ")}`,
+      `Selected Destination: ${executionPayloads.map((payload) => payload.selectedDestination || "missing").join("; ")}`,
+      `Execution Authorized: ${executionPayloads.every((payload) => payload.executionAuthorized) ? "Yes" : "No"}`,
+      `Execution validation: ${executionPayloads.map((payload) => `${payload.expectedResultLanguage}: ${payload.validationMessage}`).join(" | ")}`,
       `Source: ${record.source}`,
       `Source mode: ${record.sourceMode || "Sample"}`,
       `Property / Unit: ${record.propertyUnit}`,
@@ -531,8 +531,10 @@ function detectExecutableActions(record: OwnerApprovalRecord): ExecutableAction[
 }
 
 function executableSummary(record: OwnerApprovalRecord) {
+  const selectedActions = ((record.selectedExecutionActions || []) as ExecutableActionType[]).map(actionLabelForType);
+  if (selectedActions.length) return { label: selectedActions.join(" + "), tone: "ready", actions: [] };
   const actions = detectExecutableActions(record);
-  if (!actions.length) return { label: "Needs Exact Instruction", tone: "blocked", actions };
+  if (!actions.length) return { label: "Needs Action Button", tone: "blocked", actions };
   return { label: actions.map((action) => action.label).join(" + "), tone: "ready", actions };
 }
 
@@ -568,13 +570,12 @@ function buildSelectedExecutionPrompt(records: OwnerApprovalRecord[], selectedId
   const requestedActions = normalizeActionFilter(actionFilter);
   const selected = records.filter((record) => selectedIds.includes(record.id) && record.status === "Approved");
   const executable = selected.filter((record) => {
-    const actions = detectExecutableActions(record);
     const selectedButtonActions = (record.selectedExecutionActions || []) as ExecutableActionType[];
-    return requestedActions.length ? true : selectedButtonActions.length > 0 || actions.length > 0;
+    return requestedActions.length ? true : selectedButtonActions.length > 0;
   });
 
   if (!executable.length) {
-    return "No selected approved items match this executable action type. Select at least one approved item and action button first.";
+    return "Portal Error: the selected owner action was not included in the execution payload.";
   }
 
   const actionLabel = requestedActions.length
@@ -616,6 +617,8 @@ function buildSelectedExecutionPrompt(records: OwnerApprovalRecord[], selectedId
   executable.forEach((record, index) => {
     const actions = detectExecutableActions(record);
     const selectedButtonActions = (record.selectedExecutionActions || []) as ExecutableActionType[];
+    const payloads = buildOwnerApprovalExecutionPayloads(record, requestedActions.length ? requestedActions : undefined);
+    const executionPayloads = payloads.length ? payloads : [portalErrorPayload(record.id)];
     const selectedActionLabels = requestedActions.length
       ? requestedActions.map(actionLabelForType)
       : selectedButtonActions.length
@@ -624,6 +627,12 @@ function buildSelectedExecutionPrompt(records: OwnerApprovalRecord[], selectedId
     lines.push(
       `Executable Item ${index + 1}`,
       `Task ID: ${record.id}`,
+      "Execution payload:",
+      JSON.stringify(executionPayloads, null, 2),
+      `Selected Action: ${executionPayloads.map((payload) => payload.selectedAction).join("; ")}`,
+      `Selected Destination: ${executionPayloads.map((payload) => payload.selectedDestination || "missing").join("; ")}`,
+      `Execution Authorized: ${executionPayloads.every((payload) => payload.executionAuthorized) ? "Yes" : "No"}`,
+      `Execution validation: ${executionPayloads.map((payload) => `${payload.expectedResultLanguage}: ${payload.validationMessage}`).join(" | ")}`,
       `Selected executable action(s): ${selectedActionLabels.join("; ") || "No executable action selected."}`,
       `Owner-selected button authorization: ${selectedActionLabels.join("; ") || "None"}. This selection authorizes the action without requiring another written instruction.`,
       `Detected executable action(s): ${actions.map((action) => action.label).join("; ") || "None detected from text."}`,
@@ -731,6 +740,8 @@ function ExpandedTask({
     selectedActions.includes("draft-violation-notice") ||
     selectedActions.includes("draft-10-day-notice") ||
     selectedActions.includes("prepare-document");
+  const previewPayloads = buildOwnerApprovalExecutionPayloads(record);
+  const selectedDestinations = previewPayloads.map((payload) => payload.selectedDestination).filter(Boolean);
 
   return (
     <section className="queue-expanded-task">
@@ -973,6 +984,13 @@ function ExpandedTask({
               </a>
             ) : null}
           </div>
+          <div className="approval-execution-payload-preview" aria-label="Saved execution payload preview">
+            <strong>Saved Execution Authorization</strong>
+            <span>Selected Action: {previewPayloads.length ? previewPayloads.map((payload) => payload.selectedAction).join(" + ") : "None selected"}</span>
+            <span>Selected Destination: {selectedDestinations.length ? selectedDestinations.join(" + ") : "None selected"}</span>
+            <span>Execution Authorized: {previewPayloads.length && previewPayloads.every((payload) => payload.executionAuthorized) ? "Yes" : "No"}</span>
+            {previewPayloads.length ? <small>{previewPayloads.map((payload) => payload.validationMessage).join(" | ")}</small> : <small>Select an action button and destination before running execution.</small>}
+          </div>
         </div>
         <label className="codex-instructions-box">
           <span>Proof / Notes</span>
@@ -1111,7 +1129,8 @@ export function OwnerApprovalsView() {
         ownerInstructions: record.ownerInstructions,
         draftResponse: record.draftResponse,
         sourceMessageId: record.sourceMessageId,
-        sourceThreadId: record.sourceThreadId
+        sourceThreadId: record.sourceThreadId,
+        executionPayloads: buildOwnerApprovalExecutionPayloads(record, "draft-email")
       })
     });
     const data = (await response.json()) as GmailDraftResponse;

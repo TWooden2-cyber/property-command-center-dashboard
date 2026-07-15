@@ -22,6 +22,7 @@ type GmailDraftRequest = {
   draftResponse?: string;
   sourceMessageId?: string;
   sourceThreadId?: string;
+  executionPayloads?: unknown[];
 };
 
 function cleanHeader(value: string) {
