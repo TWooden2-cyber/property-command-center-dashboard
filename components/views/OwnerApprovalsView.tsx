@@ -39,7 +39,20 @@ const legacyStorageKeys = ["owner-command-center.owner-approval-queue.mockup.v3"
 type CategoryFilter = "All Categories" | OwnerApprovalCategory;
 type PropertyFilter = "All Properties" | string;
 type EditableSectionKey = "reviewSummary" | "documents" | "draftResponse" | "recommendedAction" | "estimatedCost" | "deadline";
-type ExecutableActionType = "draft-email" | "calendar-reminder" | "tracker-update" | "file-document" | "prepare-document" | "mark-complete";
+type ExecutableActionType =
+  | "draft-email"
+  | "send-response"
+  | "calendar-reminder"
+  | "create-task"
+  | "tracker-update"
+  | "file-document"
+  | "draft-violation-notice"
+  | "draft-10-day-notice"
+  | "draft-lease"
+  | "schedule-vendor"
+  | "notify-tenant"
+  | "prepare-document"
+  | "mark-complete";
 
 type ExecutableAction = {
   type: ExecutableActionType;
@@ -49,12 +62,26 @@ type ExecutableAction = {
 
 const trackerTargetButtons = [
   "Dashboard / Activity Log",
+  "Rent Tracker",
   "Maintenance Tracker",
-  "Rent Ledger",
   "Legal Tracker",
+  "Lease Tracker",
+  "Expense Tracker",
+  "NOI Tracker",
+  "Insurance Tracker",
+  "Mortgage Tracker",
   "Utility Tracker",
   "Calendar Follow-Ups",
   "Tenant Communications"
+] as const;
+
+const draftTargetButtons = [
+  "Tenant Response",
+  "Vendor Response",
+  "Payment Agreement",
+  "Lease",
+  "Violation Notice",
+  "10-Day Notice"
 ] as const;
 
 const folderTargetButtons = [
@@ -173,7 +200,7 @@ function statusForDecision(decision: OwnerApprovalDecision): OwnerApprovalStatus
 
 function confirmationForDecision(decision: OwnerApprovalDecision) {
   if (decision === "Approve") return "Approval saved. Item moved to Approved.";
-  if (decision === "Return for Changes") return "Item returned to Codex. Owner instructions were saved.";
+  if (decision === "Return for Changes") return "Item returned to Codex. Proof / Notes were saved.";
   if (decision === "Reject") return "Item rejected. Rejection reason was logged.";
   return "Decision saved.";
 }
@@ -429,7 +456,7 @@ function buildMassPrompt(records: OwnerApprovalRecord[]) {
       `Property / Unit: ${record.propertyUnit}`,
       `Category: ${record.category}`,
       `Approved action: ${record.approvedAction}`,
-      `Owner instructions: ${record.ownerInstructions || "No owner instructions saved."}`,
+      `Proof / Notes: ${record.ownerInstructions || "No proof or notes saved."}`,
       `Draft response: ${record.draftResponse || "No draft response included."}`,
       `Deadline: ${record.deadline}`,
       `Estimated cost: ${money(record.estimatedCost)}`,
@@ -443,36 +470,61 @@ function buildMassPrompt(records: OwnerApprovalRecord[]) {
 }
 
 const executableActionButtons: Array<{ type?: ExecutableActionType; label: string; help: string }> = [
-  { type: "draft-email", label: "Draft Email", help: "Create Gmail drafts only. Do not send." },
-  { type: "calendar-reminder", label: "Calendar Reminder", help: "Create approved calendar/task reminders." },
-  { type: "tracker-update", label: "Tracker Update", help: "Update approved dashboard/tracker fields only." },
-  { type: "file-document", label: "File / Attach Document", help: "Move, file, or attach exact approved documents only." },
-  { type: "prepare-document", label: "Prepare Document", help: "Create approved notices, leases, or owner documents." },
-  { type: "mark-complete", label: "Mark Complete", help: "Mark approved tasks complete when proof is clear." },
-  { label: "Run Selected", help: "Generate one prompt for every detected executable action." }
+  { type: "tracker-update", label: "Update Tracker", help: "Write the approved item to the selected tracker." },
+  { type: "draft-email", label: "Draft Response", help: "Create a Gmail draft only. Do not send." },
+  { type: "send-response", label: "Send Response", help: "Send the approved response and log communication." },
+  { type: "draft-violation-notice", label: "Draft Violation Notice", help: "Prepare a violation notice for Owner Approval." },
+  { type: "draft-10-day-notice", label: "Draft 10-Day Notice", help: "Review ledger/lease and draft notice only." },
+  { type: "draft-lease", label: "Draft Lease", help: "Prepare lease package from available data." },
+  { type: "schedule-vendor", label: "Schedule Vendor", help: "Coordinate approved vendor scheduling." },
+  { type: "notify-tenant", label: "Notify Tenant", help: "Send approved tenant notification and log it." },
+  { type: "calendar-reminder", label: "Create Calendar Event", help: "Create approved calendar event/reminder." },
+  { type: "create-task", label: "Create Task", help: "Create approved task with source and proof requirements." },
+  { type: "file-document", label: "Save Attachment / Move Document", help: "File approved document and update document index." },
+  { type: "prepare-document", label: "Prepare Document", help: "Create approved owner document draft." },
+  { type: "mark-complete", label: "Mark Complete", help: "Complete only after proof is verified." },
+  { label: "Run Selected", help: "Execute selected approved button actions." }
 ];
 
 function detectExecutableActions(record: OwnerApprovalRecord): ExecutableAction[] {
-  const text = `${record.approvedAction} ${record.ownerInstructions} ${record.draftResponse} ${record.recommendedAction}`.toLowerCase();
+  const text = `${record.approvedAction} ${record.draftResponse} ${record.recommendedAction}`.toLowerCase();
   const actions: ExecutableAction[] = [];
 
   if (/\bdraft\b|\bemail response\b|\bemail drafted\b|\bcreate.+email\b/.test(text)) {
-    actions.push({ type: "draft-email", label: "Draft Email", reason: "Instructions ask for a Gmail draft or email response." });
+    actions.push({ type: "draft-email", label: "Draft Response", reason: "Source text asks for a Gmail draft or email response." });
   }
   if (/\bcalendar\b|\breminder\b|\bfollow up\b|\bfollow-up\b|\bdeadline\b/.test(text)) {
-    actions.push({ type: "calendar-reminder", label: "Calendar Reminder", reason: "Instructions include a date, reminder, or follow-up." });
+    actions.push({ type: "calendar-reminder", label: "Create Calendar Event", reason: "Source text includes a date, reminder, or follow-up." });
   }
   if (/\btracker\b|\bledger\b|\bdashboard\b|\bstatus\b|\bmark\b|\btrack\b/.test(text)) {
-    actions.push({ type: "tracker-update", label: "Tracker Update", reason: "Instructions mention a tracker, ledger, dashboard, status, or tracking update." });
+    actions.push({ type: "tracker-update", label: "Update Tracker", reason: "Source text mentions a tracker, ledger, dashboard, status, or tracking update." });
   }
   if (/\bfolder\b|\bfile\b|\battach\b|\battachment\b|\bdrive\b|\bplaced into\b/.test(text)) {
-    actions.push({ type: "file-document", label: "File / Attach Document", reason: "Instructions mention a file, folder, attachment, or Drive action." });
+    actions.push({ type: "file-document", label: "Save Attachment / Move Document", reason: "Source text mentions a file, folder, attachment, or Drive action." });
   }
-  if (/\bnotice\b|\blease violation\b|\b10 day\b|\b10-day\b|\bdocument\b|\blease\b/.test(text)) {
-    actions.push({ type: "prepare-document", label: "Prepare Document", reason: "Instructions mention a notice, lease, or document preparation task." });
+  if (/\bviolation\b|\blease violation\b/.test(text)) {
+    actions.push({ type: "draft-violation-notice", label: "Draft Violation Notice", reason: "Source text mentions a lease violation or violation notice." });
+  }
+  if (/\b10 day\b|\b10-day\b|\bnonpayment notice\b/.test(text)) {
+    actions.push({ type: "draft-10-day-notice", label: "Draft 10-Day Notice", reason: "Source text mentions a 10-day or nonpayment notice." });
+  }
+  if (/\bdraft lease\b|\blease package\b|\bnew lease\b|\blease renewal\b/.test(text)) {
+    actions.push({ type: "draft-lease", label: "Draft Lease", reason: "Source text mentions a lease package or lease draft." });
+  }
+  if (/\bschedule vendor\b|\bvendor appointment\b|\bcoordinate.+vendor\b|\bplumber\b|\bhvac\b|\belectrician\b/.test(text)) {
+    actions.push({ type: "schedule-vendor", label: "Schedule Vendor", reason: "Source text mentions vendor scheduling." });
+  }
+  if (/\bnotify tenant\b|\btenant notification\b|\btext tenant\b|\bemail tenant\b/.test(text)) {
+    actions.push({ type: "notify-tenant", label: "Notify Tenant", reason: "Source text mentions tenant notification." });
+  }
+  if (/\bcreate task\b|\btask\b|\bto-do\b|\btodo\b/.test(text)) {
+    actions.push({ type: "create-task", label: "Create Task", reason: "Source text mentions creating a task." });
+  }
+  if (/\bnotice\b|\bdocument\b|\blease\b/.test(text)) {
+    actions.push({ type: "prepare-document", label: "Prepare Document", reason: "Source text mentions a notice, lease, or document preparation task." });
   }
   if (/\bcomplete\b|\bcompleted\b|\bresolved\b|\bno action needed\b|\brepair is complete\b|\baction is complete\b/.test(text)) {
-    actions.push({ type: "mark-complete", label: "Mark Complete", reason: "Instructions indicate the task is complete or resolved." });
+    actions.push({ type: "mark-complete", label: "Mark Complete", reason: "Source text indicates the task is complete or resolved." });
   }
 
   return actions.filter((action, index, list) => list.findIndex((item) => item.type === action.type) === index);
@@ -486,6 +538,16 @@ function executableSummary(record: OwnerApprovalRecord) {
 
 function actionLabelForType(type: ExecutableActionType) {
   return executableActionButtons.find((action) => action.type === type)?.label || type;
+}
+
+function actionNeedsDraftTarget(actionType: ExecutableActionType) {
+  return (
+    actionType === "draft-email" ||
+    actionType === "draft-lease" ||
+    actionType === "draft-violation-notice" ||
+    actionType === "draft-10-day-notice" ||
+    actionType === "prepare-document"
+  );
 }
 
 function isIncomeOrRentCollection(record: OwnerApprovalRecord) {
@@ -507,11 +569,12 @@ function buildSelectedExecutionPrompt(records: OwnerApprovalRecord[], selectedId
   const selected = records.filter((record) => selectedIds.includes(record.id) && record.status === "Approved");
   const executable = selected.filter((record) => {
     const actions = detectExecutableActions(record);
-    return requestedActions.length ? true : actions.length > 0;
+    const selectedButtonActions = (record.selectedExecutionActions || []) as ExecutableActionType[];
+    return requestedActions.length ? true : selectedButtonActions.length > 0 || actions.length > 0;
   });
 
   if (!executable.length) {
-    return "No selected approved items match this executable action type. Select approved items with clear instructions first.";
+    return "No selected approved items match this executable action type. Select at least one approved item and action button first.";
   }
 
   const actionLabel = requestedActions.length
@@ -523,7 +586,16 @@ function buildSelectedExecutionPrompt(records: OwnerApprovalRecord[], selectedId
     "",
     "Use only the selected approved items below.",
     "",
-    "Safety rule: do not send emails, write Google files/sheets, move documents, close tasks, update calendars, file legal documents, make payments, or contact anyone unless the selected item explicitly authorizes that exact action.",
+    "OWNER BUTTON EXECUTION RULE: every selected owner action button is a direct execution instruction. Do not require a second written owner instruction when the selected button and target clearly identify the authorized action.",
+    "",
+    "Safety rule: perform only the owner-selected button action(s). Do not send emails, write Google files/sheets, move documents, close tasks, update calendars, file legal documents, make payments, or contact anyone unless the selected button explicitly authorizes that exact action.",
+    "",
+    "General execution process:",
+    "1. Read the complete source item, including source email/message/document context and available attachments.",
+    "2. Extract property, unit, tenant, vendor, amount, dates, issue, status, source link, and proof details.",
+    "3. Execute the selected button action using the selected tracker/folder/calendar/task target.",
+    "4. Update related approved system surfaces and Activity Log.",
+    "5. Report what was completed, what remains pending, and what could not be verified.",
     "",
     "After each approved task is executed, update only the approved status surfaces:",
     "- Owner Approval Queue status",
@@ -534,26 +606,35 @@ function buildSelectedExecutionPrompt(records: OwnerApprovalRecord[], selectedId
     "- Utility tracker, if utility-related and explicitly approved",
     "- Calendar/task reminders, if deadline-related and explicitly approved",
     "- Activity log",
+    "",
+    "Required result language for each item: Executed, Partially Executed, Blocked, or Proposed Only. Never say an item was updated, scheduled, sent, saved, or completed unless that live action actually occurred.",
+    "",
+    "Audit required for each item: source item ID, owner-selected button, selected tracker/action, date/time, property/unit, information extracted, action performed, systems updated, previous status, new status, missing/unverified information, and any error or blocked step.",
     ""
   ];
 
   executable.forEach((record, index) => {
     const actions = detectExecutableActions(record);
+    const selectedButtonActions = (record.selectedExecutionActions || []) as ExecutableActionType[];
     const selectedActionLabels = requestedActions.length
       ? requestedActions.map(actionLabelForType)
-      : actions.map((action) => action.label);
+      : selectedButtonActions.length
+        ? selectedButtonActions.map(actionLabelForType)
+        : actions.map((action) => action.label);
     lines.push(
       `Executable Item ${index + 1}`,
       `Task ID: ${record.id}`,
       `Selected executable action(s): ${selectedActionLabels.join("; ") || "No executable action selected."}`,
+      `Owner-selected button authorization: ${selectedActionLabels.join("; ") || "None"}. This selection authorizes the action without requiring another written instruction.`,
       `Detected executable action(s): ${actions.map((action) => action.label).join("; ") || "None detected from text."}`,
       `Source: ${record.source}`,
       `Source mode: ${record.sourceMode || "Sample"}`,
       `Property / Unit: ${record.propertyUnit}`,
       `Category: ${record.category}`,
       `Approved action: ${record.approvedAction}`,
-      `Owner instructions: ${record.ownerInstructions || "No owner instructions saved."}`,
+      `Proof / Notes: ${record.ownerInstructions || "No proof or notes saved."}`,
       `Selected tracker destination(s): ${(record.selectedTrackerTargets || []).join("; ") || "None selected."}`,
+      `Selected draft destination(s): ${(record.selectedDraftTargets || []).join("; ") || "None selected."}`,
       `Selected folder destination(s): ${(record.selectedFolderTargets || []).join("; ") || "None selected."}`,
       `Selected filing property: ${record.selectedFilingProperty || "Not selected."}`,
       `Selected filing unit folder(s): ${(record.selectedFilingUnits || []).join("; ") || "Not selected."}`,
@@ -567,10 +648,19 @@ function buildSelectedExecutionPrompt(records: OwnerApprovalRecord[], selectedId
       `Dashboard/tracker updates required: ${record.dashboardUpdatesRequired.join("; ")}`,
       `Source Gmail URL: ${sourceEmailUrl(record) || "No source email link available."}`,
       "",
+      "Button-specific execution requirements:",
+      "- Update Tracker: write extracted source facts to the selected tracker destination(s). Selecting the tracker is authorization to write that tracker.",
+      "- Draft Response: prepare a complete response from the source item and place it in Owner Approval/Gmail draft as configured; do not send.",
+      "- Send Response / Notify Tenant / Schedule Vendor: contact only when that exact button is selected and enough recipient/vendor data exists.",
+      "- Create Calendar Event: use verified date/time; if exact time is missing, mark pending scheduling instead of inventing one.",
+      "- Save Attachment / Move Document: file only the approved source document/attachment and update Document Index; never delete.",
+      "- Mark Complete: verify proof first; if proof is missing, set Awaiting Proof instead of Completed.",
+      "",
       "Execution notes required:",
-      "- Report what was executed.",
+      "- Start each item result with Executed, Partially Executed, Blocked, or Proposed Only.",
+      "- Report what was executed and which systems were updated.",
       "- Report what was blocked and why.",
-      "- Do not perform any action outside the selected executable action type.",
+      "- Do not perform any action outside the selected owner button.",
       ""
     );
   });
@@ -596,6 +686,7 @@ function ExpandedTask({
   onInstructionChange,
   onToggleExecutionAction,
   onToggleTrackerTarget,
+  onToggleDraftTarget,
   onToggleFolderTarget,
   onFilingPropertyChange,
   onToggleFilingUnit,
@@ -616,6 +707,7 @@ function ExpandedTask({
   onInstructionChange: (id: string, instructions: string) => void;
   onToggleExecutionAction: (id: string, actionType: ExecutableActionType) => void;
   onToggleTrackerTarget: (id: string, target: string) => void;
+  onToggleDraftTarget: (id: string, target: string) => void;
   onToggleFolderTarget: (id: string, target: string) => void;
   onFilingPropertyChange: (id: string, property: string) => void;
   onToggleFilingUnit: (id: string, unit: string) => void;
@@ -630,8 +722,15 @@ function ExpandedTask({
   const canExecute = record.status === "Approved";
   const selectedActions = (record.selectedExecutionActions || []) as ExecutableActionType[];
   const selectedTrackerTargets = record.selectedTrackerTargets || [];
+  const selectedDraftTargets = record.selectedDraftTargets || [];
   const selectedFolderTargets = record.selectedFolderTargets || [];
   const selectedFilingUnits = record.selectedFilingUnits || [];
+  const needsDraftTarget =
+    selectedActions.includes("draft-email") ||
+    selectedActions.includes("draft-lease") ||
+    selectedActions.includes("draft-violation-notice") ||
+    selectedActions.includes("draft-10-day-notice") ||
+    selectedActions.includes("prepare-document");
 
   return (
     <section className="queue-expanded-task">
@@ -721,7 +820,7 @@ function ExpandedTask({
 
       <section className="approval-instructions-row">
         <div className="approval-radio-panel">
-          <h3>Approval & Instructions</h3>
+          <h3>Approval & Execution</h3>
           <div className="approval-inline-execution-strip" aria-label="Executable actions for this approval item">
             {executableActionButtons.map((action) => (
               <button
@@ -745,6 +844,23 @@ function ExpandedTask({
                     key={target}
                     className={selectedTrackerTargets.includes(target) ? "selected" : ""}
                     onClick={() => onToggleTrackerTarget(record.id, target)}
+                  >
+                    {target}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+          {needsDraftTarget ? (
+            <div className="approval-target-button-group" aria-label="Draft destinations">
+              <strong>Choose draft type</strong>
+              <div>
+                {draftTargetButtons.map((target) => (
+                  <button
+                    type="button"
+                    key={target}
+                    className={selectedDraftTargets.includes(target) ? "selected" : ""}
+                    onClick={() => onToggleDraftTarget(record.id, target)}
                   >
                     {target}
                   </button>
@@ -850,7 +966,7 @@ function ExpandedTask({
                 {selectedActions.length ? selectedActions.map(actionLabelForType).join(" + ") : execution.label}
               </em>
             </div>
-            <p>{canExecute ? "Click action buttons to choose options, then click Run Selected." : "You can choose action options now. Approve the item before running them."}</p>
+            <p>{canExecute ? "Selected buttons are execution commands. Click Run Selected to execute the approved action." : "You can choose action buttons now. Approve the item before running them."}</p>
             {record.gmailDraftId ? (
               <a className="gmail-draft-created-link" href={record.gmailDraftUrl || "https://mail.google.com/mail/u/0/#drafts"} target="_blank" rel="noreferrer">
                 Gmail draft created: {record.gmailDraftId}
@@ -859,8 +975,8 @@ function ExpandedTask({
           </div>
         </div>
         <label className="codex-instructions-box">
-          <span>Your Instructions to Codex</span>
-          <textarea value={record.ownerInstructions} onChange={(event) => onInstructionChange(record.id, event.target.value)} placeholder="Provide specific instructions for Codex..." />
+          <span>Proof / Notes</span>
+          <textarea value={record.ownerInstructions} onChange={(event) => onInstructionChange(record.id, event.target.value)} placeholder="Add optional proof, notes, or supporting context..." />
           <small>Example: &quot;{defaultOwnerInstruction}&quot;</small>
         </label>
       </section>
@@ -1046,6 +1162,7 @@ export function OwnerApprovalsView() {
         ...item,
         selectedExecutionActions: nextSelected,
         selectedTrackerTargets: nextSelected.includes("tracker-update") ? item.selectedTrackerTargets : [],
+        selectedDraftTargets: nextSelected.some(actionNeedsDraftTarget) ? item.selectedDraftTargets : [],
         selectedFolderTargets: nextSelected.includes("file-document") ? item.selectedFolderTargets : [],
         selectedFilingProperty: nextSelected.includes("file-document") ? item.selectedFilingProperty : "",
         selectedFilingUnits: nextSelected.includes("file-document") ? item.selectedFilingUnits : [],
@@ -1058,6 +1175,19 @@ export function OwnerApprovalsView() {
     setSelectedExecutionIds((current) => (current.includes(id) ? current : [...current, id]));
     setMassPrompt("");
     setConfirmation(`${actionLabelForType(actionType)} option ${wasSelected ? "removed" : "selected"}.`);
+  }
+
+  function toggleDraftTarget(id: string, target: string) {
+    const record = records.find((item) => item.id === id);
+    const wasSelected = Boolean(record?.selectedDraftTargets?.includes(target));
+    setRecords((current) => current.map((item) => {
+      if (item.id !== id) return item;
+      const selected = item.selectedDraftTargets || [];
+      const nextSelected = selected.includes(target) ? selected.filter((value) => value !== target) : [...selected, target];
+      return { ...item, selectedDraftTargets: nextSelected };
+    }));
+    setMassPrompt("");
+    setConfirmation(`${target} draft type ${wasSelected ? "removed" : "selected"}.`);
   }
 
   function toggleTrackerTarget(id: string, target: string) {
@@ -1134,12 +1264,16 @@ export function OwnerApprovalsView() {
       return;
     }
     if (selectedActions.includes("draft-email")) {
-      setConfirmation("Creating Gmail draft from owner instructions...");
+      setConfirmation("Creating Gmail draft from approved source item...");
       try {
         const result = await createGmailDraft(record);
         setSelectedExecutionIds([id]);
         setMassPrompt(buildSelectedExecutionPrompt(records, [id], selectedActions));
-        setConfirmation(`Gmail draft created: ${result.draftId}. Open Gmail Drafts to review and send manually.`);
+        setConfirmation(
+          selectedActions.length > 1
+            ? `Gmail draft created: ${result.draftId}. Execution prompt generated for the remaining selected button action(s).`
+            : `Gmail draft created: ${result.draftId}. Open Gmail Drafts to review and send manually.`
+        );
       } catch (error) {
         setConfirmation(error instanceof Error ? error.message : "Gmail draft creation failed.");
       }
@@ -1152,7 +1286,7 @@ export function OwnerApprovalsView() {
 
   function updateInstructions(id: string, instructions: string) {
     setRecords((current) => current.map((record) => (record.id === id ? { ...record, ownerInstructions: instructions } : record)));
-    setConfirmation("Owner instructions saved.");
+    setConfirmation("Proof / Notes saved.");
   }
 
   async function checkIntake(options: { reason?: "load" | "manual" } = {}) {
@@ -1186,6 +1320,7 @@ export function OwnerApprovalsView() {
                 rejectionReason: existing.rejectionReason,
                 selectedExecutionActions: existing.selectedExecutionActions || record.selectedExecutionActions || [],
                 selectedTrackerTargets: existing.selectedTrackerTargets || record.selectedTrackerTargets || [],
+                selectedDraftTargets: existing.selectedDraftTargets || record.selectedDraftTargets || [],
                 selectedFolderTargets: existing.selectedFolderTargets || record.selectedFolderTargets || [],
                 selectedFilingProperty: existing.selectedFilingProperty || record.selectedFilingProperty || "",
                 selectedFilingUnits: existing.selectedFilingUnits || record.selectedFilingUnits || [],
@@ -1247,7 +1382,7 @@ export function OwnerApprovalsView() {
         <header className="approval-workspace-header">
           <div>
             <h1>Owner Approval Queue <span>{records.length}</span></h1>
-            <p>Review all pending items and provide approval instructions</p>
+            <p>Review pending items, select execution buttons, and save optional proof notes</p>
             {connectionWarning ? <div className="approval-connection-warning">{connectionWarning}</div> : null}
             {confirmation ? <div className="approval-confirmation">{confirmation}</div> : null}
           </div>
@@ -1359,6 +1494,7 @@ export function OwnerApprovalsView() {
             onInstructionChange={updateInstructions}
             onToggleExecutionAction={toggleRecordExecutionAction}
             onToggleTrackerTarget={toggleTrackerTarget}
+            onToggleDraftTarget={toggleDraftTarget}
             onToggleFolderTarget={toggleFolderTarget}
             onFilingPropertyChange={updateFilingProperty}
             onToggleFilingUnit={toggleFilingUnit}
@@ -1433,7 +1569,7 @@ export function OwnerApprovalsView() {
           <div><span>Selected for Execution</span><strong>{selectedExecutionIds.length} <small>Items</small></strong></div>
           <div><span>Income / Rent Collection</span><strong className="income-total">{money(selectedIncome)}</strong><small>{selectedExecutionIds.length ? "Selected items" : "Approved items"}</small></div>
           <div><span>Cost / Expense</span><strong className="expense-total">{money(selectedExpense)}</strong><small>{selectedExecutionIds.length ? "Selected items" : "Approved items"}</small></div>
-          <button type="button" onClick={() => setMassPrompt(buildMassPrompt(records))}><BriefcaseBusiness size={20} aria-hidden />Generate Mass Prompt<small>Copy all approved instructions for Codex</small></button>
+          <button type="button" onClick={() => setMassPrompt(buildMassPrompt(records))}><BriefcaseBusiness size={20} aria-hidden />Generate Mass Prompt<small>Copy approved button actions and notes for Codex</small></button>
         </footer>
       </main>
     </div>

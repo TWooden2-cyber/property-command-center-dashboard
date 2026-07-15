@@ -33,49 +33,17 @@ function encodeBase64Url(value: string) {
 }
 
 function buildDraftBody(input: GmailDraftRequest) {
-  const ownerInstructions = (input.ownerInstructions || "").trim();
   const existingDraft = (input.draftResponse || "").trim();
-  const propertyLine = input.propertyUnit ? `Property / Unit: ${input.propertyUnit}` : "";
-  const taskLine = input.taskId ? `Owner Approval Task: ${input.taskId}` : "";
-
-  if (ownerInstructions && existingDraft) {
-    return [
-      existingDraft,
-      "",
-      "Owner instructions to include/address:",
-      ownerInstructions,
-      "",
-      propertyLine,
-      taskLine
-    ].filter(Boolean).join("\n");
-  }
-
-  if (ownerInstructions) {
-    return [
-      "Hi,",
-      "",
-      ownerInstructions,
-      "",
-      "Best,",
-      "Property Management",
-      "",
-      propertyLine,
-      taskLine
-    ].filter(Boolean).join("\n");
-  }
 
   if (existingDraft) return existingDraft;
 
   return [
     "Hi,",
     "",
-    "Please review this owner-approved follow-up.",
+    "We received your message and are reviewing the item. We will follow up with the next update.",
     "",
     "Best,",
-    "Property Management",
-    "",
-    propertyLine,
-    taskLine
+    "Property Management"
   ].filter(Boolean).join("\n");
 }
 

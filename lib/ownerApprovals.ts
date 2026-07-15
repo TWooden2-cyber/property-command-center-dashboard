@@ -77,6 +77,7 @@ export type OwnerApprovalRecord = {
   sourceThreadId?: string;
   selectedExecutionActions?: string[];
   selectedTrackerTargets?: string[];
+  selectedDraftTargets?: string[];
   selectedFolderTargets?: string[];
   selectedFilingProperty?: string;
   selectedFilingUnits?: string[];
@@ -89,7 +90,7 @@ export type OwnerApprovalRecord = {
 };
 
 export const defaultOwnerInstruction =
-  "Provide the exact approved action, tracker/folder target, and any follow-up notes.";
+  "Vendor already notified. Payment confirmed by bank. Photo uploaded. Waiting on tenant response.";
 
 export const ownerApprovalRecords: OwnerApprovalRecord[] = [
   {
