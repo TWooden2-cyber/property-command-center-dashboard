@@ -421,7 +421,7 @@ function buildMassPrompt(records: OwnerApprovalRecord[]) {
       `Property / Unit: ${record.propertyUnit}`,
       `Category: ${record.category}`,
       `Approved action: ${record.approvedAction}`,
-      `Owner instructions: ${record.ownerInstructions || defaultOwnerInstruction}`,
+      `Owner instructions: ${record.ownerInstructions || "No owner instructions saved."}`,
       `Draft response: ${record.draftResponse || "No draft response included."}`,
       `Deadline: ${record.deadline}`,
       `Estimated cost: ${money(record.estimatedCost)}`,

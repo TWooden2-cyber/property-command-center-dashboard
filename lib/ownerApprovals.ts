@@ -89,7 +89,7 @@ export type OwnerApprovalRecord = {
 };
 
 export const defaultOwnerInstruction =
-  "Schedule A & B Plumbing. Notify tenant of appointment. Keep me updated.";
+  "Provide the exact approved action, tracker/folder target, and any follow-up notes.";
 
 export const ownerApprovalRecords: OwnerApprovalRecord[] = [
   {
@@ -117,7 +117,7 @@ export const ownerApprovalRecords: OwnerApprovalRecord[] = [
     draftResponse:
       "Hi [Tenant Name],\n\nThank you for letting us know about the leaking faucet. We will have maintenance scheduled to inspect and repair this as soon as possible.\n\nWe will keep you updated.\n\nBest,\nProperty Management",
     recommendedAction: "Schedule plumber to inspect and repair the kitchen faucet.",
-    vendorSuggestion: "A & B Plumbing",
+    vendorSuggestion: "Vendor to be selected by owner",
     eta: "Within 2 business days",
     estimatedCost: 150,
     costRange: "$125 - $175",
