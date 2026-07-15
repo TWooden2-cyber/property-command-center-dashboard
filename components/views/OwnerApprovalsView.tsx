@@ -128,6 +128,18 @@ type IntakeSyncResponse = {
   };
 };
 
+type GmailDraftResponse = {
+  ok: boolean;
+  draftId?: string;
+  messageId?: string;
+  threadId?: string;
+  gmailUrl?: string;
+  safety?: string;
+  error?: string;
+  errorCode?: string;
+  requiredScope?: string;
+};
+
 const fixedPropertyFilters = ["7-unit", "4-unit", "228 Reifert", "3103 Courtney", "Unknown Property"] as const;
 
 const navItems = [
@@ -531,6 +543,7 @@ function buildSelectedExecutionPrompt(records: OwnerApprovalRecord[], selectedId
       `Calendar reminder date: ${record.selectedCalendarDate || "Not selected."}`,
       `Calendar reminder time: ${record.selectedCalendarTime || "Not selected."}`,
       `Calendar reminder note: ${record.selectedCalendarNote || "Not selected."}`,
+      `Gmail draft ID: ${record.gmailDraftId || "Not created yet."}`,
       `Draft response: ${record.draftResponse || "No draft response included."}`,
       `Estimated cost: ${money(record.estimatedCost)}`,
       `Dashboard/tracker updates required: ${record.dashboardUpdatesRequired.join("; ")}`,
@@ -820,6 +833,11 @@ function ExpandedTask({
               </em>
             </div>
             <p>{canExecute ? "Click action buttons to choose options, then click Run Selected." : "You can choose action options now. Approve the item before running them."}</p>
+            {record.gmailDraftId ? (
+              <a className="gmail-draft-created-link" href={record.gmailDraftUrl || "https://mail.google.com/mail/u/0/#drafts"} target="_blank" rel="noreferrer">
+                Gmail draft created: {record.gmailDraftId}
+              </a>
+            ) : null}
           </div>
         </div>
         <label className="codex-instructions-box">
@@ -942,9 +960,51 @@ export function OwnerApprovalsView() {
     setMassPrompt("");
   }
 
-  function generateExecutionPrompt(actionType?: ExecutableActionType) {
+  async function createGmailDraft(record: OwnerApprovalRecord) {
+    const response = await fetch("/api/owner-approvals/gmail-draft", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        taskId: record.id,
+        title: record.title,
+        propertyUnit: record.propertyUnit,
+        category: record.category,
+        ownerInstructions: record.ownerInstructions,
+        draftResponse: record.draftResponse,
+        sourceMessageId: record.sourceMessageId,
+        sourceThreadId: record.sourceThreadId
+      })
+    });
+    const data = (await response.json()) as GmailDraftResponse;
+    if (!response.ok || !data.ok) {
+      throw new Error(data.error || `Gmail draft creation failed${data.requiredScope ? `; required scope: ${data.requiredScope}` : ""}.`);
+    }
+    setRecords((current) => current.map((item) => (
+      item.id === record.id ? { ...item, gmailDraftId: data.draftId || "", gmailDraftUrl: data.gmailUrl || "https://mail.google.com/mail/u/0/#drafts" } : item
+    )));
+    return data;
+  }
+
+  async function generateExecutionPrompt(actionType?: ExecutableActionType) {
     if (!selectedExecutionIds.length) {
       setConfirmation("Select one or more approved items before generating an execution prompt.");
+      return;
+    }
+    if (actionType === "draft-email") {
+      const selectedApproved = records.filter((record) => selectedExecutionIds.includes(record.id) && record.status === "Approved");
+      const draftable = selectedApproved.filter((record) => ((record.selectedExecutionActions || []) as ExecutableActionType[]).includes("draft-email"));
+      if (!draftable.length) {
+        setConfirmation("Select approved items with Draft Email chosen before creating Gmail drafts.");
+        return;
+      }
+      setConfirmation(`Creating ${draftable.length} Gmail draft(s)...`);
+      try {
+        const results = await Promise.all(draftable.map(createGmailDraft));
+        setMassPrompt(buildSelectedExecutionPrompt(records, selectedExecutionIds, actionType));
+        setConfirmation(`${results.length} Gmail draft(s) created. Open Gmail Drafts to review and send manually.`);
+      } catch (error) {
+        setConfirmation(error instanceof Error ? error.message : "Gmail draft creation failed.");
+      }
       return;
     }
     setMassPrompt(buildSelectedExecutionPrompt(records, selectedExecutionIds, actionType));
@@ -1038,7 +1098,7 @@ export function OwnerApprovalsView() {
     setConfirmation("Calendar reminder field saved.");
   }
 
-  function runSelectedExecutionForRecord(id: string) {
+  async function runSelectedExecutionForRecord(id: string) {
     const record = records.find((item) => item.id === id);
     if (!record) return;
     const selectedActions = ((record.selectedExecutionActions || []) as ExecutableActionType[]);
@@ -1048,6 +1108,18 @@ export function OwnerApprovalsView() {
     }
     if (record.status !== "Approved") {
       setConfirmation("Approve this item before generating an execution prompt.");
+      return;
+    }
+    if (selectedActions.includes("draft-email")) {
+      setConfirmation("Creating Gmail draft from owner instructions...");
+      try {
+        const result = await createGmailDraft(record);
+        setSelectedExecutionIds([id]);
+        setMassPrompt(buildSelectedExecutionPrompt(records, [id], selectedActions));
+        setConfirmation(`Gmail draft created: ${result.draftId}. Open Gmail Drafts to review and send manually.`);
+      } catch (error) {
+        setConfirmation(error instanceof Error ? error.message : "Gmail draft creation failed.");
+      }
       return;
     }
     setSelectedExecutionIds([id]);
@@ -1097,7 +1169,9 @@ export function OwnerApprovalsView() {
                 selectedFilingTenant: existing.selectedFilingTenant || record.selectedFilingTenant || "",
                 selectedCalendarDate: existing.selectedCalendarDate || record.selectedCalendarDate || "",
                 selectedCalendarTime: existing.selectedCalendarTime || record.selectedCalendarTime || "",
-                selectedCalendarNote: existing.selectedCalendarNote || record.selectedCalendarNote || ""
+                selectedCalendarNote: existing.selectedCalendarNote || record.selectedCalendarNote || "",
+                gmailDraftId: existing.gmailDraftId || record.gmailDraftId || "",
+                gmailDraftUrl: existing.gmailDraftUrl || record.gmailDraftUrl || ""
               }
             : record;
         });

@@ -84,6 +84,8 @@ export type OwnerApprovalRecord = {
   selectedCalendarDate?: string;
   selectedCalendarTime?: string;
   selectedCalendarNote?: string;
+  gmailDraftId?: string;
+  gmailDraftUrl?: string;
 };
 
 export const defaultOwnerInstruction =
