@@ -71,6 +71,7 @@ const folderTargetButtons = [
 const filingPropertyOptions = ["228 Reifert", "3103 Courtney Ln"] as const;
 const filingUnitOptions = ["1", "2", "3", "4", "5", "6", "7", "A", "B", "C", "D"] as const;
 const filingTenantOptions = ["If applicable", "Tenant applies", "No tenant", "Unknown / owner review"] as const;
+const removedDefaultInstruction = "Schedule A & B Plumbing. Notify tenant of appointment. Keep me updated.";
 
 type IntakeSyncResponse = {
   ok: boolean;
@@ -216,11 +217,18 @@ function propertyMatchesFilter(record: OwnerApprovalRecord, filter: PropertyFilt
 }
 
 function normalizeRecord(record: OwnerApprovalRecord): OwnerApprovalRecord {
+  const ownerInstructions = record.ownerInstructions === removedDefaultInstruction ? "" : record.ownerInstructions;
+  const statusHistory = (record.statusHistory || []).map((entry) => ({
+    ...entry,
+    instructions: entry.instructions === removedDefaultInstruction ? "" : entry.instructions
+  }));
+
   return {
     ...record,
+    ownerInstructions,
     sourceMode: record.sourceMode || "Sample",
     connectorStatus: record.connectorStatus || "Sample approval queue record. Run Check Gmail & Voice Intake for live availability.",
-    statusHistory: record.statusHistory || [],
+    statusHistory,
     selectedFilingUnits: record.selectedFilingUnits || []
   };
 }
@@ -1168,7 +1176,7 @@ export function OwnerApprovalsView() {
         const byId = new Map(current.map((record) => [record.id, record]));
         return incoming.map((record) => {
           const existing = byId.get(record.id);
-          return existing
+          return normalizeRecord(existing
             ? {
                 ...record,
                 ownerDecision: existing.ownerDecision,
@@ -1188,7 +1196,7 @@ export function OwnerApprovalsView() {
                 gmailDraftId: existing.gmailDraftId || record.gmailDraftId || "",
                 gmailDraftUrl: existing.gmailDraftUrl || record.gmailDraftUrl || ""
               }
-            : record;
+            : record);
         });
       });
       setConfirmation(`${incoming.length} live intake item(s) loaded. ${data.safety}`);
