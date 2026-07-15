@@ -67,6 +67,10 @@ const folderTargetButtons = [
   "Owner Approval Folder"
 ] as const;
 
+const filingPropertyOptions = ["228 Reifert", "3103 Courtney Ln"] as const;
+const filingUnitOptions = ["1", "2", "3", "4", "5", "6", "7", "A", "B", "C", "D"] as const;
+const filingTenantOptions = ["If applicable", "Tenant applies", "No tenant", "Unknown / owner review"] as const;
+
 type IntakeSyncResponse = {
   ok: boolean;
   checkedAt: string;
@@ -203,8 +207,19 @@ function normalizeRecord(record: OwnerApprovalRecord): OwnerApprovalRecord {
     ...record,
     sourceMode: record.sourceMode || "Sample",
     connectorStatus: record.connectorStatus || "Sample approval queue record. Run Check Gmail & Voice Intake for live availability.",
-    statusHistory: record.statusHistory || []
+    statusHistory: record.statusHistory || [],
+    selectedFilingUnits: record.selectedFilingUnits || []
   };
+}
+
+function toCalendarInputDate(value: string) {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "";
+  return parsed.toISOString().slice(0, 10);
+}
+
+function defaultCalendarNote(record: OwnerApprovalRecord) {
+  return `Follow up: ${record.title} (${record.propertyUnit})`;
 }
 
 function historyEntry(record: OwnerApprovalRecord, decision: OwnerApprovalDecision, nextStatus: OwnerApprovalStatus): OwnerApprovalStatusHistoryEntry {
@@ -510,8 +525,13 @@ function buildSelectedExecutionPrompt(records: OwnerApprovalRecord[], selectedId
       `Owner instructions: ${record.ownerInstructions || "No owner instructions saved."}`,
       `Selected tracker destination(s): ${(record.selectedTrackerTargets || []).join("; ") || "None selected."}`,
       `Selected folder destination(s): ${(record.selectedFolderTargets || []).join("; ") || "None selected."}`,
+      `Selected filing property: ${record.selectedFilingProperty || "Not selected."}`,
+      `Selected filing unit folder(s): ${(record.selectedFilingUnits || []).join("; ") || "Not selected."}`,
+      `Selected tenant applicability: ${record.selectedFilingTenant || "If applicable."}`,
+      `Calendar reminder date: ${record.selectedCalendarDate || "Not selected."}`,
+      `Calendar reminder time: ${record.selectedCalendarTime || "Not selected."}`,
+      `Calendar reminder note: ${record.selectedCalendarNote || "Not selected."}`,
       `Draft response: ${record.draftResponse || "No draft response included."}`,
-      `Deadline: ${record.deadline}`,
       `Estimated cost: ${money(record.estimatedCost)}`,
       `Dashboard/tracker updates required: ${record.dashboardUpdatesRequired.join("; ")}`,
       `Source Gmail URL: ${sourceEmailUrl(record) || "No source email link available."}`,
@@ -546,6 +566,10 @@ function ExpandedTask({
   onToggleExecutionAction,
   onToggleTrackerTarget,
   onToggleFolderTarget,
+  onFilingPropertyChange,
+  onToggleFilingUnit,
+  onFilingTenantChange,
+  onCalendarFieldChange,
   onRunSelectedExecution,
   onCollapse
 }: {
@@ -562,6 +586,10 @@ function ExpandedTask({
   onToggleExecutionAction: (id: string, actionType: ExecutableActionType) => void;
   onToggleTrackerTarget: (id: string, target: string) => void;
   onToggleFolderTarget: (id: string, target: string) => void;
+  onFilingPropertyChange: (id: string, property: string) => void;
+  onToggleFilingUnit: (id: string, unit: string) => void;
+  onFilingTenantChange: (id: string, tenant: string) => void;
+  onCalendarFieldChange: (id: string, field: "selectedCalendarDate" | "selectedCalendarTime" | "selectedCalendarNote", value: string) => void;
   onRunSelectedExecution: (id: string) => void;
   onCollapse: () => void;
 }) {
@@ -572,6 +600,7 @@ function ExpandedTask({
   const selectedActions = (record.selectedExecutionActions || []) as ExecutableActionType[];
   const selectedTrackerTargets = record.selectedTrackerTargets || [];
   const selectedFolderTargets = record.selectedFolderTargets || [];
+  const selectedFilingUnits = record.selectedFilingUnits || [];
 
   return (
     <section className="queue-expanded-task">
@@ -657,14 +686,6 @@ function ExpandedTask({
           <p>{record.costNote}</p>
         </DetailCard> : null}
 
-        <DetailCard title="Deadline" editValue={editValue} isEditing={editingSection === "deadline"} onView={() => onView("deadline")} onEdit={() => onStartEdit("deadline")} onEditValue={onEditValue} onSave={onSaveSection} onCancel={onCancelEdit} action={<button type="button" onClick={() => onStartEdit("deadline")}>Edit Deadline</button>}>
-          <p>{record.deadlineLabel}</p>
-          <strong>{record.deadline}</strong>
-          <p>Tenant Expectation:</p>
-          <strong>{record.tenantExpectation}</strong>
-          <p>Days Open:</p>
-          <strong>{record.daysOpen}</strong>
-        </DetailCard>
       </div>
 
       <section className="approval-instructions-row">
@@ -700,6 +721,38 @@ function ExpandedTask({
               </div>
             </div>
           ) : null}
+          {selectedActions.includes("calendar-reminder") ? (
+            <div className="approval-target-button-group" aria-label="Calendar reminder details">
+              <strong>Calendar reminder details</strong>
+              <div className="approval-calendar-fields">
+                <label>
+                  <span>Date</span>
+                  <input
+                    type="date"
+                    value={record.selectedCalendarDate || ""}
+                    onChange={(event) => onCalendarFieldChange(record.id, "selectedCalendarDate", event.target.value)}
+                  />
+                </label>
+                <label>
+                  <span>Time</span>
+                  <input
+                    type="time"
+                    value={record.selectedCalendarTime || ""}
+                    onChange={(event) => onCalendarFieldChange(record.id, "selectedCalendarTime", event.target.value)}
+                  />
+                </label>
+                <label>
+                  <span>Reminder note</span>
+                  <input
+                    type="text"
+                    value={record.selectedCalendarNote || ""}
+                    onChange={(event) => onCalendarFieldChange(record.id, "selectedCalendarNote", event.target.value)}
+                    placeholder="Follow-up reminder"
+                  />
+                </label>
+              </div>
+            </div>
+          ) : null}
           {selectedActions.includes("file-document") ? (
             <div className="approval-target-button-group" aria-label="Folder destinations">
               <strong>Choose folder</strong>
@@ -714,6 +767,37 @@ function ExpandedTask({
                     {target}
                   </button>
                 ))}
+              </div>
+              <div className="approval-filing-dropdowns" aria-label="Filing destination details">
+                <label>
+                  <span>Property</span>
+                  <select value={record.selectedFilingProperty || ""} onChange={(event) => onFilingPropertyChange(record.id, event.target.value)}>
+                    <option value="">Select property</option>
+                    {filingPropertyOptions.map((property) => <option key={property} value={property}>{property}</option>)}
+                  </select>
+                </label>
+                <label>
+                  <span>Units</span>
+                  <select value="" onChange={(event) => {
+                    if (event.target.value) onToggleFilingUnit(record.id, event.target.value);
+                  }}>
+                    <option value="">Add unit folder</option>
+                    {filingUnitOptions.map((unit) => <option key={unit} value={unit}>Unit {unit}</option>)}
+                  </select>
+                </label>
+                <label>
+                  <span>Tenant</span>
+                  <select value={record.selectedFilingTenant || "If applicable"} onChange={(event) => onFilingTenantChange(record.id, event.target.value)}>
+                    {filingTenantOptions.map((tenant) => <option key={tenant} value={tenant}>{tenant}</option>)}
+                  </select>
+                </label>
+              </div>
+              <div className="approval-selected-units" aria-label="Selected unit folders">
+                {selectedFilingUnits.length ? selectedFilingUnits.map((unit) => (
+                  <button type="button" key={unit} onClick={() => onToggleFilingUnit(record.id, unit)}>
+                    Unit {unit} x
+                  </button>
+                )) : <small>Select one or more unit folders when filing to tenant records.</small>}
               </div>
             </div>
           ) : null}
@@ -879,7 +963,13 @@ export function OwnerApprovalsView() {
         ...item,
         selectedExecutionActions: nextSelected,
         selectedTrackerTargets: nextSelected.includes("tracker-update") ? item.selectedTrackerTargets : [],
-        selectedFolderTargets: nextSelected.includes("file-document") ? item.selectedFolderTargets : []
+        selectedFolderTargets: nextSelected.includes("file-document") ? item.selectedFolderTargets : [],
+        selectedFilingProperty: nextSelected.includes("file-document") ? item.selectedFilingProperty : "",
+        selectedFilingUnits: nextSelected.includes("file-document") ? item.selectedFilingUnits : [],
+        selectedFilingTenant: nextSelected.includes("file-document") ? item.selectedFilingTenant : "",
+        selectedCalendarDate: nextSelected.includes("calendar-reminder") ? item.selectedCalendarDate || toCalendarInputDate(item.deadline) : "",
+        selectedCalendarTime: nextSelected.includes("calendar-reminder") ? item.selectedCalendarTime || "14:00" : "",
+        selectedCalendarNote: nextSelected.includes("calendar-reminder") ? item.selectedCalendarNote || defaultCalendarNote(item) : ""
       };
     }));
     setSelectedExecutionIds((current) => (current.includes(id) ? current : [...current, id]));
@@ -911,6 +1001,41 @@ export function OwnerApprovalsView() {
     }));
     setMassPrompt("");
     setConfirmation(`${target} ${wasSelected ? "removed" : "selected"}.`);
+  }
+
+  function updateFilingProperty(id: string, property: string) {
+    setRecords((current) => current.map((item) => (item.id === id ? { ...item, selectedFilingProperty: property } : item)));
+    setMassPrompt("");
+    setConfirmation(property ? `Filing property set to ${property}.` : "Filing property cleared.");
+  }
+
+  function toggleFilingUnit(id: string, unit: string) {
+    const record = records.find((item) => item.id === id);
+    const wasSelected = Boolean(record?.selectedFilingUnits?.includes(unit));
+    setRecords((current) => current.map((item) => {
+      if (item.id !== id) return item;
+      const selected = item.selectedFilingUnits || [];
+      const nextSelected = selected.includes(unit) ? selected.filter((value) => value !== unit) : [...selected, unit];
+      return { ...item, selectedFilingUnits: nextSelected };
+    }));
+    setMassPrompt("");
+    setConfirmation(`Unit ${unit} filing target ${wasSelected ? "removed" : "selected"}.`);
+  }
+
+  function updateFilingTenant(id: string, tenant: string) {
+    setRecords((current) => current.map((item) => (item.id === id ? { ...item, selectedFilingTenant: tenant } : item)));
+    setMassPrompt("");
+    setConfirmation(`Tenant filing setting saved: ${tenant}.`);
+  }
+
+  function updateCalendarField(
+    id: string,
+    field: "selectedCalendarDate" | "selectedCalendarTime" | "selectedCalendarNote",
+    value: string
+  ) {
+    setRecords((current) => current.map((item) => (item.id === id ? { ...item, [field]: value } : item)));
+    setMassPrompt("");
+    setConfirmation("Calendar reminder field saved.");
   }
 
   function runSelectedExecutionForRecord(id: string) {
@@ -966,7 +1091,13 @@ export function OwnerApprovalsView() {
                 rejectionReason: existing.rejectionReason,
                 selectedExecutionActions: existing.selectedExecutionActions || record.selectedExecutionActions || [],
                 selectedTrackerTargets: existing.selectedTrackerTargets || record.selectedTrackerTargets || [],
-                selectedFolderTargets: existing.selectedFolderTargets || record.selectedFolderTargets || []
+                selectedFolderTargets: existing.selectedFolderTargets || record.selectedFolderTargets || [],
+                selectedFilingProperty: existing.selectedFilingProperty || record.selectedFilingProperty || "",
+                selectedFilingUnits: existing.selectedFilingUnits || record.selectedFilingUnits || [],
+                selectedFilingTenant: existing.selectedFilingTenant || record.selectedFilingTenant || "",
+                selectedCalendarDate: existing.selectedCalendarDate || record.selectedCalendarDate || "",
+                selectedCalendarTime: existing.selectedCalendarTime || record.selectedCalendarTime || "",
+                selectedCalendarNote: existing.selectedCalendarNote || record.selectedCalendarNote || ""
               }
             : record;
         });
@@ -1132,6 +1263,10 @@ export function OwnerApprovalsView() {
             onToggleExecutionAction={toggleRecordExecutionAction}
             onToggleTrackerTarget={toggleTrackerTarget}
             onToggleFolderTarget={toggleFolderTarget}
+            onFilingPropertyChange={updateFilingProperty}
+            onToggleFilingUnit={toggleFilingUnit}
+            onFilingTenantChange={updateFilingTenant}
+            onCalendarFieldChange={updateCalendarField}
             onRunSelectedExecution={runSelectedExecutionForRecord}
             onCollapse={() => setOpenId("")}
           />

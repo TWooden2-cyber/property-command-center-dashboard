@@ -6745,6 +6745,99 @@ tbody tr:hover {
   background: linear-gradient(135deg, var(--gold), var(--gold-soft));
 }
 
+.approval-filing-dropdowns {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.approval-calendar-fields {
+  display: grid;
+  grid-template-columns: minmax(130px, 0.65fr) minmax(110px, 0.45fr) minmax(220px, 1.4fr);
+  gap: 8px;
+}
+
+.approval-filing-dropdowns label {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.approval-calendar-fields label {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.approval-filing-dropdowns span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.approval-calendar-fields span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.approval-filing-dropdowns select {
+  width: 100%;
+  min-height: 36px;
+  border: 1px solid rgba(201, 164, 81, 0.28);
+  border-radius: 8px;
+  color: var(--cream);
+  background: #0b0906;
+  padding: 0 10px;
+  font-weight: 750;
+}
+
+.approval-calendar-fields input {
+  width: 100%;
+  min-height: 36px;
+  border: 1px solid rgba(201, 164, 81, 0.28);
+  border-radius: 8px;
+  color: var(--cream);
+  background: #0b0906;
+  padding: 0 10px;
+  font-weight: 750;
+}
+
+.approval-filing-dropdowns select:focus {
+  outline: 2px solid rgba(201, 164, 81, 0.28);
+  border-color: rgba(201, 164, 81, 0.72);
+}
+
+.approval-calendar-fields input:focus {
+  outline: 2px solid rgba(201, 164, 81, 0.28);
+  border-color: rgba(201, 164, 81, 0.72);
+}
+
+.approval-selected-units {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.approval-selected-units button {
+  min-height: 30px;
+  padding: 0 10px;
+}
+
+.approval-selected-units small {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+@media (max-width: 900px) {
+  .approval-filing-dropdowns,
+  .approval-calendar-fields {
+    grid-template-columns: 1fr;
+  }
+}
+
 .approval-mock-table th,
 .approval-mock-table td {
   border-bottom: 1px solid var(--line);

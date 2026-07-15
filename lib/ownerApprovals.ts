@@ -78,6 +78,12 @@ export type OwnerApprovalRecord = {
   selectedExecutionActions?: string[];
   selectedTrackerTargets?: string[];
   selectedFolderTargets?: string[];
+  selectedFilingProperty?: string;
+  selectedFilingUnits?: string[];
+  selectedFilingTenant?: string;
+  selectedCalendarDate?: string;
+  selectedCalendarTime?: string;
+  selectedCalendarNote?: string;
 };
 
 export const defaultOwnerInstruction =
