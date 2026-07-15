@@ -53,7 +53,8 @@ const trackerTargetButtons = [
   "Rent Ledger",
   "Legal Tracker",
   "Utility Tracker",
-  "Calendar Follow-Ups"
+  "Calendar Follow-Ups",
+  "Tenant Communications"
 ] as const;
 
 const folderTargetButtons = [
