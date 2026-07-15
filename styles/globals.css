@@ -6353,6 +6353,14 @@ tbody tr:hover {
   font-size: 1.45rem;
 }
 
+.mockup-summary-bar strong.income-total {
+  color: #15803d;
+}
+
+.mockup-summary-bar strong.expense-total {
+  color: #dc2626;
+}
+
 .mockup-summary-bar p {
   display: inline-flex;
   gap: 12px;
@@ -7453,6 +7461,14 @@ tbody tr:hover {
 
 .mockup-summary-bar > div {
   border-right: 1px solid var(--line);
+}
+
+.mockup-summary-bar strong.income-total {
+  color: #d5f0cb;
+}
+
+.mockup-summary-bar strong.expense-total {
+  color: #ffd5ca;
 }
 
 .mockup-summary-bar em {

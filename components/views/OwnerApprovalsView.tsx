@@ -480,6 +480,15 @@ function actionLabelForType(type: ExecutableActionType) {
   return executableActionButtons.find((action) => action.type === type)?.label || type;
 }
 
+function isIncomeOrRentCollection(record: OwnerApprovalRecord) {
+  const text = `${record.category} ${record.title} ${record.summary} ${record.ownerInstructions} ${record.approvedAction}`.toLowerCase();
+  return record.category === "Rent" || record.category === "Section 8" || /\b(rent collection|payment received|rent payment|hap payment|section 8 payment|income)\b/.test(text);
+}
+
+function isCostOrExpense(record: OwnerApprovalRecord) {
+  return record.estimatedCost > 0 && !isIncomeOrRentCollection(record);
+}
+
 function normalizeActionFilter(actionFilter?: ExecutableActionType | ExecutableActionType[]) {
   if (!actionFilter) return [];
   return Array.isArray(actionFilter) ? actionFilter : [actionFilter];
@@ -885,9 +894,14 @@ export function OwnerApprovalsView() {
   const readyRecords = records.filter((record) => record.status === "Approved");
   const returnedRecords = records.filter((record) => record.status === "Returned / Needs More Information");
   const rejectedRecords = records.filter((record) => record.status === "Rejected");
-  const selectedCost = readyRecords.reduce((total, record) => total + record.estimatedCost, 0);
   const selectedExecutionRecords = readyRecords.filter((record) => selectedExecutionIds.includes(record.id));
-  const selectedExecutableCost = selectedExecutionRecords.reduce((total, record) => total + record.estimatedCost, 0);
+  const summarySourceRecords = selectedExecutionIds.length ? selectedExecutionRecords : readyRecords;
+  const selectedIncome = summarySourceRecords
+    .filter(isIncomeOrRentCollection)
+    .reduce((total, record) => total + record.estimatedCost, 0);
+  const selectedExpense = summarySourceRecords
+    .filter(isCostOrExpense)
+    .reduce((total, record) => total + record.estimatedCost, 0);
   const highCount = pendingRecords.filter((record) => record.priority === "High" || record.priority === "Critical").length;
   const mediumCount = pendingRecords.filter((record) => record.priority === "Medium").length;
   const lowCount = pendingRecords.filter((record) => record.priority === "Low").length;
@@ -1409,7 +1423,8 @@ export function OwnerApprovalsView() {
           <div><span>Items Pending Approval</span><strong>{pendingRecords.length} <small>Total</small></strong><p><em className="high">{highCount} High</em><em className="medium">{mediumCount} Medium</em><em className="low">{lowCount} Low</em></p></div>
           <div><span>Ready for Execution</span><strong>{readyRecords.length} <small>Approved</small></strong></div>
           <div><span>Selected for Execution</span><strong>{selectedExecutionIds.length} <small>Items</small></strong></div>
-          <div><span>Estimated Cost (Selected)</span><strong>{money(selectedExecutionIds.length ? selectedExecutableCost : selectedCost)}</strong></div>
+          <div><span>Income / Rent Collection</span><strong className="income-total">{money(selectedIncome)}</strong><small>{selectedExecutionIds.length ? "Selected items" : "Approved items"}</small></div>
+          <div><span>Cost / Expense</span><strong className="expense-total">{money(selectedExpense)}</strong><small>{selectedExecutionIds.length ? "Selected items" : "Approved items"}</small></div>
           <button type="button" onClick={() => setMassPrompt(buildMassPrompt(records))}><BriefcaseBusiness size={20} aria-hidden />Generate Mass Prompt<small>Copy all approved instructions for Codex</small></button>
         </footer>
       </main>
