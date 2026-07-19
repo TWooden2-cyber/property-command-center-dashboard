@@ -19,7 +19,7 @@ function tone(product: GoogleProductStatus) {
 
 function label(product: GoogleProductStatus) {
   if (product.connected && product.product === "Gmail") return "Live Read-Only Intake";
-  if (product.connected) return product.product === "Google Sheets" ? "Live" : "Live Read-Only";
+  if (product.connected) return "Live Read-Only";
   if (product.status === "not_configured") return "Not Configured";
   if (product.status === "not_enabled") return "Not Enabled";
   return "Error";

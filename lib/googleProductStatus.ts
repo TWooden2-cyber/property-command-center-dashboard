@@ -248,7 +248,9 @@ export async function getSheetsProductStatus(): Promise<GoogleProductStatus> {
     errorCode: sheets.ok ? null : sheets.missingEnvVars.length ? envMissingCode() : "permission denied",
     details: {
       spreadsheetId: sheets.spreadsheetId,
-      serviceAccountEmail: sheets.serviceAccountEmail
+      serviceAccountEmail: sheets.serviceAccountEmail,
+      ownerApprovalsRange: sheets.ownerApprovalsRange,
+      ownerApprovalsRows: sheets.ownerApprovalsRows
     }
   };
 }

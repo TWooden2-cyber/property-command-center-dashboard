@@ -1,9 +1,11 @@
 "use client";
 
-import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
-import { AlertTriangle, CheckCircle2, TrendingUp } from "lucide-react";
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import Link from "next/link";
+import { AlertTriangle, CheckCircle2, FolderKanban, ShieldCheck, TrendingUp } from "lucide-react";
 import { EmptyState } from "@/components/DataState";
 import { SheetsSourcePanel } from "@/components/SheetsSourcePanel";
+import { StatusBadge } from "@/components/StatusBadge";
 import {
   localDevelopmentFallbackAllowed
 } from "@/components/views/liveSheetAdapters";
@@ -23,6 +25,7 @@ import {
   type SignalTone
 } from "@/lib/propertyCommandCenterData";
 import { useSheetsView } from "@/components/views/useSheetsView";
+import type { GoogleProductStatus } from "@/types/googleProducts";
 import type { DashboardBlock, KpiMetric, OverviewData, RiskItem } from "@/types/sheets";
 
 type OverviewPayload = OverviewData & {
@@ -35,6 +38,21 @@ type Kpi = {
   helper: string;
   tone: SignalTone;
   footer: string;
+};
+
+type DriveProductPayload = {
+  ok?: boolean;
+  status?: GoogleProductStatus;
+  error?: string;
+};
+
+type DriveProductDetails = {
+  folderName?: string;
+  folderId?: string;
+  visibleFolderCount?: number;
+  keyFoldersFound?: string[];
+  missingKeyFolders?: string[];
+  recentIntakeCount?: number | null;
 };
 
 const currentPeriod = {
@@ -226,6 +244,128 @@ function LiveRiskGrid({ risks }: { risks: RiskItem[] }) {
   );
 }
 
+function driveDetails(status?: GoogleProductStatus | null): DriveProductDetails {
+  return (status?.details ?? {}) as DriveProductDetails;
+}
+
+function OverviewDriveSnapshot() {
+  const [driveStatus, setDriveStatus] = useState<GoogleProductStatus | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadDriveStatus() {
+      try {
+        const response = await fetch("/api/google/drive/status", { cache: "no-store" });
+        const payload = (await response.json()) as DriveProductPayload;
+        if (!mounted) return;
+        setDriveStatus(payload.status ?? null);
+        setError(response.ok ? null : payload.error || payload.status?.message || "Drive status could not be loaded.");
+      } catch (requestError) {
+        if (!mounted) return;
+        setError(requestError instanceof Error ? requestError.message : "Drive status could not be loaded.");
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    }
+
+    loadDriveStatus();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const details = driveDetails(driveStatus);
+  const connected = Boolean(driveStatus?.connected);
+  const foundFolders = details.keyFoldersFound || [];
+  const missingFolders = details.missingKeyFolders || [];
+  const visibleFolderCount = typeof details.visibleFolderCount === "number" ? details.visibleFolderCount : null;
+  const recentIntakeCount = typeof details.recentIntakeCount === "number" ? details.recentIntakeCount : null;
+  const metrics: Array<{ label: string; value: string; helper: string; tone: SignalTone }> = [
+    {
+      label: "Drive Status",
+      value: loading ? "Checking" : connected ? "Live" : "Review",
+      helper: driveStatus?.mode || "Read-only metadata",
+      tone: connected ? "green" : error ? "red" : "yellow"
+    },
+    {
+      label: "Visible Folders",
+      value: visibleFolderCount === null ? "N/A" : String(visibleFolderCount),
+      helper: details.folderName || "Root folder",
+      tone: connected ? "green" : "yellow"
+    },
+    {
+      label: "Key Folders",
+      value: String(foundFolders.length),
+      helper: "Matched in Drive root",
+      tone: foundFolders.length ? "green" : connected ? "yellow" : "red"
+    },
+    {
+      label: "Missing / Review",
+      value: String(missingFolders.length),
+      helper: "Future owner-approved package",
+      tone: missingFolders.length ? "yellow" : "green"
+    },
+    {
+      label: "Intake Queue",
+      value: recentIntakeCount === null ? "N/A" : String(recentIntakeCount),
+      helper: "Intake folder children",
+      tone: recentIntakeCount && recentIntakeCount > 0 ? "yellow" : "green"
+    }
+  ];
+
+  return (
+    <section className={`overview-drive-snapshot ${connected ? "connected" : "needs-review"}`}>
+      <div className="overview-drive-copy">
+        <div className="panel-icon">
+          <FolderKanban size={20} aria-hidden />
+        </div>
+        <div>
+          <p className="eyebrow">Google Drive System</p>
+          <h2>{loading ? "Checking Drive folder health" : connected ? "Drive proof folders are visible" : "Drive proof folders need review"}</h2>
+          <p>
+            {loading
+              ? "Checking read-only Drive metadata."
+              : connected
+                ? driveStatus?.message || "Google Drive read-only metadata connection verified."
+                : error || driveStatus?.message || "Google Drive read-only metadata is not connected."}
+          </p>
+          <div className="hero-source-strip">
+            <span>{connected ? "Production read-only live" : "Connection review"}</span>
+            <span>{details.folderName || "Root folder not verified"}</span>
+            <span>No Drive writes</span>
+          </div>
+        </div>
+      </div>
+      <div className="overview-drive-metrics">
+        {metrics.map((metric) => (
+          <article key={metric.label} className={`status-strip ${metric.tone}`}>
+            <span>{metric.label}</span>
+            <strong>{metric.value}</strong>
+            <small>{metric.helper}</small>
+          </article>
+        ))}
+      </div>
+      <div className="overview-drive-actions">
+        <StatusBadge label={connected ? "Read-only verified" : "Reconnect review"} />
+        <Link href="/drive-update-center" className="summary-link-button">
+          Open Drive System
+        </Link>
+        {!connected ? (
+          <Link href="/google-connection-center" className="summary-link-button secondary">
+            Open Connection Center
+          </Link>
+        ) : (
+          <span><ShieldCheck size={16} aria-hidden /> Writes blocked</span>
+        )}
+      </div>
+    </section>
+  );
+}
+
 function ComparisonChart({ title, projected, collected }: { title: string; projected: number; collected: number }) {
   const max = Math.max(projected, collected, 1);
   const bars = [
@@ -337,6 +477,7 @@ export function OverviewView() {
     <div className="view-stack overview-dashboard">
       <FilterBar month={selectedMonth} year={selectedYear} onMonthChange={setSelectedMonth} onYearChange={setSelectedYear} />
       <SheetsSourcePanel system={system} error={error} loading={loading} />
+      <OverviewDriveSnapshot />
 
       {!hasPeriodData && showLocalDevelopmentDashboard ? (
         <EmptyState title="No data available for this period." message="Choose May 2026 to view the current operation center dashboard." />

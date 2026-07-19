@@ -21,6 +21,20 @@ const SHEETS_SCOPE = "https://www.googleapis.com/auth/spreadsheets.readonly";
 const SHEETS_WRITE_SCOPE = "https://www.googleapis.com/auth/spreadsheets";
 export const EXPECTED_GOOGLE_SHEET_ID = "14nzzWCKIi0h-zHkCzW0JXmN-NQNcAWZahLpDy3CXK0c";
 export const EXPECTED_SERVICE_ACCOUNT_EMAIL = "property-dashboard-reader@property-management-owner-com.iam.gserviceaccount.com";
+const LIVE_SHEETS_ENV_KEYS = {
+  spreadsheetId: {
+    primary: "GOOGLE_SHEETS_SPREADSHEET_ID",
+    legacy: "GOOGLE_SHEET_ID"
+  },
+  clientEmail: {
+    primary: "GOOGLE_SHEETS_CLIENT_EMAIL",
+    legacy: "GOOGLE_SERVICE_ACCOUNT_EMAIL"
+  },
+  privateKey: {
+    primary: "GOOGLE_SHEETS_PRIVATE_KEY",
+    legacy: "GOOGLE_PRIVATE_KEY"
+  }
+} as const;
 
 function hasEnv(value: string | undefined): boolean {
   return Boolean(value && value.trim().length > 0);
@@ -75,9 +89,9 @@ function resolveEnvValue(primary: string, alias: string) {
 
 export function getLiveSheetsEnv() {
   return {
-    spreadsheetId: resolveEnvValue("GOOGLE_SHEETS_SPREADSHEET_ID", "GOOGLE_SHEET_ID"),
-    clientEmail: resolveEnvValue("GOOGLE_SHEETS_CLIENT_EMAIL", "GOOGLE_SERVICE_ACCOUNT_EMAIL"),
-    privateKey: resolveEnvValue("GOOGLE_SHEETS_PRIVATE_KEY", "GOOGLE_PRIVATE_KEY")
+    spreadsheetId: resolveEnvValue(LIVE_SHEETS_ENV_KEYS.spreadsheetId.primary, LIVE_SHEETS_ENV_KEYS.spreadsheetId.legacy),
+    clientEmail: resolveEnvValue(LIVE_SHEETS_ENV_KEYS.clientEmail.primary, LIVE_SHEETS_ENV_KEYS.clientEmail.legacy),
+    privateKey: resolveEnvValue(LIVE_SHEETS_ENV_KEYS.privateKey.primary, LIVE_SHEETS_ENV_KEYS.privateKey.legacy)
   };
 }
 
@@ -122,12 +136,18 @@ export function getMissingLiveSheetsEnvVars(): string[] {
   const liveEnv = getLiveSheetsEnv();
   const missing: string[] = [];
 
-  if (!liveEnv.spreadsheetId.detected) missing.push("GOOGLE_SHEET_ID");
-  if (!liveEnv.clientEmail.detected) missing.push("GOOGLE_SERVICE_ACCOUNT_EMAIL");
-  if (!liveEnv.privateKey.detected) missing.push("GOOGLE_PRIVATE_KEY");
+  if (!liveEnv.spreadsheetId.detected) {
+    missing.push(`${LIVE_SHEETS_ENV_KEYS.spreadsheetId.primary} or ${LIVE_SHEETS_ENV_KEYS.spreadsheetId.legacy}`);
+  }
+  if (!liveEnv.clientEmail.detected) {
+    missing.push(`${LIVE_SHEETS_ENV_KEYS.clientEmail.primary} or ${LIVE_SHEETS_ENV_KEYS.clientEmail.legacy}`);
+  }
+  if (!liveEnv.privateKey.detected) {
+    missing.push(`${LIVE_SHEETS_ENV_KEYS.privateKey.primary} or ${LIVE_SHEETS_ENV_KEYS.privateKey.legacy}`);
+  }
 
   if (liveEnv.privateKey.detected && !hasValidPrivateKeyFormat(normalizePrivateKey(liveEnv.privateKey.value))) {
-    missing.push("GOOGLE_PRIVATE_KEY_VALID_FORMAT");
+    missing.push(`${LIVE_SHEETS_ENV_KEYS.privateKey.primary} or ${LIVE_SHEETS_ENV_KEYS.privateKey.legacy} valid private key format`);
   }
 
   return missing;
@@ -176,6 +196,8 @@ export type GoogleSheetsHealth = {
   isLive: boolean;
   spreadsheetId: string | null;
   serviceAccountEmail: string | null;
+  ownerApprovalsRange: string | null;
+  ownerApprovalsRows: number | null;
   requiredEnvPresent: boolean;
   missingEnvVars: string[];
   checkedAt: string;
@@ -196,6 +218,8 @@ export async function checkGoogleSheetsHealth(): Promise<GoogleSheetsHealth> {
       isLive: false,
       spreadsheetId: liveEnv.spreadsheetId.value || null,
       serviceAccountEmail: liveEnv.clientEmail.value || null,
+      ownerApprovalsRange: null,
+      ownerApprovalsRows: null,
       requiredEnvPresent: false,
       missingEnvVars,
       checkedAt,
@@ -210,6 +234,12 @@ export async function checkGoogleSheetsHealth(): Promise<GoogleSheetsHealth> {
       spreadsheetId: liveEnv.spreadsheetId.value,
       fields: "spreadsheetId,properties.title"
     });
+    const ownerApprovalsRange = `${quoteTab("Owner Approvals")}!A:ZZ`;
+    const ownerApprovals = await sheets.spreadsheets.values.get({
+      spreadsheetId: liveEnv.spreadsheetId.value,
+      range: ownerApprovalsRange,
+      majorDimension: "ROWS"
+    });
 
     return {
       ok: true,
@@ -218,6 +248,8 @@ export async function checkGoogleSheetsHealth(): Promise<GoogleSheetsHealth> {
       isLive: true,
       spreadsheetId: liveEnv.spreadsheetId.value,
       serviceAccountEmail: liveEnv.clientEmail.value,
+      ownerApprovalsRange,
+      ownerApprovalsRows: ownerApprovals.data.values?.length ?? 0,
       requiredEnvPresent: true,
       missingEnvVars: [],
       checkedAt,
@@ -234,6 +266,8 @@ export async function checkGoogleSheetsHealth(): Promise<GoogleSheetsHealth> {
       isLive: false,
       spreadsheetId: liveEnv.spreadsheetId.value,
       serviceAccountEmail: liveEnv.clientEmail.value,
+      ownerApprovalsRange: `${quoteTab("Owner Approvals")}!A:ZZ`,
+      ownerApprovalsRows: null,
       requiredEnvPresent: true,
       missingEnvVars: [],
       checkedAt,

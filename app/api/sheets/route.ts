@@ -21,6 +21,7 @@ export const revalidate = 0;
 
 const availableViews: SheetsView[] = [
   "overview",
+  "owner-approvals",
   "rent-collection",
   "notices-evictions",
   "maintenance",
@@ -48,6 +49,26 @@ function selectView(data: ReturnType<typeof parseWorkbook>, view: SheetsView) {
           calendarFollowUps: data.dashboardBlocks.calendarFollowUps
         }
       };
+    case "owner-approvals": {
+      const ownerApprovalRows = data.dashboardBlocks.ownerDecisions.rows.filter(
+        (row) => row.values["Tracker ID"]?.startsWith("#GMAIL-") && /^Item \d+\b/.test(row.values["Safe Action Label"] ?? "")
+      );
+      return {
+        dashboardBlock: {
+          ...data.dashboardBlocks.ownerDecisions,
+          rows: ownerApprovalRows,
+          empty: ownerApprovalRows.length === 0
+        },
+        rows: ownerApprovalRows,
+        rowCount: ownerApprovalRows.length,
+        sourceRange: data.dashboardBlocks.ownerDecisions.range,
+        itemLevelRange: "Owner Approvals!A26:J198",
+        proofRows: {
+          first: ownerApprovalRows.find((row) => row.values["Tracker ID"] === "#GMAIL-19f6388fa158d152") ?? null,
+          last: ownerApprovalRows.find((row) => row.values["Tracker ID"] === "#GMAIL-19e036c0ae2ffa6c") ?? null
+        }
+      };
+    }
     case "rent-collection":
       return { rows: data.rentCollection };
     case "notices-evictions":
@@ -139,7 +160,9 @@ export async function GET(request: NextRequest) {
     const errors = Array.from(new Set(liveSetupErrors(system, fallbackWarning)));
     const rawSource = diagnostics.source;
     const isLive = dataMode === "live" && rawSource === "google-sheets-readonly";
-    const spreadsheetId = getLiveSheetsEnv().spreadsheetId.value || null;
+    const liveSheetsEnv = getLiveSheetsEnv();
+    const spreadsheetId = liveSheetsEnv.spreadsheetId.value || null;
+    const serviceAccountEmail = liveSheetsEnv.clientEmail.value || null;
     const missingEnvVars = getMissingLiveSheetsEnvVars();
     const requiredEnvPresent = missingEnvVars.length === 0;
     const errorType = !requiredEnvPresent
@@ -160,6 +183,7 @@ export async function GET(request: NextRequest) {
           dataMode: "live",
           source: "Google Sheets connection error",
           spreadsheetId,
+          serviceAccountEmail,
           fetchedAt: refreshTimestamp,
           availableViews,
           requiredEnvPresent,
@@ -183,6 +207,7 @@ export async function GET(request: NextRequest) {
         rawSource,
         isLive,
         spreadsheetId,
+        serviceAccountEmail,
         fetchedAt: refreshTimestamp,
         availableViews,
         requiredEnvPresent,

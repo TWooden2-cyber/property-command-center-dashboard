@@ -19,6 +19,7 @@ import {
   Zap,
   FileWarning,
   FileCheck2,
+  FolderKanban,
   ShieldCheck,
   RadioTower,
   PlugZap,
@@ -48,6 +49,18 @@ function productLabel(product: ProductHealth) {
   return "Error";
 }
 
+function productRecoveryLabel(product: ProductHealth) {
+  if (product.product === "Google Sheets") {
+    if (product.errorCode === "permission denied") return "Google Sheets service-account access required";
+    if (product.errorCode === "env var missing" || product.errorCode === "Vercel production env mismatch") {
+      return "Google Sheets production env fix required";
+    }
+    return "Google Sheets service-account check failed";
+  }
+
+  return `${product.product} disconnected - reconnect required`;
+}
+
 function productTone(product: ProductHealth) {
   if (product.connected) return "green";
   if (product.status === "error") return "red";
@@ -67,6 +80,7 @@ const navigation = [
   { href: "/admin-tasks", label: "Admin Tasks", icon: ClipboardList },
   { href: "/calendar-follow-ups", label: "Calendar & Follow-Ups", icon: CalendarClock },
   { href: "/lease-violations", label: "Lease Violations", icon: FileWarning },
+  { href: "/drive-update-center", label: "Drive System", icon: FolderKanban },
   { href: "/google-connection-center", label: "Google Connections", icon: PlugZap },
   { href: "/data-accuracy", label: "Data Accuracy", icon: ShieldCheck },
   { href: "/live-operations", label: "Live Operations", icon: RadioTower },
@@ -75,7 +89,6 @@ const navigation = [
 
 const hiddenSidebarRoutes = new Set([
   "/draft-status",
-  "/drive-update-center",
   "/drive-readonly",
   "/final-integration",
   "/gmail-follow-ups",
@@ -167,7 +180,7 @@ export function LuxuryShell({
         {brokenProducts.length ? (
           <section className="local-mode-banner" aria-label="Google products operational status">
             <strong>Google connection issue</strong>
-            <span>{healthMessage} {brokenProducts.map((product) => `${product.product} disconnected — reconnect required`).join(" · ")}</span>
+            <span>{healthMessage} {brokenProducts.map(productRecoveryLabel).join(" | ")}</span>
             <div className="source-badges">
               {products.map((product) => (
                 <span key={product.product} className={`status-pill ${productTone(product)}`} title={product.message}>

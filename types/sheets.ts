@@ -349,6 +349,7 @@ export type CommandCenterData = {
 
 export type SheetsView =
   | "overview"
+  | "owner-approvals"
   | "rent-collection"
   | "notices-evictions"
   | "maintenance"

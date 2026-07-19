@@ -36,7 +36,11 @@ import {
   portalErrorPayload,
   type OwnerApprovalUiAction
 } from "@/lib/ownerApprovalExecution";
+import { DashboardBlockTable } from "@/components/DashboardBlockTable";
+import { SheetsSourcePanel } from "@/components/SheetsSourcePanel";
+import { useSheetsView } from "@/components/views/useSheetsView";
 import { money } from "@/lib/propertyCommandCenterData";
+import type { DashboardBlock, DashboardBlockRow } from "@/types/sheets";
 
 const storageKey = "owner-command-center.owner-approval-queue.live.v1";
 const legacyStorageKeys = ["owner-command-center.owner-approval-queue.mockup.v3"];
@@ -159,6 +163,18 @@ type GmailDraftResponse = {
   error?: string;
   errorCode?: string;
   requiredScope?: string;
+};
+
+type OwnerApprovalTrackerPayload = {
+  dashboardBlock: DashboardBlock;
+  rows: DashboardBlockRow[];
+  rowCount: number;
+  sourceRange: string;
+  itemLevelRange: string;
+  proofRows: {
+    first: DashboardBlockRow | null;
+    last: DashboardBlockRow | null;
+  };
 };
 
 const fixedPropertyFilters = ["7-unit", "4-unit", "228 Reifert", "3103 Courtney", "Unknown Property"] as const;
@@ -414,6 +430,55 @@ function StatusSection({
         <p>No items in this status.</p>
       )}
     </article>
+  );
+}
+
+function LiveOwnerApprovalTrackerSection() {
+  const { data, system, error, loading } = useSheetsView<OwnerApprovalTrackerPayload>("owner-approvals");
+  const sample = data?.proofRows.first ?? data?.rows.find((row) => row.values["Tracker ID"] === "#GMAIL-19f6388fa158d152");
+  const lastSample = data?.proofRows.last ?? null;
+
+  return (
+    <section className="approval-live-tracker-section" aria-label="Live owner approval tracker rows">
+      <div className="approval-live-tracker-header">
+        <div>
+          <span className="section-kicker">Live Google Sheet Tracker</span>
+          <h2>Owner Approvals Tracker Rows</h2>
+          <p>
+            Executed item-level rows from the Owner Approvals tab, including Gmail approval records from the live tracker.
+          </p>
+        </div>
+        <div className="approval-live-tracker-count">
+          <span>Rows read</span>
+          <strong>{data?.rowCount ?? (loading ? "..." : "0")}</strong>
+          <small>{data?.itemLevelRange ?? data?.sourceRange ?? "Owner Approvals"}</small>
+        </div>
+      </div>
+      <SheetsSourcePanel
+        system={system}
+        error={error}
+        loading={loading}
+        fallbackDetail="Owner Approval tracker rows are unavailable from the live Google Sheet."
+      />
+      {sample ? (
+        <div className="approval-live-sample">
+          <span>Verified sample row</span>
+          <strong>{sample.values["Tracker ID"]}</strong>
+          <small>{sample.values["Safe Action Label"]} / {sample.values.Status || sample.values["Review Status"]}</small>
+        </div>
+      ) : null}
+      {lastSample ? (
+        <div className="approval-live-sample">
+          <span>Verified final row</span>
+          <strong>{lastSample.values["Tracker ID"]}</strong>
+          <small>{lastSample.values["Safe Action Label"]} / {lastSample.values.Status || lastSample.values["Review Status"]}</small>
+        </div>
+      ) : null}
+      <DashboardBlockTable
+        block={data?.dashboardBlock}
+        emptyMessage="No Owner Approvals tracker rows were returned by the dashboard API."
+      />
+    </section>
   );
 }
 
@@ -1398,6 +1463,8 @@ export function OwnerApprovalsView() {
       </aside>
 
       <main className="approval-workspace">
+        <LiveOwnerApprovalTrackerSection />
+
         <header className="approval-workspace-header">
           <div>
             <h1>Owner Approval Queue <span>{records.length}</span></h1>

@@ -6,7 +6,7 @@ export default async function DriveReadonlyPage() {
   await requireOwnerSession();
 
   return (
-    <LuxuryShell title="Google Drive Read-Only Command" subtitle="Read-only proof-folder listing, folder health review, and safe Drive integration status.">
+    <LuxuryShell title="Google Drive System" subtitle="Read-only folder health, proof routing visibility, and owner-approved Drive update planning.">
       <DriveReadonlyView />
     </LuxuryShell>
   );

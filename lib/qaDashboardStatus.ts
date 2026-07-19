@@ -27,6 +27,13 @@ type QaDashboardStatus = {
   source: "Live Google Sheets" | "Google Sheets connection error";
   isLive: boolean;
   spreadsheetId: string | null;
+  ownerApprovalsProof: {
+    itemRowCount: number;
+    firstTrackerId: string | null;
+    lastTrackerId: string | null;
+    containsFirstExpectedId: boolean;
+    containsLastExpectedId: boolean;
+  };
   tabs: QaTabStatus[];
   errors: string[];
 };
@@ -172,6 +179,12 @@ function buildDraftStatusRows(parsed: CommandCenterData) {
   ];
 }
 
+function ownerApprovalItemRows(parsed: CommandCenterData) {
+  return parsed.dashboardBlocks.ownerDecisions.rows.filter(
+    (row) => row.values["Tracker ID"]?.startsWith("#GMAIL-") && /^Item \d+\b/.test(row.values["Safe Action Label"] ?? "")
+  );
+}
+
 function liveOperationsTab(products: GoogleProductStatus[]): QaTabStatus {
   const payload = { rows: products };
   const unavailable = products.filter((product) => !product.connected && product.status !== "not_enabled").map((product) => product.product);
@@ -226,6 +239,9 @@ export async function buildQaDashboardStatus(): Promise<QaDashboardStatus> {
   const products = await getGoogleProductsStatus();
   const isLive = hasLiveRefresh(system);
   const source = isLive ? "Live Google Sheets" : "Google Sheets connection error";
+  const ownerApprovalRows = ownerApprovalItemRows(parsed);
+  const firstExpectedId = "#GMAIL-19f6388fa158d152";
+  const lastExpectedId = "#GMAIL-19e036c0ae2ffa6c";
 
   return {
     ok: isLive,
@@ -234,9 +250,17 @@ export async function buildQaDashboardStatus(): Promise<QaDashboardStatus> {
     source,
     isLive,
     spreadsheetId: process.env.GOOGLE_SHEETS_SPREADSHEET_ID || process.env.GOOGLE_SHEET_ID || null,
+    ownerApprovalsProof: {
+      itemRowCount: ownerApprovalRows.length,
+      firstTrackerId: ownerApprovalRows[0]?.values["Tracker ID"] || null,
+      lastTrackerId: ownerApprovalRows[ownerApprovalRows.length - 1]?.values["Tracker ID"] || null,
+      containsFirstExpectedId: ownerApprovalRows.some((row) => row.values["Tracker ID"] === firstExpectedId),
+      containsLastExpectedId: ownerApprovalRows.some((row) => row.values["Tracker ID"] === lastExpectedId)
+    },
     errors: system.setupErrors,
     tabs: [
       mappedTab("Overview", "Overview", { kpis: parsed.overview.kpis, dashboardBlocks: parsed.dashboardBlocks }, system),
+      mappedTab("Owner Approvals", "Owner Approvals", { rows: ownerApprovalRows }, system),
       mappedTab("Rent Collection", "Rent Collection", { rows: parsed.rentCollection }, system),
       mappedTab("Mortgage / Arrears", "Mortgage & Allotments", { rows: parsed.mortgageArrears }, system),
       mappedTab("Maintenance", "Maintenance", { rows: parsed.maintenance, dashboardBlock: parsed.dashboardBlocks.maintenance }, system),

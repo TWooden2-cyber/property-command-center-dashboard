@@ -79,7 +79,7 @@ export function LiveSourceChecklistPanel() {
           <li>Create the 13 tabs listed above with the exact names shown.</li>
           <li>Add the required columns in row 1 for each tab.</li>
           <li>Share the Sheet with the service account email from GOOGLE_SHEETS_CLIENT_EMAIL as Viewer only.</li>
-          <li>Add Vercel variables: DASHBOARD_DATA_MODE=live, GOOGLE_SHEET_ID, GOOGLE_SERVICE_ACCOUNT_EMAIL, and GOOGLE_PRIVATE_KEY.</li>
+          <li>Add Vercel variables: GOOGLE_SHEETS_SPREADSHEET_ID, GOOGLE_SHEETS_CLIENT_EMAIL, and GOOGLE_SHEETS_PRIVATE_KEY. Legacy GOOGLE_SHEET_ID, GOOGLE_SERVICE_ACCOUNT_EMAIL, and GOOGLE_PRIVATE_KEY names are also supported.</li>
           <li>Redeploy Vercel after adding environment variables.</li>
           <li>Refresh the dashboard to pull the latest Google Sheets data.</li>
         </ol>
