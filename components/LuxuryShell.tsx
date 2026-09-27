@@ -6,23 +6,17 @@ import type { Route } from "next";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Bot,
   ClipboardList,
   Gauge,
   Hammer,
   Landmark,
   MailWarning,
   ReceiptText,
-  Settings,
   CalendarClock,
   DollarSign,
   Zap,
-  FileWarning,
   FileCheck2,
-  FolderKanban,
-  ShieldCheck,
-  RadioTower,
-  PlugZap,
+  Settings,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -90,16 +84,14 @@ const navigationGroups = [
     label: "Legal",
     icon: MailWarning,
     items: [
-      { href: "/notices-evictions", label: "Notices & Evictions", icon: MailWarning },
-      { href: "/lease-violations", label: "Lease Violations", icon: FileWarning }
+      { href: "/notices-evictions", label: "Notices & Evictions", icon: MailWarning }
     ]
   },
   {
     label: "Maintenance",
     icon: Hammer,
     items: [
-      { href: "/maintenance", label: "Maintenance", icon: Hammer },
-      { href: "/calendar-follow-ups", label: "Calendar & Follow-Ups", icon: CalendarClock }
+      { href: "/maintenance", label: "Maintenance", icon: Hammer }
     ]
   },
   {
@@ -108,17 +100,13 @@ const navigationGroups = [
     items: [
       { href: "/owner-approvals", label: "Owner Approvals", icon: FileCheck2 },
       { href: "/admin-tasks", label: "Admin Tasks", icon: ClipboardList },
-      { href: "/task-automation", label: "Task Automation", icon: Bot },
-      { href: "/live-operations", label: "Live Operations", icon: RadioTower }
+      { href: "/calendar-follow-ups", label: "Calendar & Follow-Ups", icon: CalendarClock }
     ]
   },
   {
     label: "System",
-    icon: FolderKanban,
+    icon: Settings,
     items: [
-      { href: "/drive-update-center", label: "Drive System", icon: FolderKanban },
-      { href: "/google-connection-center", label: "Google Connections", icon: PlugZap },
-      { href: "/data-accuracy", label: "Data Accuracy", icon: ShieldCheck },
       { href: "/settings", label: "Settings", icon: Settings }
     ]
   }
