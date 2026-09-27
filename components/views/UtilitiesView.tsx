@@ -44,7 +44,7 @@ const tableColumns: DataTableColumn<UtilityRecord>[] = [
   { key: "unitCommonArea", header: "Unit / Common Area", render: (row) => row.unitCommonArea || "Not set" },
   { key: "utilityType", header: "Utility Type", render: (row) => row.utilityType || "Not set" },
   { key: "provider", header: "Provider", render: (row) => row.provider || "Not set" },
-  { key: "usageAmount", header: "Usage Amount", render: (row) => Number.isFinite(row.usageAmount) ? row.usageAmount.toLocaleString() : "Live value unavailable", className: "numeric" },
+  { key: "usageAmount", header: "Usage Amount", render: (row) => Number.isFinite(row.usageAmount) ? row.usageAmount.toLocaleString() : "Bill notice did not include usage", className: "numeric" },
   { key: "usageUnit", header: "Usage Unit", render: (row) => row.usageUnit || "Not set" },
   { key: "totalCost", header: "Total Cost", render: (row) => formatCurrency(row.totalCost), className: "numeric" },
   { key: "costPerUnit", header: "Cost Per Unit", render: (row) => formatCostPerUnit(row.costPerUnit), className: "numeric" },
@@ -58,7 +58,7 @@ const tableColumns: DataTableColumn<UtilityRecord>[] = [
 
 function formatCostPerUnit(value: number): string {
   if (!Number.isFinite(value)) {
-    return "Live value unavailable";
+    return "Bill notice did not include rate";
   }
 
   return new Intl.NumberFormat("en-US", {
@@ -129,7 +129,10 @@ function groupMonthlyCost(rows: UtilityRecord[]): ChartDatum[] {
 
 function matchesPortfolioSize(row: UtilityRecord, size: 4 | 7): boolean {
   const combined = `${row.property} ${row.unitCommonArea}`.toLowerCase();
-  const words = size === 7 ? ["7-unit", "7 unit", "seven-unit", "seven unit"] : ["4-unit", "4 unit", "four-unit", "four unit"];
+  const words =
+    size === 7
+      ? ["228 reifert", "reifert", "7-unit", "7 unit", "seven-unit", "seven unit"]
+      : ["3103 courtney", "courtney", "4-unit", "4 unit", "four-unit", "four unit"];
   return words.some((word) => combined.includes(word));
 }
 
@@ -174,15 +177,15 @@ function buildKpis(rows: UtilityRecord[]): KpiMetric[] {
       tone: "Normal"
     },
     {
-      label: "7-Unit Utility Cost",
+      label: "228 Reifert Utility Cost",
       value: formatCurrency(sum(rows.filter((row) => matchesPortfolioSize(row, 7)), (row) => row.totalCost)),
-      helper: "Rows labeled 7-unit",
+      helper: "Seven-unit building utility rows",
       tone: "Normal"
     },
     {
-      label: "4-Unit Utility Cost",
+      label: "3103 Courtney Utility Cost",
       value: formatCurrency(sum(rows.filter((row) => matchesPortfolioSize(row, 4)), (row) => row.totalCost)),
-      helper: "Rows labeled 4-unit",
+      helper: "Courtney building utility rows",
       tone: "Normal"
     },
     {
@@ -314,20 +317,24 @@ function lastTwelveMonths(rows: UtilityRecord[]) {
 function MonthlyVerticalBars({ rows }: { rows: UtilityRecord[] }) {
   const months = lastTwelveMonths(rows);
   const max = Math.max(...months.map((item) => item.value), 1);
+  const hasUsageData = rows.some((row) => Number.isFinite(row.usageAmount));
 
   return (
-    <div className="monthly-vertical-bars">
-      {months.map((item, index) => {
-        const label = item.label.split(" ")[0].slice(0, 3);
-        const height = item.value > 0 ? Math.max((item.value / max) * 100, 8) : 4;
-        return (
-          <div key={`${item.label}-${index}`} className="monthly-vertical-bar" title={`${item.label}: ${item.value.toLocaleString()}`}>
-            <span style={{ "--bar-height": `${height}%` } as CSSProperties} />
-            <strong>{label}</strong>
-          </div>
-        );
-      })}
-    </div>
+    <>
+      <p className="muted-line">{hasUsageData ? "Bars show source utility usage." : "Usage and rate were not included in the bill notices; bars show bill cost history."}</p>
+      <div className="monthly-vertical-bars">
+        {months.map((item, index) => {
+          const label = item.label.split(" ")[0].slice(0, 3);
+          const height = item.value > 0 ? Math.max((item.value / max) * 100, 8) : 4;
+          return (
+            <div key={`${item.label}-${index}`} className="monthly-vertical-bar" title={`${item.label}: ${item.value.toLocaleString()}`}>
+              <span style={{ "--bar-height": `${height}%` } as CSSProperties} />
+              <strong>{label}</strong>
+            </div>
+          );
+        })}
+      </div>
+    </>
   );
 }
 
@@ -351,7 +358,7 @@ function UtilityAccountRows({ rows }: { rows: UtilityRecord[] }) {
       <div className="utility-account-list">
         {Object.entries(grouped).map(([key, accountRows]) => {
           const latest = [...accountRows].sort((a, b) => (b.monthKey || b.month).localeCompare(a.monthKey || a.month, undefined, { numeric: true }))[0];
-          const usageRate = Number.isFinite(latest.costPerUnit) ? formatCostPerUnit(latest.costPerUnit) : "Rate unavailable";
+          const usageRate = formatCostPerUnit(latest.costPerUnit);
           return (
             <details key={key} className="utility-account-row">
               <summary>
@@ -369,7 +376,7 @@ function UtilityAccountRows({ rows }: { rows: UtilityRecord[] }) {
                 </div>
                 <div>
                   <span>Usage</span>
-                  <strong>{Number.isFinite(latest.usageAmount) ? `${latest.usageAmount.toLocaleString()} ${latest.usageUnit}` : "Unavailable"}</strong>
+                  <strong>{Number.isFinite(latest.usageAmount) ? `${latest.usageAmount.toLocaleString()} ${latest.usageUnit}` : "Bill notice did not include usage"}</strong>
                 </div>
                 <div>
                   <span>Usage Rate</span>
