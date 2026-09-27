@@ -371,7 +371,7 @@ button {
 .nav-list {
   display: grid;
   flex: 1 1 auto;
-  gap: 6px;
+  gap: 12px;
   min-height: 0;
   overflow-x: hidden;
   overflow-y: auto;
@@ -398,6 +398,38 @@ button {
   background: rgba(201, 164, 81, 0.62);
 }
 
+.nav-group {
+  display: grid;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid rgba(247, 240, 228, 0.08);
+  border-radius: 8px;
+  background: rgba(247, 240, 228, 0.025);
+}
+
+.nav-group.active {
+  border-color: rgba(201, 164, 81, 0.24);
+  background: rgba(201, 164, 81, 0.05);
+}
+
+.nav-group-label {
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 4px;
+  color: var(--gold-soft);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.nav-group-items {
+  display: grid;
+  gap: 4px;
+}
+
 .nav-item {
   min-height: 42px;
   display: flex;
@@ -407,6 +439,11 @@ button {
   border: 1px solid transparent;
   border-radius: 8px;
   color: var(--muted);
+}
+
+.nav-group .nav-item {
+  min-height: 38px;
+  padding-left: 10px;
 }
 
 .nav-item:hover,
@@ -8442,6 +8479,11 @@ tbody tr:hover {
     overflow-x: auto;
     overflow-y: hidden;
     padding: 14px 0 6px;
+  }
+
+  .nav-group {
+    flex: 0 0 auto;
+    min-width: 220px;
   }
 
   .nav-item {

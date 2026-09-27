@@ -32,6 +32,12 @@ type NavItem = {
   icon: LucideIcon;
 };
 
+type NavGroup = {
+  label: string;
+  icon: LucideIcon;
+  items: NavItem[];
+};
+
 type ProductHealth = {
   product: string;
   connected: boolean;
@@ -67,25 +73,56 @@ function productTone(product: ProductHealth) {
   return "yellow";
 }
 
-const navigation = [
-  { href: "/", label: "Overview", icon: Gauge },
-  { href: "/rent-collection", label: "Rent Collection", icon: ReceiptText },
-  { href: "/notices-evictions", label: "Notices & Evictions", icon: MailWarning },
-  { href: "/owner-approvals", label: "Owner Approvals", icon: FileCheck2 },
-  { href: "/task-automation", label: "Task Automation", icon: Bot },
-  { href: "/maintenance", label: "Maintenance", icon: Hammer },
-  { href: "/utilities", label: "Utilities", icon: Zap },
-  { href: "/expenses", label: "Expenses / NOI", icon: DollarSign },
-  { href: "/mortgage-arrears", label: "Mortgage & Arrears", icon: Landmark },
-  { href: "/admin-tasks", label: "Admin Tasks", icon: ClipboardList },
-  { href: "/calendar-follow-ups", label: "Calendar & Follow-Ups", icon: CalendarClock },
-  { href: "/lease-violations", label: "Lease Violations", icon: FileWarning },
-  { href: "/drive-update-center", label: "Drive System", icon: FolderKanban },
-  { href: "/google-connection-center", label: "Google Connections", icon: PlugZap },
-  { href: "/data-accuracy", label: "Data Accuracy", icon: ShieldCheck },
-  { href: "/live-operations", label: "Live Operations", icon: RadioTower },
-  { href: "/settings", label: "Settings", icon: Settings }
-] satisfies readonly NavItem[];
+const overviewNavigation = { href: "/", label: "Overview", icon: Gauge } satisfies NavItem;
+
+const navigationGroups = [
+  {
+    label: "Finance",
+    icon: DollarSign,
+    items: [
+      { href: "/rent-collection", label: "Rent Collection", icon: ReceiptText },
+      { href: "/utilities", label: "Utilities", icon: Zap },
+      { href: "/expenses", label: "Expenses / NOI", icon: DollarSign },
+      { href: "/mortgage-arrears", label: "Mortgage & Arrears", icon: Landmark }
+    ]
+  },
+  {
+    label: "Legal",
+    icon: MailWarning,
+    items: [
+      { href: "/notices-evictions", label: "Notices & Evictions", icon: MailWarning },
+      { href: "/lease-violations", label: "Lease Violations", icon: FileWarning }
+    ]
+  },
+  {
+    label: "Maintenance",
+    icon: Hammer,
+    items: [
+      { href: "/maintenance", label: "Maintenance", icon: Hammer },
+      { href: "/calendar-follow-ups", label: "Calendar & Follow-Ups", icon: CalendarClock }
+    ]
+  },
+  {
+    label: "Operations",
+    icon: ClipboardList,
+    items: [
+      { href: "/owner-approvals", label: "Owner Approvals", icon: FileCheck2 },
+      { href: "/admin-tasks", label: "Admin Tasks", icon: ClipboardList },
+      { href: "/task-automation", label: "Task Automation", icon: Bot },
+      { href: "/live-operations", label: "Live Operations", icon: RadioTower }
+    ]
+  },
+  {
+    label: "System",
+    icon: FolderKanban,
+    items: [
+      { href: "/drive-update-center", label: "Drive System", icon: FolderKanban },
+      { href: "/google-connection-center", label: "Google Connections", icon: PlugZap },
+      { href: "/data-accuracy", label: "Data Accuracy", icon: ShieldCheck },
+      { href: "/settings", label: "Settings", icon: Settings }
+    ]
+  }
+] satisfies readonly NavGroup[];
 
 const hiddenSidebarRoutes = new Set([
   "/draft-status",
@@ -111,6 +148,7 @@ export function LuxuryShell({
   const [products, setProducts] = useState<ProductHealth[]>([]);
   const [healthMessage, setHealthMessage] = useState("Checking Google product status...");
   const brokenProducts = products.filter((product) => !product.connected);
+  const OverviewIcon = overviewNavigation.icon;
 
   useEffect(() => {
     let mounted = true;
@@ -147,15 +185,36 @@ export function LuxuryShell({
         </Link>
 
         <nav className="nav-list" aria-label="Main navigation">
-          {navigation.filter((item) => !hiddenSidebarRoutes.has(item.href)).map((item) => {
-            const Icon = item.icon;
-            const active = pathname === item.href;
+          <Link href={overviewNavigation.href as Route} className={pathname === overviewNavigation.href ? "nav-item active" : "nav-item"}>
+            <OverviewIcon size={18} aria-hidden />
+            <span>{overviewNavigation.label}</span>
+          </Link>
+
+          {navigationGroups.map((group) => {
+            const GroupIcon = group.icon;
+            const items = group.items.filter((item) => !hiddenSidebarRoutes.has(item.href));
+            const activeGroup = items.some((item) => pathname === item.href);
 
             return (
-              <Link key={item.href} href={item.href as Route} className={active ? "nav-item active" : "nav-item"}>
-                <Icon size={18} aria-hidden />
-                <span>{item.label}</span>
-              </Link>
+              <section key={group.label} className={activeGroup ? "nav-group active" : "nav-group"} aria-label={`${group.label} section`}>
+                <div className="nav-group-label">
+                  <GroupIcon size={15} aria-hidden />
+                  <span>{group.label}</span>
+                </div>
+                <div className="nav-group-items">
+                  {items.map((item) => {
+                    const Icon = item.icon;
+                    const active = pathname === item.href;
+
+                    return (
+                      <Link key={item.href} href={item.href as Route} className={active ? "nav-item active" : "nav-item"}>
+                        <Icon size={18} aria-hidden />
+                        <span>{item.label}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </section>
             );
           })}
         </nav>
