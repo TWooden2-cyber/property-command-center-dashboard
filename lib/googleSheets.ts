@@ -1172,7 +1172,7 @@ export async function getWorkbookSnapshot(): Promise<WorkbookSnapshot> {
   const isRefreshWorkbook = detected.has("Owner Summary") && detected.has("228 RentRedi Rent Roll") && detected.has("Maintenance Comms") && detected.has("Open Follow Ups");
 
   if (isRefreshWorkbook) {
-    const refreshSourceTabs = ["Owner Summary", "228 RentRedi Rent Roll", "Courtney ARTI", "Maintenance Comms", "Open Follow Ups"];
+    const refreshSourceTabs = ["Owner Summary", "228 RentRedi Rent Roll", "Courtney ARTI", "Maintenance Comms", "Open Follow Ups", "Utilities"];
     const refreshTabs: Record<string, LiveSheetRead | undefined> = {};
 
     for (const tab of refreshSourceTabs) {
