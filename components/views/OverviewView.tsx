@@ -6,6 +6,7 @@ import { AlertTriangle, CheckCircle2, FolderKanban, ShieldCheck, TrendingUp } fr
 import { EmptyState } from "@/components/DataState";
 import { SheetsSourcePanel } from "@/components/SheetsSourcePanel";
 import { StatusBadge } from "@/components/StatusBadge";
+import { SectionActionRows, type SectionActionRow } from "@/components/views/SectionActionRows";
 import {
   localDevelopmentFallbackAllowed
 } from "@/components/views/liveSheetAdapters";
@@ -326,6 +327,116 @@ function LiveBlufBrief({ data }: { data?: OverviewPayload }) {
   );
 }
 
+function findKpi(kpis: KpiMetric[], label: string) {
+  return kpis.find((item) => item.label.toLowerCase() === label.toLowerCase())?.value ?? "not reported";
+}
+
+function openSignal(value: string) {
+  const numeric = Number(value.replace(/[^0-9.-]/g, ""));
+  return Number.isFinite(numeric) && numeric > 0;
+}
+
+function buildCommandStaffRows(data?: OverviewPayload): SectionActionRow[] {
+  const kpis = data?.kpis ?? [];
+  const scheduledRent = findKpi(kpis, "Scheduled Rent");
+  const rentCollected = findKpi(kpis, "Rent Collected");
+  const outstandingRent = findKpi(kpis, "Outstanding Rent");
+  const openMaintenance = findKpi(kpis, "Open Maintenance");
+  const openNotices = findKpi(kpis, "Open Notices");
+  const netCashFlow = findKpi(kpis, "Net Cash Flow");
+  const maintenanceOpen = openSignal(openMaintenance);
+  const noticesOpen = openSignal(openNotices);
+  const rentOutstanding = openSignal(outstandingRent);
+  const permissionWarning = (data?.warnings ?? []).find((warning) => warning.toLowerCase().includes("permission"));
+
+  return [
+    {
+      title: "Rent Collection",
+      bluf: rentOutstanding
+        ? `${outstandingRent} is still open against ${scheduledRent} scheduled rent; ${rentCollected} is currently collected.`
+        : `Rent is showing collected at ${rentCollected} against ${scheduledRent} scheduled.`,
+      issue: "The owner view needs tenant-level collection risk, not just one rent total.",
+      systemicIssue: "RentRedi, Section 8, UPMC, Marcus-account deposits, and manual postings can land in different places before PMOS reconciles them.",
+      recourse: "Use the Rent Collection tab for tenant-by-tenant bars, paid amount, open balance, outside-account payments, and refresh proof.",
+      tone: rentOutstanding ? "red" : "green"
+    },
+    {
+      title: "Maintenance",
+      bluf: maintenanceOpen
+        ? `${openMaintenance} maintenance signal${openMaintenance === "1" ? "" : "s"} need tracking; Unit 2 remains the active proof-heavy item.`
+        : "No open maintenance count is flagged at the owner level.",
+      issue: "Maintenance cannot close until appointment result, vendor scope, approval, cost, photos, and completion proof are clear.",
+      systemicIssue: "Vendor scope, tenant access, Latchel messages, and PMOS proof folders are separate sources unless the refresh packet ties them together.",
+      recourse: "Use the Maintenance tab to track appointment window, vendor, scope, estimate, approval status, completion proof, and next owner trigger.",
+      tone: maintenanceOpen ? "yellow" : "green"
+    },
+    {
+      title: "Utilities",
+      bluf: "Utilities stay in payment-timing review until current balances, due dates, usage, and monthly spend are verified.",
+      issue: "Utility balances can look inflated if account balances are mistaken for this month's expense.",
+      systemicIssue: "Bills, late notices, autopay notices, and usage history arrive through separate utility emails and portals.",
+      recourse: "Use the Utilities tab for account rows, twelve-month usage bars, due dates, and whether tomorrow's utility payment closes the remaining owner approval.",
+      tone: "yellow"
+    },
+    {
+      title: "Legal / Notices",
+      bluf: noticesOpen
+        ? `${openNotices} notice/legal signal${openNotices === "1" ? "" : "s"} need review before any notice or filing action.`
+        : "No active eviction filing is verified at the owner level.",
+      issue: "The legal picture must distinguish unpaid rent, legal move-out, old notices, proof gaps, and active filings.",
+      systemicIssue: "Old tracker rows were stale, so legal has to be rebuilt from current rent, email, and proof links.",
+      recourse: "Use Notices / Evictions for who has a 10-day notice, who should get one, who has legal started, and links to notice proof.",
+      tone: noticesOpen ? "red" : "green"
+    },
+    {
+      title: "Mortgage / Allotments",
+      bluf: "Mortgage status is a cash-control line: confirm posted payments, remaining balance, and allotment setup before calling it done.",
+      issue: "Payment accepted does not always equal lender-posted or arrears-cured.",
+      systemicIssue: "Mortgage proof lives across lender confirmations, bank records, allotment status, and PMOS tracker notes.",
+      recourse: "Use Mortgage / Allotments to verify posted payments, next due date, remaining arrears, and military-paycheck allotment readiness.",
+      tone: "yellow"
+    },
+    {
+      title: "Owner Decisions",
+      bluf: data?.ownerDecision && data.ownerDecision !== "None"
+        ? data.ownerDecision
+        : "Owner decisions should only show items that truly need your approval, not routine routed work.",
+      issue: "Noise, routed maintenance, admin notices, and proof gaps should not sit in the owner-decision lane.",
+      systemicIssue: "If every operational item becomes an owner decision, the command view stops helping you prioritize.",
+      recourse: "Use Owner Approvals only for payment timing, approval gates, amount verification, and high-risk calls that cannot proceed without you.",
+      tone: data?.ownerDecision && data.ownerDecision !== "None" ? "yellow" : "green"
+    },
+    {
+      title: "Calendar / Follow-Ups",
+      bluf: "Follow-ups should carry the five Ws: who, what, when, where, and why, with sensitive case facts kept in PMOS when needed.",
+      issue: "Appointments and due dates can be missed if they are only buried in texts or emails.",
+      systemicIssue: "Google Voice, Gmail, Latchel, utilities, and PMOS all create follow-up signals.",
+      recourse: "Use Calendar / Follow-Ups for due dates, maintenance monitors, utility payment reminders, and owner-triggered callbacks.",
+      tone: "yellow"
+    },
+    {
+      title: "Admin / Data Control",
+      bluf: permissionWarning
+        ? "A Google Sheets permission warning still needs cleanup, even though the portal is reading the refresh data."
+        : "GitHub is restored as the source of truth and the refresh workbook is the current data packet.",
+      issue: "The old local dashboard source drifted away from GitHub, which caused the restored portal to lose layout work.",
+      systemicIssue: "OneDrive/local-only source is fragile. GitHub needs to hold the portal, and Drive/Sheets need to hold PMOS operating data.",
+      recourse: "Keep GitHub as the dashboard source, Drive/Sheets as the PMOS backup packet, and archive old dashboards only after the new portal is visually verified.",
+      tone: permissionWarning ? "red" : "green"
+    }
+  ];
+}
+
+function CommandStaffBrief({ data }: { data?: OverviewPayload }) {
+  return (
+    <SectionActionRows
+      eyebrow="Command and Staff Brief"
+      title="Section-by-section owner briefing"
+      rows={buildCommandStaffRows(data)}
+    />
+  );
+}
+
 function driveDetails(status?: GoogleProductStatus | null): DriveProductDetails {
   return (status?.details ?? {}) as DriveProductDetails;
 }
@@ -593,12 +704,10 @@ export function OverviewView() {
             {isLive && data?.kpis?.length ? data.kpis.map((item) => <LiveKpiTile key={item.label} item={item} />) : showLocalDevelopmentDashboard ? kpis.map((item) => <KpiTile key={item.label} item={item} />) : null}
           </section>
 
-          {isLive ? (
-            <>
-              <LiveBlufBrief data={data ?? undefined} />
-              <LiveMoneyChart kpis={data?.kpis ?? []} />
-            </>
-          ) : null}
+          <LiveBlufBrief data={data ?? undefined} />
+          <CommandStaffBrief data={data ?? undefined} />
+
+          {isLive ? <LiveMoneyChart kpis={data?.kpis ?? []} /> : null}
 
           {isLive && data?.risks?.length ? (
             <LiveRiskGrid risks={data.risks} />
