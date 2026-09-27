@@ -1009,17 +1009,25 @@ function buildLegacyTabsFromLive(liveTabs: Record<string, LiveSheetRead | undefi
   tabs["Utilities"] = legacyTab(
     "Utilities",
     liveRowsMapped(liveTabs, "Utilities", (row) => ({
-      Property: pickLive(row, "property", "Property", "Address"),
-      "Unit / Common Area": pickLive(row, "unit", "Unit", "Unit / Common Area", "Common Area"),
-      "Utility Type": pickLive(row, "utilityType", "Utility Type", "Type"),
-      Provider: pickLive(row, "provider", "Provider", "Utility Provider"),
-      "Account Number": pickLive(row, "accountLabel", "Account Label", "Account Number"),
-      "Total Cost": pickLive(row, "amountDue", "Amount Due", "Total Cost", "Cost", "Bill Amount"),
-      "Due Date": pickLive(row, "dueDate", "Due Date"),
-      "Payment Status": pickLive(row, "status", "Status", "Payment Status"),
-      "Usage Spike?": pickLive(row, "shutoffRisk", "Shutoff Risk", "Usage Spike?", "Usage Spike"),
-      "Review Status": pickLive(row, "nextAction", "Next Action", "Review Status"),
-      Notes: pickLive(row, "nextAction", "Next Action", "Notes")
+      Month: pickLive(row, "month", "Month", "billingMonth", "Billing Month", "statementMonth", "Statement Month", "statementDate", "Statement Date"),
+      Property: pickLive(row, "property", "Property", "Address", "serviceAddress", "Service Address"),
+      "Unit / Common Area": pickLive(row, "unit", "Unit", "Unit / Common Area", "Common Area", "serviceArea", "Service Area"),
+      "Utility Type": pickLive(row, "utilityType", "Utility Type", "Type", "serviceType", "Service Type", "category", "Category"),
+      Provider: pickLive(row, "provider", "Provider", "Utility Provider", "vendor", "Vendor", "company", "Company"),
+      "Account Number": pickLive(row, "accountLabel", "Account Label", "Account Number", "accountNumber", "Account", "Acct"),
+      "Billing Period Start": pickLive(row, "billingPeriodStart", "Billing Period Start", "serviceStart", "Service Start", "periodStart", "Period Start"),
+      "Billing Period End": pickLive(row, "billingPeriodEnd", "Billing Period End", "serviceEnd", "Service End", "periodEnd", "Period End"),
+      "Usage Amount": pickLive(row, "usageAmount", "Usage Amount", "usage", "Usage", "currentUsage", "Current Usage", "usageQuantity", "Usage Quantity"),
+      "Usage Unit": pickLive(row, "usageUnit", "Usage Unit", "unitOfMeasure", "Unit of Measure", "uom", "UOM"),
+      "Total Cost": pickLive(row, "amountDue", "Amount Due", "currentBalance", "Current Balance", "balanceDue", "Balance Due", "Total Cost", "Cost", "Bill Amount", "Amount", "Total Amount"),
+      "Cost Per Unit": pickLive(row, "costPerUnit", "Cost Per Unit", "usageRate", "Usage Rate", "rate", "Rate"),
+      "Due Date": pickLive(row, "dueDate", "Due Date", "billDueDate", "Bill Due Date", "paymentDueDate", "Payment Due Date"),
+      "Date Paid": pickLive(row, "datePaid", "Date Paid", "paidDate", "Paid Date"),
+      "Payment Status": pickLive(row, "paymentStatus", "Payment Status", "status", "Status"),
+      "Usage Spike?": pickLive(row, "usageSpike", "Usage Spike?", "Usage Spike", "shutoffRisk", "Shutoff Risk"),
+      "Review Status": pickLive(row, "reviewStatus", "Review Status", "nextAction", "Next Action"),
+      "Bill / Receipt Link": pickLive(row, "billReceiptLink", "Bill / Receipt Link", "billLink", "Bill Link", "receiptLink", "Receipt Link", "sourceLink", "Source Link"),
+      Notes: pickLive(row, "notes", "Notes", "nextAction", "Next Action")
     }))
   );
   tabs["Admin Task Log"] = legacyTab(

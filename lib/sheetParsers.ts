@@ -361,41 +361,46 @@ export function parseUtilities(snapshot: WorkbookSnapshot): UtilityRecord[] {
     .filter((row) =>
       hasAnyValue(row, [
         "Month",
+        "Billing Month",
+        "Statement Date",
         "Property",
         "Unit / Common Area",
         "Utility Type",
         "Provider",
         "Usage Amount",
+        "Amount Due",
+        "Current Balance",
+        "Balance Due",
         "Total Cost",
         "Payment Status",
         "Review Status"
       ])
     )
     .map((row, index) => {
-      const month = pick(row, ["Month"]);
-      const billingPeriodStart = pick(row, ["Billing Period Start"]);
-      const billingPeriodEnd = pick(row, ["Billing Period End"]);
+      const month = pick(row, ["Month", "Billing Month", "Statement Month", "Statement Date"]);
+      const billingPeriodStart = pick(row, ["Billing Period Start", "Service Start", "Period Start"]);
+      const billingPeriodEnd = pick(row, ["Billing Period End", "Service End", "Period End"]);
       const monthIdentity = parseMonthIdentity(month, billingPeriodStart, billingPeriodEnd);
-      const usageSpikeRaw = pick(row, ["Usage Spike?", "Usage Spike"]);
+      const usageSpikeRaw = pick(row, ["Usage Spike?", "Usage Spike", "Shutoff Risk"]);
       const usageSpikeValue = usageSpikeRaw.trim().toLowerCase();
-      const usageSpike = ["y", "yes", "true"].includes(usageSpikeValue) || usageSpikeValue.includes("spike");
+      const usageSpike = ["y", "yes", "true"].includes(usageSpikeValue) || usageSpikeValue.includes("spike") || usageSpikeValue.includes("risk");
 
       return {
         id: rowId("Utilities", index, row),
         month,
         ...monthIdentity,
-        property: pick(row, ["Property", "Address"]),
-        unitCommonArea: pick(row, ["Unit / Common Area", "Unit", "Common Area"]),
-        utilityType: pick(row, ["Utility Type", "Type"]),
-        provider: pick(row, ["Provider", "Utility Provider"]),
-        accountNumber: pick(row, ["Account Number"]),
+        property: pick(row, ["Property", "Address", "Service Address"]),
+        unitCommonArea: pick(row, ["Unit / Common Area", "Unit", "Common Area", "Service Area"]),
+        utilityType: pick(row, ["Utility Type", "Type", "Service Type", "Category"]),
+        provider: pick(row, ["Provider", "Utility Provider", "Vendor", "Company"]),
+        accountNumber: pick(row, ["Account Number", "Account", "Acct", "Account Label"]),
         billingPeriodStart,
         billingPeriodEnd,
-        usageAmount: money(row, ["Usage Amount", "Usage"]),
-        usageUnit: pick(row, ["Usage Unit", "Unit of Measure"]),
-        totalCost: money(row, ["Total Cost", "Cost", "Bill Amount"]),
-        costPerUnit: money(row, ["Cost Per Unit"]),
-        dueDate: pick(row, ["Due Date"]),
+        usageAmount: money(row, ["Usage Amount", "Usage", "Current Usage", "Usage Quantity"]),
+        usageUnit: pick(row, ["Usage Unit", "Unit of Measure", "UOM"]),
+        totalCost: money(row, ["Amount Due", "Current Balance", "Balance Due", "Total Cost", "Cost", "Bill Amount", "Amount", "Total Amount"]),
+        costPerUnit: money(row, ["Cost Per Unit", "Usage Rate", "Rate"]),
+        dueDate: pick(row, ["Due Date", "Bill Due Date", "Payment Due Date"]),
         datePaid: pick(row, ["Date Paid", "Paid Date"]),
         paymentStatus: pick(row, ["Payment Status", "Status"]) || "Needs Entry",
         billReceiptLink: pick(row, ["Bill / Receipt Link", "Bill Link", "Receipt Link"]),
