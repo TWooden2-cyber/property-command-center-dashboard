@@ -488,6 +488,7 @@ function buildRefreshWorkbookLiveTabs(refreshTabs: Record<string, LiveSheetRead 
   const courtneyRows = liveRows(refreshTabs, "Courtney ARTI");
   const maintenanceRows = liveRows(refreshTabs, "Maintenance Comms");
   const followUpRows = liveRows(refreshTabs, "Open Follow Ups");
+  const utilityRows = liveRows(refreshTabs, "Utilities");
   const generatedAt = new Date().toISOString();
   const courtneyProperty = valueByLabel(courtneyRows, "Property") || "COURTNEY3103, 3103 Courtney Lane, Killeen TX";
   const courtneyUnits = ["A", "B", "C", "D"].map((unit) => {
@@ -622,20 +623,24 @@ function buildRefreshWorkbookLiveTabs(refreshTabs: Record<string, LiveSheetRead 
     Utilities: {
       tab: "Utilities",
       ok: true,
-      empty: false,
-      headers: ["Month", "Property", "Utility Type", "Provider", "Total Cost", "Due Date", "Payment Status", "Review Status"],
-      rows: [
-        {
-          Month: "September 2026",
-          Property: "Portfolio",
-          "Utility Type": "Utilities",
-          Provider: "Multiple providers",
-          "Total Cost": "",
-          "Due Date": "",
-          "Payment Status": "Owner timing pending",
-          "Review Status": "Only remaining planned cleanup item before final refresh closeout."
-        }
-      ]
+      empty: utilityRows.length === 0,
+      headers: utilityRows.length
+        ? Array.from(new Set(utilityRows.flatMap((row) => Object.keys(row))))
+        : ["Month", "Property", "Utility Type", "Provider", "Total Cost", "Due Date", "Payment Status", "Review Status"],
+      rows: utilityRows.length
+        ? utilityRows
+        : [
+            {
+              Month: "September 2026",
+              Property: "Portfolio",
+              "Utility Type": "Utilities",
+              Provider: "Multiple providers",
+              "Total Cost": "",
+              "Due Date": "",
+              "Payment Status": "Owner timing pending",
+              "Review Status": "Only remaining planned cleanup item before final refresh closeout."
+            }
+          ]
     },
     "Notices & Evictions": {
       tab: "Notices & Evictions",
