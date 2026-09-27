@@ -5,6 +5,7 @@ import { AlertTriangle, TrendingUp } from "lucide-react";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { EmptyState, ErrorState, LoadingState } from "@/components/DataState";
 import { KpiCard } from "@/components/KpiCard";
+import { SectionActionRows, type SectionActionRow } from "@/components/views/SectionActionRows";
 import { SheetsSourcePanel } from "@/components/SheetsSourcePanel";
 import { StatusBadge } from "@/components/StatusBadge";
 import { formatCurrency, formatDate } from "@/lib/formatters";
@@ -281,6 +282,139 @@ function SpikePanel({ rows }: { rows: UtilityRecord[] }) {
   );
 }
 
+function lastTwelveMonths(rows: UtilityRecord[]) {
+  const keyed = rows.reduce<Record<string, ChartDatum>>((acc, row) => {
+    const key = row.monthKey || row.monthLabel || row.month;
+    if (!key) return acc;
+    const label = row.monthLabel || row.month || key;
+    const value = Number.isFinite(row.usageAmount) ? row.usageAmount : Number.isFinite(row.totalCost) ? row.totalCost : 0;
+    acc[key] = acc[key] ?? { label, value: 0 };
+    acc[key].value += value;
+    return acc;
+  }, {});
+
+  const sorted = Object.entries(keyed)
+    .sort(([a], [b]) => a.localeCompare(b, undefined, { numeric: true }))
+    .slice(-12)
+    .map(([, item]) => item);
+
+  if (sorted.length >= 12) return sorted;
+
+  const now = new Date();
+  const fallback = Array.from({ length: 12 }, (_, index) => {
+    const date = new Date(now.getFullYear(), now.getMonth() - (11 - index), 1);
+    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+    const label = date.toLocaleDateString("en-US", { month: "short" });
+    return keyed[key] ?? { label, value: 0 };
+  });
+
+  return fallback;
+}
+
+function MonthlyVerticalBars({ rows }: { rows: UtilityRecord[] }) {
+  const months = lastTwelveMonths(rows);
+  const max = Math.max(...months.map((item) => item.value), 1);
+
+  return (
+    <div className="monthly-vertical-bars">
+      {months.map((item, index) => {
+        const label = item.label.split(" ")[0].slice(0, 3);
+        const height = item.value > 0 ? Math.max((item.value / max) * 100, 8) : 4;
+        return (
+          <div key={`${item.label}-${index}`} className="monthly-vertical-bar" title={`${item.label}: ${item.value.toLocaleString()}`}>
+            <span style={{ "--bar-height": `${height}%` } as CSSProperties} />
+            <strong>{label}</strong>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function UtilityAccountRows({ rows }: { rows: UtilityRecord[] }) {
+  const grouped = rows.reduce<Record<string, UtilityRecord[]>>((acc, row) => {
+    const key = [row.property, row.unitCommonArea, row.provider, row.utilityType].filter(Boolean).join(" · ") || row.id;
+    acc[key] = acc[key] ?? [];
+    acc[key].push(row);
+    return acc;
+  }, {});
+
+  return (
+    <section className="section-block">
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">Utility Accounts</p>
+          <h2>Usage and bill status by utility</h2>
+        </div>
+        <StatusBadge label={`${Object.keys(grouped).length} accounts`} />
+      </div>
+      <div className="utility-account-list">
+        {Object.entries(grouped).map(([key, accountRows]) => {
+          const latest = [...accountRows].sort((a, b) => (b.monthKey || b.month).localeCompare(a.monthKey || a.month, undefined, { numeric: true }))[0];
+          const usageRate = Number.isFinite(latest.costPerUnit) ? formatCostPerUnit(latest.costPerUnit) : "Rate unavailable";
+          return (
+            <details key={key} className="utility-account-row">
+              <summary>
+                <div>
+                  <span>Utility</span>
+                  <strong>{[latest.provider, latest.utilityType].filter(Boolean).join(" · ") || "Utility account"}</strong>
+                </div>
+                <div>
+                  <span>Current Balance</span>
+                  <strong>{formatCurrency(latest.totalCost)}</strong>
+                </div>
+                <div>
+                  <span>Date Due</span>
+                  <strong>{formatDate(latest.dueDate)}</strong>
+                </div>
+                <div>
+                  <span>Usage</span>
+                  <strong>{Number.isFinite(latest.usageAmount) ? `${latest.usageAmount.toLocaleString()} ${latest.usageUnit}` : "Unavailable"}</strong>
+                </div>
+                <div>
+                  <span>Usage Rate</span>
+                  <strong>{usageRate}</strong>
+                </div>
+              </summary>
+              <div className="utility-account-body">
+                <MonthlyVerticalBars rows={accountRows} />
+                <p className="muted-line">{latest.notes || "No extra notes in the utility record."}</p>
+              </div>
+            </details>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function buildUtilityActionRows(rows: UtilityRecord[]): SectionActionRow[] {
+  const open = rows.filter((row) => isUnpaid(row) || needsBillReview(row) || row.usageSpike);
+
+  if (!open.length) {
+    return [
+      {
+        title: "Utilities",
+        bluf: "No unpaid utility bill or review blocker is showing in the current utility view.",
+        issue: "The visible utility records do not require owner action.",
+        systemicIssue: "Utilities still need routine refresh so late balances do not get mixed into monthly operating cost.",
+        recourse: "Keep normal monthly utility refresh and payment confirmation.",
+        tone: "green"
+      }
+    ];
+  }
+
+  return open.map((row) => ({
+    title: `${row.provider || row.utilityType || "Utility"} · ${row.property || "Property"}`,
+    bluf: `${formatCurrency(row.totalCost)} needs payment, proof, review, or usage verification.`,
+    issue: `${row.paymentStatus || "Payment status not set"} for ${row.monthLabel || row.month || "current month"}; due ${formatDate(row.dueDate)}.`,
+    systemicIssue: row.usageSpike ? "Usage spike is flagged and should be compared against the twelve-month usage pattern." : "Utility records need bill proof and payment timing separated from monthly expense totals.",
+    recourse: row.billReceiptLink ? "Open the bill source, confirm amount, and mark payment proof when completed." : "Get bill or payment proof into the tracker before clearing the row.",
+    workLink: row.billReceiptLink,
+    tone: isUnpaid(row) ? "red" : "yellow"
+  }));
+}
+
 function SelectFilter({
   label,
   value,
@@ -412,6 +546,8 @@ export function UtilitiesView() {
             ))}
           </section>
 
+          <UtilityAccountRows rows={filteredRows} />
+
           <div className="chart-grid">
             <BarChart title="Monthly Utility Cost Trend" data={monthlyCost} />
             <BarChart
@@ -432,6 +568,7 @@ export function UtilitiesView() {
           </div>
 
           <DataTable rows={filteredRows} columns={tableColumns} />
+          <SectionActionRows rows={buildUtilityActionRows(filteredRows)} />
         </>
       )}
     </div>

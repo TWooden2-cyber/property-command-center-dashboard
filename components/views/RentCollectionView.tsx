@@ -4,6 +4,7 @@ import { useMemo, useState, type CSSProperties } from "react";
 import { AlertTriangle, BarChart3, CheckCircle2, Search, ShieldCheck } from "lucide-react";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { EmptyState } from "@/components/DataState";
+import { SectionActionRows, type SectionActionRow } from "@/components/views/SectionActionRows";
 import { SheetsSourcePanel, sheetSourceLabel } from "@/components/SheetsSourcePanel";
 import { StatusBadge } from "@/components/StatusBadge";
 import { localDevelopmentFallbackAllowed, rentRecordToCommandRow } from "@/components/views/liveSheetAdapters";
@@ -432,6 +433,56 @@ function CollectionRateGauge({ rows }: { rows: RentCollectionRow[] }) {
   );
 }
 
+function TenantPaymentProgress({ rows }: { rows: RentCollectionRow[] }) {
+  const grouped = rows.reduce<Record<string, RentCollectionRow[]>>((acc, row) => {
+    const property = row.property || "Property not set";
+    acc[property] = acc[property] ?? [];
+    acc[property].push(row);
+    return acc;
+  }, {});
+
+  return (
+    <section className="section-block">
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">Rental Income Progress</p>
+          <h2>Tenant payment bars by property</h2>
+        </div>
+        <StatusBadge label={`${rows.length} tenant rows`} />
+      </div>
+      <div className="tenant-progress-grid">
+        {Object.entries(grouped).map(([property, propertyRows]) => (
+          <article key={property} className="tenant-progress-property">
+            <h3>{property}</h3>
+            {propertyRows.map((row) => {
+              const expected = monthlyRentForRow(row) || row.rentDue;
+              const paid = row.paid;
+              const ratio = expected > 0 ? Math.max(Math.min(paid / expected, 1), 0) : 0;
+              const tone = ratio >= 1 ? "green" : ratio <= 0.25 ? "red" : "yellow";
+              return (
+                <div key={row.id} className="tenant-progress-row">
+                  <header>
+                    <strong>{row.tenant || row.unit}</strong>
+                    <span>{row.unit} · Expected {liveMoney(expected)}</span>
+                  </header>
+                  <div className="tenant-paid-bar" aria-label={`${row.tenant} paid ${livePercent(ratio)}`}>
+                    <div className={`tenant-paid-fill ${tone}`} style={{ "--bar-width": `${Math.max(ratio * 100, paid > 0 ? 4 : 0)}%` } as CSSProperties} />
+                  </div>
+                  <footer>
+                    <span>Paid {liveMoney(paid)}</span>
+                    <span>Open {liveMoney(Math.max(expected - paid, row.balance, 0))}</span>
+                    <span>{row.status}</span>
+                  </footer>
+                </div>
+              );
+            })}
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function RentCharts({ rows }: { rows: RentCollectionRow[] }) {
   const totals = totalsForRows(rows);
   const projectedYtd = localDevelopmentFallbackAllowed ? monthlyRentTrend.reduce((total, row) => total + row.projected, 0) : 0;
@@ -445,6 +496,39 @@ function RentCharts({ rows }: { rows: RentCollectionRow[] }) {
       <CollectionRateGauge rows={rows} />
     </section>
   );
+}
+
+function buildRentActionRows(rows: RentCollectionRow[]): SectionActionRow[] {
+  const openRows = rows.filter((row) => row.balance > 0 || verificationFlag(row) !== "Clear");
+
+  if (!openRows.length) {
+    return [
+      {
+        title: "Rent Collection",
+        bluf: "No open rent collection action is showing in the current rent roll.",
+        issue: "The visible tenant rows are either paid or do not require owner action.",
+        systemicIssue: "No current rent follow-up gap is present in the live refresh packet.",
+        recourse: "Keep this section under normal refresh review.",
+        tone: "green"
+      }
+    ];
+  }
+
+  return openRows.map((row) => {
+    const flag = verificationFlag(row);
+    const expected = monthlyRentForRow(row) || row.rentDue;
+    const paidRatio = expected > 0 ? row.paid / expected : 0;
+    const tone: SectionActionRow["tone"] = row.balance > 0 && paidRatio <= 0.25 ? "red" : "yellow";
+
+    return {
+      title: `${row.tenant || row.unit} · ${row.unit}`,
+      bluf: `${liveMoney(row.balance)} remains open or needs proof against ${liveMoney(expected)} expected for ${row.month}.`,
+      issue: `${row.tenant || row.unit} shows ${liveMoney(row.paid)} paid, ${liveMoney(row.balance)} open, and status "${row.status}".`,
+      systemicIssue: flag === "Clear" ? "This is a normal balance follow-up item, not a ledger classification issue." : `${flag} must be separated from true tenant nonpayment before escalation.`,
+      recourse: ownerAction(row),
+      tone
+    };
+  });
 }
 
 function RentFilters({
@@ -625,6 +709,7 @@ export function RentCollectionView() {
       <RentCommandHeader filters={filters} onFiltersChange={setFilters} sourceLabel={sourceLabel} />
       <SheetsSourcePanel system={system} error={error} loading={loading} />
       <RentKpiCards rows={rows} />
+      <TenantPaymentProgress rows={rows} />
       <RentCharts rows={rows} />
       <RentFilters filters={filters} onFiltersChange={setFilters} rows={rows} />
 
@@ -646,10 +731,10 @@ export function RentCollectionView() {
       {localDevelopmentFallbackAllowed ? (
         <>
           <RentHealthEvaluation />
-          <RentActionQueue />
           <BlockedUntilVerified />
         </>
       ) : null}
+      <SectionActionRows rows={buildRentActionRows(rows)} />
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { useMemo, useState, type CSSProperties } from "react";
 import { AlertTriangle, CheckCircle2, ClipboardList, Mail, MessageSquare, Search, ShieldCheck, Wrench } from "lucide-react";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { EmptyState } from "@/components/DataState";
+import { SectionActionRows, type SectionActionRow } from "@/components/views/SectionActionRows";
 import { SheetsSourcePanel } from "@/components/SheetsSourcePanel";
 import { StatusBadge } from "@/components/StatusBadge";
 import { localDevelopmentFallbackAllowed, maintenanceRecordToCommandRow } from "@/components/views/liveSheetAdapters";
@@ -503,6 +504,33 @@ function ProofNeeded() {
   );
 }
 
+function buildMaintenanceActionRows(rows: MaintenanceCommandRow[]): SectionActionRow[] {
+  const open = rows.filter((row) => isOpen(row) || proofStatus(row) === "Missing" || tenantUpdateNeeded(row));
+
+  if (!open.length) {
+    return [
+      {
+        title: "Maintenance",
+        bluf: "No open maintenance blocker is showing in the current maintenance tracker.",
+        issue: "All visible maintenance rows are either complete or not awaiting proof.",
+        systemicIssue: "Maintenance remains dependent on vendor proof being saved after work is completed.",
+        recourse: "Keep normal proof capture and refresh after vendor completion.",
+        tone: "green"
+      }
+    ];
+  }
+
+  return open.map((row) => ({
+    title: `${row.property} · ${row.unit}`,
+    bluf: `${row.issue} is ${row.status}; maintenance owns monitoring until proof, completion, or approval is resolved.`,
+    issue: `${row.assignedVendor || "Vendor not assigned"} · estimated cost ${formatCurrency(row.estimatedCost)} · proof ${proofStatus(row)}.`,
+    systemicIssue: "Open maintenance needs a clear owner, vendor status, access result, and proof trail before it can leave the active queue.",
+    recourse: ownerAction(row) || "Track vendor update, save completion proof, and only escalate back to owner for no-show, access failure, safety issue, or approval.",
+    workLink: row.photosReceiptsLink,
+    tone: row.priority === "Critical" ? "red" : proofStatus(row) === "Missing" ? "yellow" : "green"
+  }));
+}
+
 function VendorAndTenantTrackers() {
   const activeRows = maintenanceRows.filter(isOpen);
 
@@ -602,12 +630,12 @@ export function MaintenanceView() {
       {localDevelopmentFallbackAllowed ? (
         <>
           <MaintenanceHealthEvaluation />
-          <MaintenanceActionQueue />
           <BlockedUntilVerified />
           <ProofNeeded />
           <VendorAndTenantTrackers />
         </>
       ) : null}
+      <SectionActionRows rows={buildMaintenanceActionRows(rows)} />
     </div>
   );
 }

@@ -244,6 +244,88 @@ function LiveRiskGrid({ risks }: { risks: RiskItem[] }) {
   );
 }
 
+function parseMoney(value: string) {
+  const numeric = Number(value.replace(/[^0-9.-]/g, ""));
+  return Number.isFinite(numeric) ? numeric : Number.NaN;
+}
+
+function LiveMoneyChart({ kpis }: { kpis: KpiMetric[] }) {
+  const moneyRows = kpis
+    .map((item) => ({ label: item.label, value: parseMoney(item.value), helper: item.helper }))
+    .filter((item) => Number.isFinite(item.value) && item.value > 0)
+    .slice(0, 6);
+  const max = Math.max(...moneyRows.map((item) => item.value), 1);
+
+  if (!moneyRows.length) return null;
+
+  return (
+    <section className="chart-card">
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">Current Money Picture</p>
+          <h2>Live refresh totals</h2>
+        </div>
+        <TrendingUp size={18} aria-hidden />
+      </div>
+      <div className="command-chart-bars">
+        {moneyRows.map((row) => (
+          <div key={row.label} className="command-chart-row">
+            <span>{row.label}</span>
+            <div className="bar-track">
+              <div className="bar-fill" style={{ "--bar-width": `${Math.max((row.value / max) * 100, 4)}%` } as CSSProperties} />
+            </div>
+            <strong>{money(row.value)}</strong>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function LiveBlufBrief({ data }: { data?: OverviewPayload }) {
+  const risks = data?.risks ?? [];
+  const warnings = data?.warnings ?? [];
+  const ownerDecision = data?.ownerDecision || "No owner decision is currently flagged in the live refresh packet.";
+  const activeRisks = risks.filter((risk) => risk.level !== "Stable" && risk.level !== "Normal");
+  const bluf = ownerDecision === "None"
+    ? "PMOS is operational. The live workbook is connected, and section details should be reviewed in their tabs instead of the owner overview."
+    : ownerDecision;
+
+  return (
+    <section className="section-block">
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">BLUF</p>
+          <h2>Owner command summary</h2>
+        </div>
+        <StatusBadge label={activeRisks.length ? "Review" : "Stable"} />
+      </div>
+      <div className="cause-grid">
+        <article>
+          <CheckCircle2 size={17} aria-hidden />
+          <p>{bluf}</p>
+        </article>
+        <article>
+          <AlertTriangle size={17} aria-hidden />
+          <p>
+            {activeRisks.length
+              ? `${activeRisks.length} section signal${activeRisks.length === 1 ? "" : "s"} need review. The detailed work belongs in each section tab.`
+              : "No critical owner-level risk is flagged by the current refresh packet."}
+          </p>
+        </article>
+        <article>
+          <FolderKanban size={17} aria-hidden />
+          <p>
+            {warnings.length
+              ? warnings.slice(0, 2).join(" ")
+              : "The old tracker remains a backup. The refresh workbook is the current data packet for this portal."}
+          </p>
+        </article>
+      </div>
+    </section>
+  );
+}
+
 function driveDetails(status?: GoogleProductStatus | null): DriveProductDetails {
   return (status?.details ?? {}) as DriveProductDetails;
 }
@@ -475,7 +557,7 @@ export function OverviewView() {
 
   return (
     <div className="view-stack overview-dashboard">
-      <FilterBar month={selectedMonth} year={selectedYear} onMonthChange={setSelectedMonth} onYearChange={setSelectedYear} />
+      {showLocalDevelopmentDashboard ? <FilterBar month={selectedMonth} year={selectedYear} onMonthChange={setSelectedMonth} onYearChange={setSelectedYear} /> : null}
       <SheetsSourcePanel system={system} error={error} loading={loading} />
       <OverviewDriveSnapshot />
 
@@ -489,7 +571,7 @@ export function OverviewView() {
               <h2>{isLive ? "Live Google Sheets dashboard" : "Live Google Sheets data unavailable"}</h2>
               <p>
                 {isLive
-                  ? "Current status is read from the configured Property Management Master Tracker."
+                  ? "Current status is read from the PMOS refresh workbook. Detailed operational work lives inside each section page."
                   : "The production dashboard does not display sample or local static data when live Google Sheets is unavailable."}
               </p>
               <div className="hero-source-strip">
@@ -510,6 +592,13 @@ export function OverviewView() {
           <section className="command-kpi-grid">
             {isLive && data?.kpis?.length ? data.kpis.map((item) => <LiveKpiTile key={item.label} item={item} />) : showLocalDevelopmentDashboard ? kpis.map((item) => <KpiTile key={item.label} item={item} />) : null}
           </section>
+
+          {isLive ? (
+            <>
+              <LiveBlufBrief data={data ?? undefined} />
+              <LiveMoneyChart kpis={data?.kpis ?? []} />
+            </>
+          ) : null}
 
           {isLive && data?.risks?.length ? (
             <LiveRiskGrid risks={data.risks} />
