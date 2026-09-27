@@ -230,11 +230,21 @@ export async function checkGoogleSheetsHealth(): Promise<GoogleSheetsHealth> {
 
   try {
     const sheets = getSheetsClient();
-    await sheets.spreadsheets.get({
+    const metadata = await sheets.spreadsheets.get({
       spreadsheetId: liveEnv.spreadsheetId.value,
-      fields: "spreadsheetId,properties.title"
+      fields: "spreadsheetId,properties.title,sheets.properties.title"
     });
-    const ownerApprovalsRange = `${quoteTab("Owner Approvals")}!A:ZZ`;
+    const detectedTabs = new Set(
+      (metadata.data.sheets ?? [])
+        .map((sheet) => sheet.properties?.title)
+        .filter((title): title is string => Boolean(title))
+    );
+    const isRefreshWorkbook =
+      detectedTabs.has("Owner Summary") &&
+      detectedTabs.has("228 RentRedi Rent Roll") &&
+      detectedTabs.has("Maintenance Comms") &&
+      detectedTabs.has("Open Follow Ups");
+    const ownerApprovalsRange = isRefreshWorkbook ? `${quoteTab("Owner Summary")}!A:ZZ` : `${quoteTab("Owner Approvals")}!A:ZZ`;
     const ownerApprovals = await sheets.spreadsheets.values.get({
       spreadsheetId: liveEnv.spreadsheetId.value,
       range: ownerApprovalsRange,
