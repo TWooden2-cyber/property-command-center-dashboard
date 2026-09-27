@@ -2,6 +2,7 @@ import { requireOwnerSession } from "@/lib/auth";
 import { LuxuryShell } from "@/components/LuxuryShell";
 import { formatCurrency, toNumber } from "@/lib/formatters";
 import { getWorkbookSnapshot } from "@/lib/googleSheets";
+import { parseWorkbook } from "@/lib/sheetParsers";
 
 const incomeTrackingRows = [
   ["Property", "Property name/address"],
@@ -54,15 +55,77 @@ const operatingExpenseGroups = [
   }
 ];
 
+function sumFinite(values: number[]) {
+  const valid = values.filter(Number.isFinite);
+  return valid.length ? valid.reduce((total, value) => total + value, 0) : 0;
+}
+
+function moneyCell(value: number) {
+  return Number.isFinite(value) ? formatCurrency(value) : "No value in PMOS";
+}
+
 export default async function ExpensesPage() {
   await requireOwnerSession();
   const snapshot = await getWorkbookSnapshot();
+  const parsed = parseWorkbook(snapshot);
   const summaryRows = snapshot.tabs["Expense Import Summary"]?.rows ?? [];
   const totalExpenses = summaryRows
     .map((row) => toNumber(row["Total Imported Expenses"]))
     .filter(Number.isFinite)
     .reduce((sum, value) => sum + value, 0);
   const liveConnected = Boolean(snapshot.system.lastSuccessfulRefresh);
+  const rentRows = parsed.rentCollection;
+  const utilityRows = parsed.utilities;
+  const maintenanceRows = parsed.maintenance;
+  const mortgageRows = parsed.mortgageArrears;
+  const grossPotentialRent = sumFinite(rentRows.map((row) => row.rentDue));
+  const rentCollected = sumFinite(rentRows.map((row) => row.amountPaid));
+  const outstandingRent = sumFinite(rentRows.map((row) => row.balance));
+  const concessions = 0;
+  const otherIncome = sumFinite(rentRows.map((row) => row.lateFee));
+  const effectiveGrossIncome = rentCollected + otherIncome;
+  const utilities = sumFinite(utilityRows.map((row) => row.totalCost));
+  const repairs = sumFinite(maintenanceRows.map((row) => Number.isFinite(row.actualCost) ? row.actualCost : row.estimatedCost));
+  const mortgageDue = sumFinite(mortgageRows.map((row) => row.mortgageDueMonthly));
+  const importedExpenseFallback = Number.isFinite(totalExpenses) ? totalExpenses : 0;
+  const operatingExpenses = summaryRows.length ? importedExpenseFallback : utilities + repairs;
+  const operatingNoi = effectiveGrossIncome - operatingExpenses;
+  const cashAfterMortgage = operatingNoi - mortgageDue;
+  const units = new Set(rentRows.map((row) => `${row.property}|${row.unit}`).filter((value) => value !== "|"));
+  const occupiedUnits = Array.from(units).length;
+  const unitsWithOpenBalance = rentRows.filter((row) => row.balance > 0).length;
+  const financeRows = [
+    {
+      month: "Current PMOS refresh",
+      property: "Portfolio",
+      managementFees: 0,
+      repairs,
+      utilities,
+      totalImportedExpenses: operatingExpenses
+    }
+  ];
+  const incomeValues = {
+    Property: "Portfolio",
+    Month: "Current PMOS refresh",
+    Units: `${occupiedUnits} tracked / ${unitsWithOpenBalance} with open balances`,
+    "Occupancy Rate": occupiedUnits ? "Tracked from rent roll" : "No rent roll rows",
+    "Gross Potential Rent": moneyCell(grossPotentialRent),
+    "Vacancy Loss": moneyCell(outstandingRent),
+    Concessions: moneyCell(concessions),
+    "Other Income": moneyCell(otherIncome),
+    "Effective Gross Income (EGI)": moneyCell(effectiveGrossIncome)
+  } satisfies Record<string, string>;
+  const expenseValues = {
+    Utilities: moneyCell(utilities),
+    Maintenance: moneyCell(repairs),
+    Management: summaryRows.length ? "Mapped from Expense Import Summary" : moneyCell(0),
+    Administrative: "Tracked in Admin Tasks / not a dollar row yet",
+    Insurance: "No value in PMOS",
+    Taxes: "No value in PMOS",
+    Professional: "No value in PMOS",
+    "HOA / Association Fees": "No value in PMOS",
+    "Licenses & Permits": "No value in PMOS"
+  } satisfies Record<string, string>;
 
   return (
     <LuxuryShell title="Expenses / NOI" subtitle="Read-only operating expense and NOI review">
@@ -85,6 +148,7 @@ export default async function ExpensesPage() {
                 {incomeTrackingRows.map(([section, description]) => (
                   <div key={section} className="noi-field-row">
                     <span>{section}</span>
+                    <strong>{incomeValues[section as keyof typeof incomeValues]}</strong>
                     <p>{description}</p>
                   </div>
                 ))}
@@ -104,6 +168,7 @@ export default async function ExpensesPage() {
                 {operatingExpenseGroups.map((group) => (
                   <section key={group.title} className="noi-expense-group">
                     <h3>{group.title}</h3>
+                    <strong>{expenseValues[group.title as keyof typeof expenseValues]}</strong>
                     <ul>
                       {group.items.map((item) => (
                         <li key={item}>{item}</li>
@@ -122,60 +187,66 @@ export default async function ExpensesPage() {
               <p className="eyebrow">{liveConnected ? "Live Google Sheets" : "Live data unavailable"}</p>
               <h2>{summaryRows.length ? "Expenses / NOI live expense summary" : "Expenses / NOI live rows not found"}</h2>
             </div>
-            <span className={summaryRows.length ? "status-pill green" : "status-pill red"}>{summaryRows.length ? "Live parser enabled" : "No sample financial data shown"}</span>
+            <span className={liveConnected ? "status-pill green" : "status-pill red"}>{summaryRows.length ? "Expense import rows" : "PMOS rollup fallback"}</span>
           </div>
-          {summaryRows.length ? (
-            <>
-              <div className="kpi-grid">
-                <article className="kpi-card status-strip Normal">
-                  <span>Expense summary rows</span>
-                  <strong>{String(summaryRows.length)}</strong>
-                  <small>From Expense Import Summary</small>
-                </article>
-                <article className="kpi-card status-strip Watch">
-                  <span>Total imported expenses</span>
-                  <strong>{formatCurrency(totalExpenses)}</strong>
-                  <small>Sum of live Total Imported Expenses values</small>
-                </article>
-                <article className="kpi-card status-strip Stable">
-                  <span>Summary rows available</span>
-                  <strong>{String(summaryRows.length)}</strong>
-                  <small>Read-only Google Sheets parser</small>
-                </article>
-              </div>
-              <div className="table-shell">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Month</th>
-                      <th>Property</th>
-                      <th>Management Fees</th>
-                      <th>Repairs</th>
-                      <th>Utilities</th>
-                      <th>Total Imported Expenses</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {summaryRows.slice(0, 12).map((row, index) => (
-                      <tr key={`${row.Month}-${row.Property}-${index}`}>
-                        <td>{row.Month || "Not mapped"}</td>
-                        <td>{row.Property || "Not mapped"}</td>
-                        <td>{row["Management Fees"] || "Live value unavailable"}</td>
-                        <td>{row.Repairs || "Live value unavailable"}</td>
-                        <td>{row.Utilities || "Live value unavailable"}</td>
-                        <td>{row["Total Imported Expenses"] || "Live value unavailable"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </>
-          ) : (
-            <p>
-              This production page will not display sample, local, or hardcoded NOI values. The live Expense Import Summary tab is missing
-              rows or the live Google Sheets read failed.
-            </p>
-          )}
+          <div className="kpi-grid">
+            <article className="kpi-card status-strip Normal">
+              <span>Effective Gross Income</span>
+              <strong>{formatCurrency(effectiveGrossIncome)}</strong>
+              <small>Rent collected plus other income in PMOS</small>
+            </article>
+            <article className="kpi-card status-strip Watch">
+              <span>Operating Expenses</span>
+              <strong>{formatCurrency(operatingExpenses)}</strong>
+              <small>{summaryRows.length ? "Expense Import Summary" : "Utilities plus maintenance rollup"}</small>
+            </article>
+            <article className="kpi-card status-strip Stable">
+              <span>Operating NOI</span>
+              <strong>{formatCurrency(operatingNoi)}</strong>
+              <small>Before mortgage debt service</small>
+            </article>
+            <article className="kpi-card status-strip Watch">
+              <span>Cash After Mortgage</span>
+              <strong>{formatCurrency(cashAfterMortgage)}</strong>
+              <small>NOI less mapped mortgage due</small>
+            </article>
+          </div>
+          <div className="table-shell">
+            <table>
+              <thead>
+                <tr>
+                  <th>Month</th>
+                  <th>Property</th>
+                  <th>Management Fees</th>
+                  <th>Repairs</th>
+                  <th>Utilities</th>
+                  <th>Total Operating Expenses</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(summaryRows.length
+                  ? summaryRows.slice(0, 12).map((row) => ({
+                      month: row.Month || "Current PMOS refresh",
+                      property: row.Property || "Portfolio",
+                      managementFees: toNumber(row["Management Fees"]),
+                      repairs: toNumber(row.Repairs),
+                      utilities: toNumber(row.Utilities),
+                      totalImportedExpenses: toNumber(row["Total Imported Expenses"])
+                    }))
+                  : financeRows
+                ).map((row, index) => (
+                  <tr key={`${row.month}-${row.property}-${index}`}>
+                    <td>{row.month}</td>
+                    <td>{row.property}</td>
+                    <td>{moneyCell(row.managementFees)}</td>
+                    <td>{moneyCell(row.repairs)}</td>
+                    <td>{moneyCell(row.utilities)}</td>
+                    <td>{moneyCell(row.totalImportedExpenses)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </section>
       </div>
     </LuxuryShell>
